@@ -1,0 +1,251 @@
+/* Dashboard.css */
+
+.dashboard-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+
+  background-image: url("../assets/SICS.jpg");  /* <<< ADD THIS */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-card {
+  background-color: #fff8dc;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 600px;
+  text-align: center;
+}
+
+.dashboard-card h1 {
+  color: #b8860b;
+  margin-bottom: 20px;
+}
+
+.dashboard-card p {
+  color: #555;
+  margin-bottom: 30px;
+}
+
+.dashboard-card button {
+  padding: 12px 20px;
+  margin: 10px;
+  background-color: #f7e14b;
+  color: #333;
+  font-weight: bold;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+
+.dashboard-card button:hover {
+  background-color: #ffe066;
+  color: #000;
+}
+.summary-cards {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+  gap: 15px;
+}
+
+.summary-cards .card {
+  flex: 1;
+  padding: 15px;
+  border-radius: 10px;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.card.pending {
+  background-color: #f0ad4e; /* orange */
+}
+
+.card.approved {
+  background-color: #5cb85c; /* green */
+}
+
+.card.rejected {
+  background-color: #d9534f; /* red */
+}
+
+.manage-button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background-color: #f7e14b;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.manage-button:hover {
+  background-color: #ffe066;
+}
+
+.dashboard-layout {
+  display: flex;
+  background: #f3f4f6;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.bottom-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.logout-button {
+  margin-top: 30px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+
+.gold-card {
+    background: #fff !important; /* Keep white background like the others */
+    border-top: 5px solid #b8860b !important; /* Gold bar at the top */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    cursor: pointer;
+    position: relative;
+    min-height: 140px;
+}
+
+.gold-card h3 {
+    font-size: 2rem;
+    margin: 0;
+    color: #333;
+}
+
+.gold-card p {
+    color: #666;
+    margin: 5px 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.gold-card .view-details {
+    color: #b8860b;
+    font-size: 0.85rem;
+    margin-top: auto;
+    text-decoration: none;
+}
+
+/* Position the icon on the right like your other cards */
+.gold-card::after {
+    content: '👨‍🏫'; /* You can use an icon component instead */
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 2rem;
+    background: #fff8e1;
+    padding: 10px;
+    border-radius: 50%;
+}
+.gold-border {
+  /* ... your existing styles ... */
+  transition: all 0.3s ease;
+}
+
+.gold-border:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(184, 134, 11, 0.15);
+  background-color: #fffdfa !important; /* Very slight color change */
+}
+
+/* Dashboard.css */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.teacher-stat-card {
+  background: #ffffff !important;
+  border-top: 5px solid #b8860b !important; /* Gold border like the others */
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease; /* Enables smooth hover */
+  min-height: 130px;
+}
+
+/* THE HOVER EFFECT */
+.teacher-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  background-color: #fffdfa !important; /* Very slight gold tint */
+}
+
+.stat-content {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #888;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 2rem;
+  margin: 0;
+  color: #333;
+}
+
+.stat-link {
+  font-size: 0.8rem;
+  color: #b8860b;
+  margin-top: 10px;
+  display: block;
+}
+
+/* Circular icon on the right to match your screenshot */
+.stat-icon-circle {
+  background: #fdf5e6; /* Light cream */
+  color: #b8860b;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}

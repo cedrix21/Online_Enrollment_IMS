@@ -1,0 +1,65 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+:root {
+  --school-gold: #b8860b;
+  --school-gold-light: #f7e14b;
+  --school-cream: #fff8dc;
+  --school-bg: #fdfaf0;
+  --dark-text: #333333;
+  --sidebar-width: 260px;
+}
+
+@media print {
+    /* Hide everything except the load slip */
+    .sidebar, .no-print, button, .navbar {
+        display: none !important;
+    }
+    
+    .load-slip-container {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .printable-content {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+}

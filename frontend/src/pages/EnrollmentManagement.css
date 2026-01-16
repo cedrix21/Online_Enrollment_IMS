@@ -1,0 +1,147 @@
+/* EnrollmentManagement.css */
+
+/* Remove the background and flex-centering from the main container 
+   since it's now inside the Dashboard Layout */
+.enrollment-management {
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.management-container {
+    background-color: rgba(255, 248, 220, 0.9); /* Your #fff8dc with slight transparency */
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-top: 10px;
+    border: 1px solid #e0d8b0;
+}
+
+/* Header Title Styling */
+.management-header h2 {
+    color: #b8860b;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    border-bottom: 2px solid #f7e14b;
+    padding-bottom: 10px;
+}
+
+/* Message / Toast */
+.message-toast {
+    background-color: #f7e14b;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    display: inline-block;
+}
+
+/* Action Bar (Search, Filter, Buttons) */
+.admin-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.search-filter-group {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+}
+
+.search-input, .filter-select {
+    padding: 10px 15px;
+    border: 2px solid #e0d8b0;
+    border-radius: 8px;
+    background: white;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: #f7e14b;
+}
+
+/* Table Responsive Container */
+.table-responsive {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e0d8b0;
+}
+
+/* Table Styling */
+.management-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.management-table thead {
+    background-color: #f7e14b;
+}
+
+.management-table th {
+    padding: 15px;
+    text-align: left;
+    color: #333;
+    font-weight: bold;
+}
+
+.management-table td {
+    padding: 15px;
+    border-bottom: 1px solid #e0d8b0;
+    color: #444;
+}
+
+.management-table tbody tr:hover {
+    background-color: #fffdf0;
+}
+
+/* Status Pill - Matching your original status colors */
+.status-pill {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status-pill.pending { background-color: #ffe066; color: #333; }
+.status-pill.approved { background-color: #c7f0c2; color: #2e7d32; }
+.status-pill.rejected { background-color: #f8c6c6; color: #b71c1c; }
+
+/* Action Buttons */
+.action-buttons button {
+    padding: 8px 14px;
+    margin-right: 5px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add { background-color: #b8860b; color: white; }
+.btn-qr { background-color: #555; color: white; }
+
+.approve { background-color: #a5d6a7; color: #1b5e20; }
+.reject { background-color: #ef9a9a; color: #7f0000; }
+
+.approve:hover, .reject:hover { transform: scale(1.05); }
+
+/* Responsive Grid for Mobile */
+@media (max-width: 768px) {
+    .admin-actions { flex-direction: column; align-items: stretch; }
+    .management-table thead { display: none; }
+    .management-table tr { display: block; margin-bottom: 15px; border: 1px solid #e0d8b0; border-radius: 8px; }
+    .management-table td { display: block; text-align: right; position: relative; padding-left: 50%; }
+    .management-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        font-weight: bold;
+        color: #b8860b;
+    }
+}

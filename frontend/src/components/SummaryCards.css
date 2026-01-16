@@ -1,0 +1,73 @@
+.summary-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #edf2f7;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08);
+}
+
+.summary-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.summary-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.summary-count {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 5px 0 0;
+  color: #2d3748;
+}
+
+.summary-icon-wrapper {
+  font-size: 1.5rem;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.summary-footer {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #f7fafc;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #a0aec0;
+}
+
+/* Status Specific Colors */
+.pending-card { border-top: 4px solid #4299e1; }
+.pending-card .summary-icon-wrapper { background: #ebf8ff; color: #4299e1; }
+.pending-card:hover .summary-footer { color: #4299e1; }
+
+.approved-card { border-top: 4px solid #48bb78; }
+.approved-card .summary-icon-wrapper { background: #f0fff4; color: #48bb78; }
+.approved-card:hover .summary-footer { color: #48bb78; }
+
+.rejected-card { border-top: 4px solid #f56565; }
+.rejected-card .summary-icon-wrapper { background: #fff5f5; color: #f56565; }
+.rejected-card:hover .summary-footer { color: #f56565; }

@@ -1,0 +1,245 @@
+.management-container {
+    padding: 2rem;
+}
+
+.management-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.title-icon {
+    font-size: 2.5rem;
+    color: #b8860b;
+}
+
+.add-btn {
+    background: #b8860b;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: bold;
+}
+
+.section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.section-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    position: relative;
+    border: 1px solid #eee;
+    transition: transform 0.2s;
+}
+
+.section-card:hover {
+    transform: translateY(-5px);
+}
+
+.section-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #fdf5e6;
+    color: #b8860b;
+    padding: 0.2rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.section-card-body {
+    margin: 1.5rem 0;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.95rem;
+}
+
+.capacity-bar {
+    height: 8px;
+    background: #eee;
+    border-radius: 10px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+
+.capacity-bar .fill {
+    height: 100%;
+    background: #b8860b;
+    border-radius: 10px;
+}
+
+.section-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+}
+
+.section-card-actions button {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #b8860b;
+    background: transparent;
+    color: #b8860b;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.section-card-actions button:hover {
+    background: #b8860b;
+    color: white;
+}
+
+.student-list-modal {
+    max-width: 800px;
+    width: 90%;
+}
+
+.student-table-container {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.student-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.student-list-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    font-size: 0.9rem;
+    color: #666;
+    border-bottom: 2px solid #eee;
+}
+
+.student-list-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+}
+
+.status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+}
+
+.status-pill.active { background: #e6f4ea; color: #1e7e34; }
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+}
+
+.modal-body-tabs h4 {
+    margin: 20px 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.schedule-table th {
+    background: #4a90e2;
+    color: white;
+    padding: 10px;
+    font-size: 0.85rem;
+}
+
+.time-cell {
+    font-weight: 600;
+    color: #4a90e2;
+}
+
+.day-badge {
+    background: #e1f0ff;
+    color: #007bff;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.sub-code {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.divider {
+    border: 0;
+    border-top: 1px dashed #ddd;
+    margin: 25px 0;
+}
+
+.sched-teacher {
+    font-size: 0.75rem;
+    color: #555;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    font-style: italic;
+}
+
+.sub-code {
+    font-size: 0.7rem;
+    color: #4a90e2; /* Making the code stand out slightly */
+    font-weight: bold;
+}
+.delete-icon-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-icon-btn:hover {
+    transform: scale(1.2);
+}
+
+.delete-icon-btn svg {
+    font-size: 1.1rem;
+}

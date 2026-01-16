@@ -1,0 +1,185 @@
+/* Enrollment.css */
+
+.enrollment-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    
+    background-image: url("../assets/SICS.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.enrollment-card {
+    background-color: rgba(255, 248, 220, 0.96); /* Original Cream/Yellow */
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 900px;
+    text-align: left;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #b8860b; /* Original Gold */
+    padding-bottom: 10px;
+}
+
+.form-header h2 {
+    color: #b8860b;
+    margin: 0;
+    font-size: 1.8rem;
+    text-transform: uppercase;
+}
+
+.form-header p {
+    color: #8b7500;
+    font-weight: bold;
+}
+
+/* Section Styling */
+.form-section {
+    border-bottom: 1px solid rgba(184, 134, 11, 0.2);
+    padding-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+.form-section h3 {
+    font-size: 1.1rem;
+    color: #1a2a6c; /* Keep the Section Title Navy for readability */
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-left: 4px solid #1a2a6c;
+    padding-left: 10px;
+}
+
+/* Grids & Rows */
+.input-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.input-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Ensures Address spans both columns */
+.input-grid-2 input[name$="Address"] {
+    grid-column: span 2;
+}
+
+.input-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #8b7500;
+    font-size: 0.9rem;
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #dcd588;
+    background-color: #fff;
+    outline: none;
+    font-size: 14px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.input-group input:focus, 
+.input-group select:focus,
+.input-group textarea:focus {
+    border-color: #b8860b;
+    box-shadow: 0 0 5px rgba(184, 134, 11, 0.3);
+}
+
+/* Buttons */
+.add-sibling-btn {
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 1px dashed #b8860b;
+    color: #8b7500;
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: 0.3s;
+    margin-bottom: 10px;
+}
+
+.add-sibling-btn:hover {
+    background-color: #f7e14b;
+    border-style: solid;
+    color: #000;
+}
+
+.enroll-button {
+    width: 100%;
+    padding: 15px;
+    background-color: #f7e14b; /* Original Bright Yellow */
+    color: #333;
+    font-weight: bold;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.enroll-button:hover {
+    background-color: #ffe066;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+/* Footer Warning */
+.form-footer-warning {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 2px solid rgba(184, 134, 11, 0.3);
+    color: #b22222; 
+    font-weight: bold;
+    text-align: center;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+/* Responsive Logic */
+@media (max-width: 768px) {
+    .input-grid-3, .input-grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .input-grid-2 input[name$="Address"] {
+        grid-column: span 1;
+    }
+}
