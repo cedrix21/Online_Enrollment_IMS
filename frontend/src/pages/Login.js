@@ -1,5 +1,5 @@
 import { useState } from "react";
-import API from "../api/axios"; // Use the helper
+import API from "../api/api"; // Use the helper
 import "./Login.css";
 
 export default function Login() {

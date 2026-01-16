@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import API from "../api/axios";
+import API from "../api/api";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import { FaUserGraduate, FaSearch, FaPrint, FaFileInvoice, FaDownload } from 'react-icons/fa';
