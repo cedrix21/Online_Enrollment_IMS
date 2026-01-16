@@ -15,6 +15,7 @@ import StudentRecords from "./components/StudentRecords";
 import TeacherDirectory from "./pages/TeacherDirectory";
 import SectionManagement from "./components/SectionManagement"; 
 import LoadSlip from "./components/LoadSlip";
+import NotFound from "./components/NotFound";
 
 function App() {
   return (
@@ -61,15 +62,14 @@ function App() {
         {/* Redirect any unknown route to login */}
         <Route path="*" element={<Navigate to="/login" />} />
         <Route path="/load-slips" element={<LoadSlip />} />
+
+        {/* The 404 Route */}
+        <Route path="/404" element={<NotFound />} />
+        {/* Catch-all route for any other invalid URLs */}
+        <Route path="*" element={<NotFound />} />
+
+
       </Routes>
-
-      
-
-
-
-
-
-
 
       
     </Router>

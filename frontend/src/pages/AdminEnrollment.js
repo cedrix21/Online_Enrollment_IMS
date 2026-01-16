@@ -30,6 +30,12 @@ export default function AdminEnrollment() {
     motherAddress: "", 
     emergencyContact: "",
     medicalConditions: "",
+
+    psaReceived: false,
+    idPictureReceived: false,
+    goodMoralReceived: false,
+    reportCardReceived: false,
+    kidsNoteInstalled: false,
     enrollmentDate: new Date().toISOString().split('T')[0],
   });
 
@@ -37,7 +43,11 @@ export default function AdminEnrollment() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ 
+      ...formData, 
+      [name]: type === "checkbox" ? checked : value 
+    });
   };
 
   const handleSiblingChange = (index, e) => {
@@ -91,28 +101,108 @@ export default function AdminEnrollment() {
             <form onSubmit={handleSubmit} className="enrollment-grid-form">
               
               {/* Section: Registration Status */}
-              <div className="form-section">
-                <h3>Registration Status</h3>
-                <div className="input-row">
-                  <div className="input-group">
-                    <div className="input-grid-3">
-                  <select name="registrationType" value={formData.registrationType} onChange={handleChange} required>
-                    <option value="New Student">New Student</option>
-                    <option value="Returning Student">Returning Student</option>
-                    <option value="Continuing">Continuing</option>
-                  </select>
-                  <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
-                    <option value="">Select Grade Level</option>
-                    <option value="Nursery">Nursery</option>
-                    <option value="Kindergarten 1">K1</option>
-                    <option value="Kindergarten 2">K2</option>
-                    {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
-                  </select>
-                  <input type="date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} required />
-                </div>
-              </div>
-              </div>
-              </div>
+                        <div className="form-section">
+                          <h3>Registration Status</h3>
+                          <div className="input-group">
+                            <div className="input-grid-3">
+                              <select name="registrationType" value={formData.registrationType} onChange={handleChange} required>
+                                <option value="New Student">New Student</option>
+                                <option value="Transferee">Transferee</option>
+                                <option value="Continuing">Continuing Student</option>
+                                <option value="Returning Student">Returning (From Gap Year)</option>
+                              </select>
+                              
+                              <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
+                                <option value="">Select Grade Level</option>
+                                <option value="Nursery">Nursery</option>
+                                <option value="Kindergarten 1">K1</option>
+                                <option value="Kindergarten 2">K2</option>
+                                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
+                              </select>
+                              
+                              <input type="date" name="enrollmentDate" value={formData.enrollmentDate} onChange={handleChange} required />
+                            </div>
+                          </div>
+
+                          {/* Dynamic Requirements Checklist */}
+                                <div className="requirements-box" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fffdf0', border: '1px solid #e6dbac', borderRadius: '8px' }}>
+                                  <h4 style={{ color: '#b8860b', marginTop: 0 }}>Required Documents (Hardcopy Verification)</h4>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    
+                                    {/* 1x1 Picture and App are required for EVERYONE */}
+                                    <label>
+                                      <input 
+                                        type="checkbox" 
+                                        name="idPictureReceived" 
+                                        checked={formData.idPictureReceived || false} 
+                                        onChange={handleChange} 
+                                        required 
+                                      /> 1x1 ID Picture (Recent)
+                                    </label>
+
+                                    <label>
+                                      <input 
+                                        type="checkbox" 
+                                        name="kidsNoteInstalled" 
+                                        checked={formData.kidsNoteInstalled || false} 
+                                        onChange={handleChange} 
+                                        required 
+                                      /> Kid's Note App Installed
+                                    </label>
+
+                                    {/* PSA required for New and Transferee */}
+                                    {(formData.registrationType === "New Student" || formData.registrationType === "Transferee") && (
+                                      <label>
+                                        <input 
+                                          type="checkbox" 
+                                          name="psaReceived" 
+                                          checked={formData.psaReceived || false} 
+                                          onChange={handleChange} 
+                                          required 
+                                        /> PSA Birth Certificate (Original/Copy)
+                                      </label>
+                                    )}
+
+                                    {/* Special requirements for Transferees only */}
+                                    {formData.registrationType === "Transferee" && (
+                                      <>
+                                        <label>
+                                          <input 
+                                            type="checkbox" 
+                                            name="goodMoralReceived" 
+                                            checked={formData.goodMoralReceived || false} 
+                                            onChange={handleChange} 
+                                            required 
+                                          /> Certificate of Good Moral
+                                        </label>
+                                        <label>
+                                          <input 
+                                            type="checkbox" 
+                                            name="reportCardReceived" 
+                                            checked={formData.reportCardReceived || false} 
+                                            onChange={handleChange} 
+                                            required 
+                                          /> Original Report Card (Form 138)
+                                        </label>
+                                      </>
+                                    )}
+
+                                    {/* Note for Continuing Students */}
+                                    {formData.registrationType === "Continuing" && (
+                                      <p style={{ gridColumn: 'span 2', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>
+                                        * Continuing students only need to update their ID picture and ensure the Kid's Note app is active.
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* App Installation Note */}
+                                <div style={{ marginTop: '15px', fontSize: '0.9rem', color: '#d32f2f', fontWeight: 'bold' }}>
+                                  📌 Remind Parent: Install "Kid's Note for Daycare Center" for school announcements.
+                                </div>
+                                </div>
+
+
 
               {/* Section: Child's Information */}
               <div className="form-section">
@@ -194,8 +284,14 @@ export default function AdminEnrollment() {
                 <div className="input-group"> 
                 {formData.siblings.map((sibling, index) => (
                   <div key={index} className="input-grid-2 mb-2">
-                    <input name="name" placeholder="Sibling Name" value={sibling.name} onChange={(e) => handleSiblingChange(index, e)} />
-                    <input type="date" name="birthDate" value={sibling.birthDate} onChange={(e) => handleSiblingChange(index, e)} />
+                    <div className="input-group">
+                      <label>Name</label>
+                      <input name="name" placeholder="Sibling Full Name" value={sibling.name} onChange={(e) => handleSiblingChange(index, e)} />
+                    </div>
+                    <div className="input-group">
+                      <label>Birth Date</label>
+                      <input type="date" name="birthDate" value={sibling.birthDate} onChange={(e) => handleSiblingChange(index, e)} />
+                    </div>
                   </div>
                 ))}
                 <button type="button" className="add-sibling-btn" onClick={addSibling}>+ Add Sibling</button>

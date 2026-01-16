@@ -3,42 +3,36 @@ import API from "../api/axios";
 import "./Enrollment.css";
 
 export default function Enrollment() {
+  // 1. Added isSubmitted state
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(true); // Default to true so it shows on load
+
   const [formData, setFormData] = useState({
-    // Registration Details
     registrationType: "", 
     gradeLevel: "",
     siblings: [{ name: "", birthDate: "" }],
-    
-    // Child's Information
     lastName: "",
     firstName: "",
     middleName: "",
     nickname: "",
-    email: "", // Primary contact for Load Slips
+    email: "", 
     gender: "",
     dateOfBirth: "",
     handedness: "",
-
-    // Father's Info
     fatherName: "",
     fatherOccupation: "",
     fatherContact: "",
     fatherEmail: "",
     fatherAddress: "",
-    
-    // Mother's Info
     motherName: "",
     motherOccupation: "",
     motherContact: "",
     motherEmail: "",
     motherAddress: "", 
-
-    // Emergency & Medical
     emergencyContact: "",
     medicalConditions: "",
   });
-
-  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,10 +43,10 @@ export default function Enrollment() {
     setLoading(true);
     try {
       await API.post('/enrollment/submit', formData);
-      alert("Application submitted successfully!");
-      // Optional: Reset form or redirect
+      // 2. Trigger success overlay instead of just an alert
+      setIsSubmitted(true);
+      window.scrollTo(0, 0); 
     } catch (err) {
-      // Logic to show specific validation errors from Laravel if available
       const errorMsg = err.response?.data?.message || "Error submitting form.";
       alert(errorMsg);
     } finally {
@@ -75,183 +69,292 @@ export default function Enrollment() {
 
   return (
     <div className="enrollment-container">
-      <div className="enrollment-card">
-        <div className="form-header">
-          <h2>SICS ENROLLMENT FORM</h2>
-          <p>S.Y. 2026 - 2027</p>
+      {/* --- DATA PRIVACY MODAL --- */}
+      {showPrivacy && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '100%',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            borderTop: '10px solid #b8860b'
+          }}>
+            <h2 style={{ color: '#b8860b', marginTop: 0 }}>Data Privacy Notice</h2>
+            <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#444' }}>
+              In accordance with the <strong>Data Privacy Act of 2012</strong>, Siloam International Christian School (SICS) 
+              is committed to protecting the personal information of our students and their families. 
+            </p>
+            <p style={{ fontSize: '0.9rem', color: '#666' }}>
+              By clicking <strong>"I Agree and Proceed"</strong>, you authorize SICS to:
+            </p>
+            <ul style={{ fontSize: '0.85rem', color: '#666', lineHeight: '1.5' }}>
+              <li>Collect and process the personal and sensitive data provided in this form.</li>
+              <li>Use the provided email address for official school communications and load slips.</li>
+              <li>Store this information securely for the duration of the student's enrollment.</li>
+            </ul>
+            <div style={{ marginTop: '25px', display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setShowPrivacy(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  backgroundColor: '#b8860b',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                I Agree and Proceed
+              </button>
+              <button 
+                onClick={() => window.location.href = '/404'} // Redirect away if they disagree
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#eee',
+                  color: '#666',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="enrollment-grid-form">
-          {/* Section: Registration Status */}
-          <div className="form-section">
-            <h3>Registration Status</h3>
-            <div className="input-group">
-              <div className="input-grid-2">
-            <div className="input-row">
-              <select name="registrationType" value={formData.registrationType} onChange={handleChange} required>
-                <option value="">Select Status</option>
-                <option value="New Student">New Student</option>
-                <option value="Returning Student">Returning Student</option>
-                <option value="Continuing">Continuing</option>
-              </select>
-              <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
-                <option value="">Enrolling For...</option>
-                <option value="Nursery">Nursery (2 1/2 - 3 yrs)</option>
-                <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
-                <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
-                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
-              </select>
-            </div>
-          </div>
-          </div>
-          </div>
-
-          {/* Section: Child's Information */}
-          <div className="form-section">
-            <h3>Child's Information</h3>
-
-            <div className="input-group">
-
-            <div className="input-grid-3">
-              <input name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required />
-              <input name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required />
-              <input name="middleName" placeholder="Middle Name" value={formData.middleName} onChange={handleChange} />
-
-
-
-              <div className="input-group">
-                <label>Nickname</label>
-                <input name="nickname" placeholder="Nickname" value={formData.nickname} onChange={handleChange} />
-              </div>
-              
-              <div className="input-group">
-                <label>Date of Birth</label>
-                <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
-              </div>
-              <div className="input-group">
-                <label>Gender</label>
-                <select name="gender" value={formData.gender} onChange={handleChange} required>
-                  <option value="">Select</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-            </div>
-            </div>
+      )}
+      <div className="enrollment-card">
+        
+        {isSubmitted ? (
+          /* --- SUCCESS OVERLAY SECTION --- */
+          <div className="success-overlay" style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎉</div>
+            <h2 style={{ color: '#b8860b', fontSize: '2rem', marginBottom: '10px' }}>Submission Successful!</h2>
+            <p style={{ color: '#555', fontSize: '1.1rem', marginBottom: '30px' }}>
+              Thank you, <strong>{formData.fatherName || formData.motherName || 'Parent'}</strong>. <br />
+              The application for <strong>{formData.firstName} {formData.lastName}</strong> has been received.
+            </p>
             
-            {/* Added Handedness to fulfill Model Requirements */}
-            <div className="input-group">
-              <label>Handedness</label>
-              <select name="handedness" value={formData.handedness} onChange={handleChange}>
-                <option value="">Select Handedness</option>
-                <option value="Right-handed">Right-handed</option>
-                <option value="Left-handed">Left-handed</option>
-              </select>
+            <div style={{ 
+              textAlign: 'left', 
+              backgroundColor: '#fffdf0', 
+              padding: '25px', 
+              borderRadius: '12px', 
+              border: '1px solid #e6dbac',
+              maxWidth: '500px',
+              margin: '0 auto 30px auto'
+            }}>
+              <h4 style={{ color: '#b8860b', marginTop: 0 }}>Next Steps:</h4>
+              <ul style={{ paddingLeft: '20px', color: '#444', lineHeight: '1.8', fontSize: '0.95rem' }}>
+                <li>Check your email (<strong>{formData.email}</strong>) for further updates.</li>
+                <li>Visit the school office to submit physical requirements.</li>
+                <li>Ensure <strong>Kid's Note</strong> is installed on your mobile device.</li>
+              </ul>
             </div>
-          </div>
 
-          {/* Section: Official Contact Information */}
-          <div className="form-section">
-            <h3>Official Contact Information</h3>
-            <div className="input-group">
-              <label>Parent/Guardian Email Address</label>
-              <input 
-                type="email" 
-                name="email" 
-                placeholder="email@example.com"
-                value={formData.email} 
-                onChange={handleChange} 
-                required 
-              />
-              <small style={{color: '#8b7500'}}>* This email is where we will send the Student Load Slip and School Updates.</small>
-            </div>
-          </div>
-
-          {/* Section: Parent's Information */}
-          <div className="form-section">
-            <h3>Father's Information</h3>
-            <div className="input-group">
-            <div className="input-grid-2">
-              <input name="fatherName" placeholder="Full Name" value={formData.fatherName} onChange={handleChange} />
-              <input name="fatherContact" placeholder="Contact #" value={formData.fatherContact} onChange={handleChange} />
-              <input name="fatherOccupation" placeholder="Occupation" value={formData.fatherOccupation} onChange={handleChange} />
-              <input name="fatherEmail" placeholder="Email Address" value={formData.fatherEmail} onChange={handleChange} />
-              <input name="fatherAddress" placeholder="Address" value={formData.fatherAddress} onChange={handleChange} />  
-            </div>
-          </div>
-          </div>
-          <div className="form-section">
-            <h3>Mother's Information</h3>
-            <div className="input-group">
-            <div className="input-grid-2">
-              <input name="motherName" placeholder="Full Name" value={formData.motherName} onChange={handleChange} />
-              <input name="motherContact" placeholder="Contact #" value={formData.motherContact} onChange={handleChange} />
-              <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation} onChange={handleChange} />
-              <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail} onChange={handleChange} />
-              <input name="motherAddress" placeholder="Address" value={formData.motherAddress} onChange={handleChange} />  
-            </div>
-          </div>
-          </div>
-
-          {/* Section: Siblings */}
-          <div className="form-section">
-            <h3>List of Enrolled Siblings at SICS</h3>
-            <div className="input-group">
-            {formData.siblings.map((sibling, index) => (
-              <div key={index} className="input-grid-2 mb-2">
-                <input 
-                  name="name" 
-                  placeholder={`Sibling ${index + 1} Full Name`} 
-                  value={sibling.name} 
-                  onChange={(e) => handleSiblingChange(index, e)} 
-                />
-                <input 
-                  type="date" 
-                  name="birthDate" 
-                  value={sibling.birthDate} 
-                  onChange={(e) => handleSiblingChange(index, e)} 
-                />
-              </div>          
-            ))}
-            </div>
-            <button type="button" className="add-sibling-btn" onClick={addSibling}>
-              + Add Another Sibling
+            <button 
+              className="enroll-button" 
+              onClick={() => window.location.reload()}
+              style={{ maxWidth: '300px' }}
+            >
+              Submit Another Application
             </button>
           </div>
+        ) : (
+          /* --- ORIGINAL FORM SECTION --- */
+          <>
+            <div className="form-header">
+              <h2>SICS ENROLLMENT FORM</h2>
+              <p>S.Y. 2026 - 2027</p>
+            </div>
 
-          {/* Section: Emergency & Medical */}
-            <div className="form-section">
-              <h3>Emergency & Medical Information</h3>
-              <div className="input-group">
-                <label>Emergency Contact Person & Number</label>
-                <input 
-                  name="emergencyContact" 
-                  placeholder="e.g. Maria Santos - 09123456789" 
-                  value={formData.emergencyContact} 
-                  onChange={handleChange} 
-                  required 
-                />
-              </div>
-              <div className="input-group">
-                <label>Medical Conditions / Allergies</label>
-                <textarea 
-                  name="medicalConditions" 
-                  placeholder="Please list any medical conditions, allergies, or developmental concerns." 
-                  value={formData.medicalConditions} 
-                  onChange={handleChange}
-                  rows="3"
-                />
-              </div>
-            </div>  
+            <form onSubmit={handleSubmit} className="enrollment-grid-form">
+              {/* Section: Registration Status */}
+              <div className="form-section">
+                <h3>Registration Status</h3>
+                <div className="input-group">
+                  <div className="input-grid-2">
+                    <select name="registrationType" value={formData.registrationType} onChange={handleChange} required>
+                      <option value="">Select Status</option>
+                      <option value="New Student">New Student</option>
+                      <option value="Continuing">Continuing</option>
+                      <option value="Transferee">Transferee</option>
+                      <option value="Returning Student">Returning Student</option>
+                    </select>
+                    <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
+                      <option value="">Enrolling For...</option>
+                      <option value="Nursery">Nursery (2 1/2 - 3 yrs)</option>
+                      <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
+                      <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
+                      {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
+                    </select>
+                  </div>
+                </div>
 
-          <button type="submit" className="enroll-button" disabled={loading}>
-            {loading ? "Submitting..." : "Submit Application"}
-          </button>
-          
-          <div className="form-footer-warning">
-            THIS FORM IS THE PROPERTY OF SICS. UNAUTHORIZED REPRODUCTION IS PROHIBITED.
-          </div>
-        </form>
+                {/* Section: Requirements Reminder */}
+                <div className="requirements-box" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fffdf0', border: '1px solid #e6dbac', borderRadius: '8px' }}>
+                  <h4 style={{ color: '#b8860b', marginTop: 0 }}>Enrollment Requirements Reminder</h4>
+                  {formData.registrationType === "Continuing" ? (
+                    <div style={{ padding: '10px', backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderRadius: '6px' }}>
+                      <p style={{ fontSize: '0.9rem', color: '#2e7d32', margin: 0 }}>
+                        <strong>Welcome back!</strong> As a continuing student, you only need to ensure your "Kid's Note" app is active.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '10px' }}>Please prepare the following for the School Office:</p>
+                      <ul style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', listStyleType: 'none', padding: 0, fontSize: '0.85rem' }}>
+                        <li>✅ 1x1 ID Picture (Recent)</li>
+                        <li>✅ PSA Birth Certificate</li>
+                        {(formData.registrationType === "New Student" || formData.registrationType === "Returning Student" || formData.registrationType === "Transferee") && (
+                          <>
+                            <li>✅ Certificate of Good Moral</li>
+                            <li>✅ Original Report Card (Form 138)</li>
+                          </>
+                        )}
+                      </ul>
+                    </>
+                  )}
+                  <div style={{ marginTop: '15px', fontSize: '0.85rem', color: '#d32f2f', fontWeight: 'bold', borderTop: '1px dashed #e6dbac', paddingTop: '10px' }}>
+                    📌 Required for all: Install "Kid's Note" app for official school updates.
+                  </div>
+                </div>
+              </div>
+
+              {/* Child's Information */}
+              <div className="form-section">
+                <h3>Child's Information</h3>
+                <div className="input-group">
+                <div className="input-grid-3">
+                  <input name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required />
+                  <input name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required />
+                  <input name="middleName" placeholder="Middle Name" value={formData.middleName} onChange={handleChange} />
+                </div>
+                <div className="input-grid-3" style={{ marginTop: '15px' }}>
+                  <div className="input-group">
+                    <label>Nickname</label>
+                    <input name="nickname" placeholder="Nickname" value={formData.nickname} onChange={handleChange} />
+                  </div>
+                  <div className="input-group">
+                    <label>Date of Birth</label>
+                    <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
+                  </div>
+                  <div className="input-group">
+                    <label>Gender</label>
+                    <select name="gender" value={formData.gender} onChange={handleChange} required>
+                      <option value="">Select</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="input-group" style={{ marginTop: '15px' }}>
+                  <label>Handedness</label>
+                  <select name="handedness" value={formData.handedness} onChange={handleChange}>
+                    <option value="">Select Handedness</option>
+                    <option value="Right-handed">Right-handed</option>
+                    <option value="Left-handed">Left-handed</option>
+                  </select>
+                </div>
+              </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="form-section">
+                <h3>Official Contact Information</h3>
+                <div className="input-group">
+                  <label>Parent/Guardian Email Address</label>
+                  <input type="email" name="email" placeholder="email@example.com" value={formData.email} onChange={handleChange} required />
+                  <small style={{color: '#8b7500'}}>* This email is where we will send the Student Load Slip.</small>
+                </div>
+              </div>
+
+              {/* Parents Info */}
+              <div className="form-section">
+                <h3>Father's Information</h3>
+                <div className="input-group">
+                <div className="input-grid-2">
+                  <input name="fatherName" placeholder="Full Name" value={formData.fatherName} onChange={handleChange} required />
+                  <input name="fatherContact" placeholder="Contact #" value={formData.fatherContact} onChange={handleChange} required />
+                  <input name="fatherOccupation" placeholder="Occupation" value={formData.fatherOccupation} onChange={handleChange} />
+                  <input name="fatherEmail" placeholder="Email Address" value={formData.fatherEmail} onChange={handleChange} />
+                </div>
+                <input name="fatherAddress" placeholder="Address" value={formData.fatherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
+              </div>
+              </div>
+
+              <div className="form-section">
+                <h3>Mother's Information</h3>
+                <div className="input-group">
+                <div className="input-grid-2">
+                  <input name="motherName" placeholder="Full Name" value={formData.motherName} onChange={handleChange} required/>
+                  <input name="motherContact" placeholder="Contact #" value={formData.motherContact} onChange={handleChange} required/>
+                  <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation} onChange={handleChange} />
+                  <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail} onChange={handleChange} />
+                </div>
+                <input name="motherAddress" placeholder="Address" value={formData.motherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
+              </div>
+              </div>  
+
+              {/* Siblings */}
+              <div className="form-section">
+                <h3>List of Enrolled Siblings at SICS</h3>
+                <div className="input-group">
+                {formData.siblings.map((sibling, index) => (
+                  <div key={index} className="input-grid-2" style={{ marginBottom: '10px' }}>
+                    <div className="input-group">
+                      <label>Name</label>
+                      <input name="name" placeholder="Sibling Full Name" value={sibling.name} onChange={(e) => handleSiblingChange(index, e)} />
+                    </div>
+                    <div className="input-group">
+                      <label>Birth Date</label>
+                      <input type="date" name="birthDate" value={sibling.birthDate} onChange={(e) => handleSiblingChange(index, e)} />
+                    </div>
+                  </div>          
+                ))}
+                <button type="button" className="add-sibling-btn" onClick={addSibling}>+ Add Another Sibling</button>
+              </div>
+              </div>
+
+              {/* Emergency & Medical */}
+              <div className="form-section">
+                <h3>Emergency & Medical Information</h3>
+                <div className="input-group">
+                  <label>Emergency Contact Person & Number</label>
+                  <input name="emergencyContact" placeholder="e.g. Maria Santos - 09123456789" value={formData.emergencyContact} onChange={handleChange} required />
+                </div>
+                <div className="input-group">
+                  <label>Medical Conditions / Allergies</label>
+                  <textarea name="medicalConditions" placeholder="Please list concerns..." value={formData.medicalConditions} onChange={handleChange} rows="3" />
+                </div>
+              </div>  
+
+              <button type="submit" className="enroll-button" disabled={loading}>
+                {loading ? "Submitting..." : "Submit Application"}
+              </button>
+              
+              <div className="form-footer-warning">
+                THIS FORM IS THE PROPERTY OF SICS. UNAUTHORIZED REPRODUCTION IS PROHIBITED.
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

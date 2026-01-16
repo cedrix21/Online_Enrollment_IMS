@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Enrollment;
 use App\Models\Student;
+use App\Models\Section;
 use App\Models\EnrollmentSibling; 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use App\Mail\EnrollmentApproved;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class EnrollmentController extends Controller
 {
@@ -83,7 +88,7 @@ class EnrollmentController extends Controller
         });
     }
 
-    public function updateStatus(Request $request, $id)
+ public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
         $enrollment = Enrollment::findOrFail($id);
@@ -97,7 +102,7 @@ class EnrollmentController extends Controller
             $enrollment->save();
 
             if ($request->status === 'approved') {
-                $section = \App\Models\Section::where('gradeLevel', $enrollment->gradeLevel)
+                $section = Section::where('gradeLevel', $enrollment->gradeLevel)
                     ->whereColumn('students_count', '<', 'capacity')
                     ->first();
 
@@ -109,7 +114,6 @@ class EnrollmentController extends Controller
                 $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
                 $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
-                // Copy ALL detailed fields to the Students table
                 Student::create([
                     'studentId'     => $formattedId,
                     'firstName'     => $enrollment->firstName,
@@ -126,9 +130,12 @@ class EnrollmentController extends Controller
                 ]);
 
                 $section->increment('students_count');
+
+                // --- EMAIL LOGIC ---
+                $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $formattedId);
                 
                 return response()->json([
-                    'message' => "Approved and assigned to {$section->name}",
+                    'message' => "Approved, assigned to {$section->name} {$emailStatus}",
                     'generatedId' => $formattedId
                 ]);
             }
@@ -136,7 +143,6 @@ class EnrollmentController extends Controller
             return response()->json(['message' => 'Enrollment rejected']);
         });
     }
-
     public function summary()
 {
     return response()->json([
@@ -151,7 +157,6 @@ class EnrollmentController extends Controller
 
 public function storeAndApprove(Request $request)
 {
-    // 1. Validate all incoming fields (similar to submit, but adding status check)
     $validated = $request->validate([
         'firstName' => 'required|string',
         'lastName' => 'required|string',
@@ -161,78 +166,110 @@ public function storeAndApprove(Request $request)
         'dateOfBirth' => 'required|date',
         'registrationType' => 'required|string',
         'emergencyContact' => 'required|string',
-        // Optional fields
+        'psaReceived' => 'nullable|boolean',
+        'idPictureReceived' => 'nullable|boolean',
+        'goodMoralReceived' => 'nullable|boolean',
+        'reportCardReceived' => 'nullable|boolean',
+        'kidsNoteInstalled' => 'nullable|boolean',
         'middleName' => 'nullable|string',
-        'nickname' => 'nullable|string',
-        'handedness' => 'nullable|string',
-        'fatherName' => 'nullable|string',
-        'fatherContact' => 'nullable|string',
-        'fatherOccupation' => 'nullable|string',
-        'fatherEmail' => 'nullable|string',
-        'fatherAddress' => 'nullable|string',
-        'motherName' => 'nullable|string',
-        'motherContact' => 'nullable|string',
-        'motherOccupation' => 'nullable|string',
-        'motherEmail' => 'nullable|string',
-        'motherAddress' => 'nullable|string',
-        'medicalConditions' => 'nullable|string',
         'siblings' => 'nullable|array',
     ]);
 
-    return DB::transaction(function () use ($request, $validated) {
-        // 2. Create the Enrollment record as "approved"
-        $enrollment = Enrollment::create(array_merge($validated, ['status' => 'approved']));
+    // We use a variable to track email success outside the transaction
+    $emailMessage = "";
 
-        // 3. Handle Siblings if provided
-        if ($request->has('siblings')) {
-            foreach ($request->siblings as $sib) {
-                if (!empty($sib['name'])) {
-                    $enrollment->siblings()->create([
-                        'full_name' => $sib['name'],
-                        'birth_date' => $sib['birthDate'],
-                    ]);
-                }
+    try {
+        $result = DB::transaction(function () use ($request, $validated) {
+            // Create Enrollment
+            $enrollment = Enrollment::create(array_merge($validated, [
+                'status' => 'approved',
+                'psa_received' => $request->psaReceived ?? false,
+                'id_picture_received' => $request->idPictureReceived ?? false,
+                'good_moral_received' => $request->goodMoralReceived ?? false,
+                'report_card_received' => $request->reportCardReceived ?? false,
+                'kids_note_installed' => $request->kidsNoteInstalled ?? false,
+            ]));
+
+            // Find Section
+            $section = Section::where('gradeLevel', $validated['gradeLevel'])
+                ->whereColumn('students_count', '<', 'capacity')
+                ->first();
+
+            if (!$section) {
+                throw new \Exception("No vacancy for {$validated['gradeLevel']}.");
             }
-        }
 
-        // 4. Find an available section for the grade level
-        $section = \App\Models\Section::where('gradeLevel', $validated['gradeLevel'])
-            ->whereColumn('students_count', '<', 'capacity')
-            ->first();
+            // Generate Student ID
+            $year = date('Y');
+            $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
+            $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
-        if (!$section) {
-            throw new \Exception("No vacancy for {$validated['gradeLevel']}. Please create a section first.");
-        }
+            // Create Student
+            $student = Student::create([
+                'studentId'     => $formattedId,
+                'firstName'     => $validated['firstName'],
+                'lastName'      => $validated['lastName'],
+                'email'         => $validated['email'],
+                'gradeLevel'    => $validated['gradeLevel'],
+                'section_id'    => $section->id,
+                'enrollment_id' => $enrollment->id,
+                'status'        => 'active',
+            ]);
 
-        // 5. Generate Student ID (SICS-2026-0001 format)
-        $year = date('Y');
-        $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
-        $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $section->increment('students_count');
 
-        // 6. Create the Student record
-        $student = Student::create([
-            'studentId'     => $formattedId,
-            'firstName'     => $validated['firstName'],
-            'lastName'      => $validated['lastName'],
-            'middleName'    => $validated['middleName'] ?? null,
-            'email'         => $validated['email'],
-            'gradeLevel'    => $validated['gradeLevel'],
-            'gender'        => $validated['gender'],
-            'dateOfBirth'   => $validated['dateOfBirth'],
-            'enrollment_id' => $enrollment->id,
-            'section_id'    => $section->id,
-            'status'        => 'active',
-        ]);
+            return ['enrollment' => $enrollment, 'section' => $section, 'id' => $formattedId];
+        });
 
-        // 7. Increment section count
-        $section->increment('students_count');
+        // TRIGGER EMAIL AFTER TRANSACTION IS FINISHED
+        // This ensures the student exists in the DB before the PDF is generated
+        $emailMessage = $this->sendEnrollmentEmail($result['enrollment'], $result['section'], $result['id']);
 
         return response()->json([
-            'message' => 'Student registered and approved successfully',
-            'studentId' => $formattedId,
-            'section' => $section->name
+            'message' => 'Student approved ' . $emailMessage,
+            'studentId' => $result['id']
         ], 201);
-    });
+
+    } catch (\Exception $e) {
+        return response()->json(['message' => $e->getMessage()], 500);
+    }
 }
 
+private function sendEnrollmentEmail($enrollment, $section, $formattedId)
+{
+    try {
+        // 1. Safety Check: Verify logo exists to prevent crash
+        $logoPath = public_path('assets/sics-logo.png');
+        $logoBase64 = ''; 
+
+        if (file_exists($logoPath)) {
+            $logoData = base64_encode(file_get_contents($logoPath));
+            $logoBase64 = 'data:image/png;base64,' . $logoData;
+        }
+
+        // 2. Load relationships for the schedule table
+        $section->load(['schedules.subject', 'schedules.timeSlot', 'schedules.room', 'advisor']);
+
+        // 3. Generate the PDF
+        $pdf = Pdf::loadView('pdf.loadslip', [
+            'enrollment' => $enrollment,
+            'section'    => $section,
+            'studentId'  => $formattedId,
+            'logo'       => $logoBase64
+        ]);
+
+        // 4. Send the Mail
+       // Send to the student/parent and CC the registrar
+    Mail::to($enrollment->email)
+    ->cc('cedrixravelo@gmail.com') 
+    ->send(new EnrollmentApproved($enrollment, $pdf->output()));
+
+        return "and Loadslip sent to parent email.";
+
+    } catch (\Exception $e) {
+        // Log the exact error for debugging (Check storage/logs/laravel.log)
+        Log::error("Email failed for Student {$formattedId}: " . $e->getMessage());
+        return "but email failed to send (Check SMTP settings).";
+    }
+}
 }

@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('enrollments', function (Blueprint $table) {
-            //
+            $table->boolean('psa_received')->default(false);
+            $table->boolean('id_picture_received')->default(false);
+            $table->boolean('good_moral_received')->default(false);
+            $table->boolean('report_card_received')->default(false);
+            $table->boolean('kids_note_installed')->default(false);
         });
     }
 

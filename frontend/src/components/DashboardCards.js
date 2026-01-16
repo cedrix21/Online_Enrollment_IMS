@@ -17,7 +17,8 @@ export default function DashboardCards({ role }) {
       icon: <FaUserPlus />,
       path: "/admin/enroll",
       color: "blue-accent",
-      show: true, // Visible to everyone
+      show: role === "admin" || role === "registrar",
+     // show: true, // Visible to everyone
     },
     {
       title: "Manage Enrollments",
@@ -39,7 +40,7 @@ export default function DashboardCards({ role }) {
       title: "System Settings",
       desc: "Configure academic years and users",
       icon: <FaCog />,
-      path: "/settings",
+      path: "/404",
       color: "orange-accent",
       show: role === "admin",
     },

@@ -8,6 +8,7 @@ body, html {
   
   overflow: hidden; /* Prevents the whole browser from scrolling */
   height: 100%;
+  overflow-y: auto !important;
 }
 
 code {

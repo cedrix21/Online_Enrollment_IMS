@@ -33,7 +33,13 @@ class Enrollment extends Model
     'motherAddress',
     'emergencyContact',
     'medicalConditions',
+    'psa_received', 
+    'id_picture_received', 
+    'good_moral_received', 
+    'report_card_received', 
+    'kids_note_installed',
     'status', 
+
 ];
     // Default status for new applications
     protected $attributes = [
