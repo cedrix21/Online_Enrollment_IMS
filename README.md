@@ -1,102 +1,47 @@
-# ğŸ“ SILOAM INTERNATIONAL CHRISTIAN SCHOOL ONLINE ENROLLMENT AND INFORMATION MANAGEMENT SYSTEM
+# SICS Online Enrollment System í¾“
 
-## ğŸ“– Introduction
-Education continues to evolve with technology, requiring schools to modernize operations for efficiency and accessibility. The **Siloam International Christian School Online Enrollment and Information Management System** is designed to replace manual, paper-based enrollment processes with a secure, web-based platform.  
-
-This system streamlines enrollment procedures, ensures accurate record-keeping, and provides administrators, students, and parents with easy access to essential information. By adopting this digital solution, the school can enhance accuracy, reduce administrative workload, and improve overall service quality.
+This is the Capstone Project for the SICS Online Enrollment System. It is a monorepo containing both the frontend and backend applications.
 
 ---
 
-## ğŸ§© Statement of the Problem
-The current enrollment and record management system at Siloam International Christian School is manual and paper-based, leading to:
-- Delays in data processing and record retrieval  
-- Inefficient administrative workflow  
-- Increased risk of data loss and human error  
+## í³‚ Project Structure
+- **/frontend**: React.js application (Student & Admin UI).
+- **/backend**: Laravel 11 API (Database, Auth, & Business Logic).
 
-To address these, the project aims to design and develop an online system that is **efficient, reliable, and secure**, answering key questions such as:
-- How effective is the system in streamlining enrollment?  
-- What are the technical and functional requirements?  
-- How beneficial is the system compared to manual processes?  
+## í»  Tech Stack
+- **Frontend:** React, Axios, React Router.
+- **Backend:** Laravel 11, MySQL, Laravel Sanctum.
+- **Theme:** Custom SICS Gold & Cream Palette.
 
 ---
 
-## ğŸ¯ Project Objectives
+## íº€ Installation & Setup
 
-### ğŸ† General Objective
-To design, develop, and implement a **web-based Online Enrollment and Information Management System** that improves the efficiency, accuracy, and reliability of student enrollment and record management.
+### 1. Backend (Laravel)
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+# Update your .env with your MySQL database details, then:
+php artisan migrate --seed
+php artisan serve
+```
 
-### ğŸ¯ Specific (SMART) Objectives
-- **Specific:** Develop a web-based system tailored for Siloam International Christian School.  
-- **Measurable:** Ensure improved accuracy and faster processing compared to manual enrollment.  
-- **Achievable:** Utilize the teamâ€™s technical expertise and available tools.  
-- **Relevant:** Provide a secure and user-friendly platform for administrators, students, and parents.  
-- **Time-bound:** Complete within the academic yearâ€™s capstone project timeline.  
-
----
-
-## ğŸŒ Significance of the Study
-This project benefits multiple stakeholders:
-
-### ğŸ‘©â€ğŸ“ Users
-Students and parents gain a simpler, more convenient enrollment experience.
-
-### ğŸ« Institution
-The school achieves better operational efficiency, organized data management, and enhanced security.
-
-### ğŸ’» IT Students
-Developers gain hands-on experience in web development, database design, and project deployment.
-
-### ğŸ“š Future Researchers
-Provides a reference for future studies related to digital educational management systems.
+### 2. Frontend (React)
+```bash
+cd frontend
+npm install
+npm start
+```
 
 ---
 
-## ğŸ“‹ Scope and Limitations
-The system focuses on:
-- Online enrollment  
-- Student information management  
-- Administrative record access  
-
-Excluded features:
-- Financial transactions (billing, tuition, payments)  
-- E-learning and academic grading systems  
-
-This ensures the project remains focused on its core purpose: **streamlining enrollment and data management**.
+## í´‘ Default Roles
+The system supports the following roles:
+- **Admin:** Full system management.
+- **Registrar:** Enrollment and student record handling.
+- **Teacher:** Schedule and load slip management.
 
 ---
-
-## ğŸ› ï¸ System Features
-- Online student registration and enrollment  
-- Student profile management  
-- Administrator dashboard for record handling  
-- Secure login and user authentication  
-- Database for storing and retrieving student data  
-- Search and filtering capabilities  
-
----
-
-## ğŸ’¡ Development Tools & Technologies
-| Category | Tools/Technologies |
-|-----------|--------------------|
-| Framework | Laravel (PHP) |
-| Frontend | Blade Templates / Bootstrap / JavaScript |
-| Database | MySQL / MariaDB |
-| Server | Apache / Laravel Artisan Serve |
-| Version Control | Git & GitHub |
-| IDE | Visual Studio Code / PHPStorm |
-
----
-
-## ğŸš€ Installation Guide
-
-### Prerequisites
-Make sure you have installed:
-- PHP 8.2+
-- Composer 2.x
-- MySQL or XAMPP
-- Node.js (for frontend dependencies)
-
-### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/cedrix21/Capstone-Project-online-enrollment.git
+*Developed for the CAPSTONE PROJECT 2026.*
