@@ -70,6 +70,8 @@ export default function EnrollmentManagement() {
       <div className="main-content">
         <TopBar user={user} />
 
+      <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+
         <div className="management-container">
           <div className="management-header">
             <h2>Enrollment Management</h2>
@@ -163,6 +165,7 @@ export default function EnrollmentManagement() {
             </table>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

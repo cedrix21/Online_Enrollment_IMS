@@ -82,6 +82,7 @@ export default function Dashboard() {
       <div className="main-content">
         <TopBar user={user} />
 
+      <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
         {isAdminOrRegistrar && (
           <>
             {/* Existing Summary Cards (Row of 3) */}
@@ -130,6 +131,7 @@ export default function Dashboard() {
         >
           Logout
         </button>
+        </div>
       </div>
     </div>
   );

@@ -59,6 +59,8 @@ export default function LoadSlip() {
       <div className="main-content">
         <TopBar user={user} />
 
+      <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+
         <div className="management-container">
           <div className="management-header no-print">
             <div className="title-group">
@@ -237,5 +239,7 @@ export default function LoadSlip() {
         </div>
       </div>
     </div>
+    </div>
   );
+  
 }

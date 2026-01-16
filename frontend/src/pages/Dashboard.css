@@ -96,12 +96,19 @@
 
 .dashboard-layout {
   display: flex;
+  height: 100vh;      /* Force it to fill the screen exactly */
+  width: 100vw;
+  overflow: hidden;   /* This stops the "whole page" from scrolling */
   background: #f3f4f6;
 }
 
 .main-content {
   flex: 1;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;      /* Ensure it stays within the window */
+  overflow: hidden;   /* Prevents the right side from growing past the screen */
+  padding: 0;         /* Padding should move to the scroll area instead */
 }
 
 .bottom-section {

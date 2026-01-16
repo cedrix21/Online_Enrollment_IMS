@@ -62,6 +62,8 @@ export default function TeacherDirectory() {
       <div className="main-content">
         <TopBar user={user} />
 
+      <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+
         <div className="directory-container">
           <div className="directory-header">
             <div className="title-group">
@@ -213,7 +215,9 @@ export default function TeacherDirectory() {
             </form>
           </div>
         </div>
+        
       )}
+    </div>
     </div>
   );
 }

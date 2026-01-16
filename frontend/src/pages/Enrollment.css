@@ -3,9 +3,9 @@
 .enrollment-container {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 40px 20px;
+    align-items: flex-start;
+    min-height: auto;  
+    padding: 20px;
     
     background-image: url("../assets/SICS.jpg");
     background-size: cover;
