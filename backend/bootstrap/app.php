@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -12,9 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // 1. Keep your existing role alias
         $middleware->alias([
-        'role' => RoleMiddleware::class,
-    ]);
+            'role' => RoleMiddleware::class,
+        ]);
+
+        // 2.This enables CORS and Session support for your React Frontend
+        $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
