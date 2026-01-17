@@ -4,17 +4,28 @@ export default function ProtectedRoute({ children, roles }) {
   const token = localStorage.getItem("token");
   const userData = localStorage.getItem("user");
   
-  // Parse the user only if data exists
-  const user = userData ? JSON.parse(userData) : null;
+  let user = null;
 
+  try {
+    // Check if userData exists AND isn't the literal string "undefined"
+    if (userData && userData !== "undefined" && userData !== "null") {
+      user = JSON.parse(userData);
+    }
+  } catch (error) {
+    console.error("Failed to parse user data:", error);
+    // If parsing fails, clear the bad data so it doesn't crash again
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+  }
+
+  // 1. If no token or no valid user object, redirect to login
   if (!token || !user) {
-    // If no token or no user data in storage, go to login
     return <Navigate to="/login" replace />;
   }
 
+  // 2. If roles are specified and user's role doesn't match
   if (roles && !roles.includes(user.role)) {
-    // If user is logged in but doesn't have the right role
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/unauthorized" replace />; 
   }
 
   return children;
