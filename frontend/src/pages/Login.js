@@ -12,9 +12,11 @@ export default function Login() {
     setError("");
 
     try {
+
+      await API.get("/sanctum/csrf-cookie");
+
       const response = await API.post("/login", { email, password });
 
-      // Save BOTH pieces of data
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       
