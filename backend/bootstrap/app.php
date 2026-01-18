@@ -16,23 +16,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         
         $middleware->trustProxies(at: '*');
-        // 1. Register your custom Role middleware
+        
         $middleware->alias([
             'role' => RoleMiddleware::class,
         ]);
 
-        // 2. Disable CSRF for API routes
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
 
-        // 3. Force JSON and Prepend CORS 
-        // We use a closure here to force the 'Accept' header
-        $middleware->api(prepend: [
+      
+        $middleware->append([
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        // 4. Sanctum Support
+
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {
