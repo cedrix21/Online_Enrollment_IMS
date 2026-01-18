@@ -11,6 +11,14 @@ use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 
 /*
+    |--------------------------------------------------------------------------
+    | Public Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']); 
+    Route::post('/login', [AuthController::class, 'login']);
+
+/*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
@@ -30,13 +38,7 @@ Route::group(['middleware' => function (Request $request, $next) {
     return $response;
 }], function () {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Public Routes
-    |--------------------------------------------------------------------------
-    */
-    Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']); 
-    Route::post('/login', [AuthController::class, 'login']);
+    
 
     /*
     |--------------------------------------------------------------------------
