@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
+        $middleware->trustProxies(at: '*');
         // 1. Register your custom Role middleware
         $middleware->alias([
             'role' => RoleMiddleware::class,
