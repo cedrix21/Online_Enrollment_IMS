@@ -1,17 +1,16 @@
 import axios from "axios";
 
-const API = axios.post({
- baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api/login',
- data: {
-    withCredentials: true
-  },
+// 1. You MUST use .create() here to make a reusable instance
+const API = axios.create({
+  baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api',
+  withCredentials: true,
   headers: {
-        'Accept': 'application/json', 
-        'Content-Type': 'application/json',
-    }
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  }
 });
 
-// Automatically attach Token to every request
+// 2. Now .interceptors will work because API is an axios instance
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -20,13 +19,15 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle Token expiration (401 errors)
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.clear();
-      window.location.href = "/login";
+      // Only redirect if not already on login to avoid loops
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

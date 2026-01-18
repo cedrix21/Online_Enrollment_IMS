@@ -20,8 +20,10 @@ export default function Login() {
       // Redirect using location for a fresh state load
       window.location.href = "/dashboard";
       
+       console.log(response.data);
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
+      console.error("Login error:", err);
     }
   };
 
