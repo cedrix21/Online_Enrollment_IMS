@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = axios.create({
+const API = axios.post({
  baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api/login',
  data: {
     withCredentials: true
