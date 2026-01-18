@@ -13,7 +13,7 @@ export default function Login() {
 
     try {
       const response = await API.post("/login", { email, password });
-      console.log(response.data);
+   
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       API.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
@@ -24,7 +24,7 @@ export default function Login() {
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
       console.error("Login error:", err);
-      console.log(response.data);
+     
     }
   };
 
