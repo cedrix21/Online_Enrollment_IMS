@@ -1,8 +1,10 @@
 import axios from "axios";
 
 const API = axios.create({
- baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api',
- withCredentials: true,
+ baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api/login',
+ data: {
+    withCredentials: true
+  },
   headers: {
         'Accept': 'application/json', 
         'Content-Type': 'application/json',

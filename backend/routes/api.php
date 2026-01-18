@@ -10,17 +10,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 
-// ✅ Wrap EVERYTHING in the CORS and JSON header middleware
-Route::group(['middleware' => function (Request $request, $next) {
-    $response = $next($request);
-    
-    $response->headers->set('Access-Control-Allow-Origin', 'https://online-enrollment-system.up.railway.app');
-    $response->headers->set('Access-Control-Allow-Credentials', 'true');
-    $response->headers->set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE');
-    $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With');
-    
-    return $response;
-}], function () {
+
 
     /*
     |--------------------------------------------------------------------------
@@ -68,4 +58,3 @@ Route::group(['middleware' => function (Request $request, $next) {
             Route::post('/admin/enroll-student', [EnrollmentController::class, 'storeAndApprove']);
         });
     });
-});
