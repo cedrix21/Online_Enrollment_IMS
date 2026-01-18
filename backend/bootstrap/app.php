@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'api/*', 
+        ]);
+
         // 2.This enables CORS and Session support for your React Frontend
         $middleware->statefulApi();
     })

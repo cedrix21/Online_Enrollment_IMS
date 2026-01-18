@@ -12,14 +12,11 @@ export default function Login() {
     setError("");
 
     try {
-
-      await API.get("/sanctum/csrf-cookie");
-
       const response = await API.post("/login", { email, password });
 
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
-      
+      API.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
       // Redirect using location for a fresh state load
       window.location.href = "/dashboard";
       
