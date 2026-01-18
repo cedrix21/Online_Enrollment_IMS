@@ -12,19 +12,38 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await API.post("/login", { email, password });
-   
-      localStorage.setItem("token", response.data.access_token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      API.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-      // Redirect using location for a fresh state load
+      // Send login request
+      const response = await API.post("/login", {
+        email,
+        password
+      });
+
+      // Save token and user to localStorage
+      const { access_token, user } = response.data;
+      localStorage.setItem("token", access_token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Set Authorization header for all future requests
+      API.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+
+      console.log("Login successful:", response.data);
+
+      // Redirect to dashboard
       window.location.href = "/dashboard";
-      
-       console.log(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      // Handle network errors vs API errors
+      if (err.response) {
+        // Server responded with a status outside 2xx
+        setError(err.response.data?.message || "Login failed");
+      } else if (err.request) {
+        // No response received (CORS, network error)
+        setError("Network error: Could not reach server");
+      } else {
+        // Other errors
+        setError("Login failed");
+      }
+
       console.error("Login error:", err);
-     
     }
   };
 
@@ -36,13 +55,26 @@ export default function Login() {
         <form onSubmit={handleLogin}>
           <div className="input-group">
             <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
           </div>
           <div className="input-group">
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
-          <button type="submit" className="login-button">Login</button>
+          <button type="submit" className="login-button">
+            Login
+          </button>
         </form>
       </div>
     </div>
