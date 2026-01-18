@@ -4,6 +4,7 @@ use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,19 +13,27 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        // 1. Keep your existing role alias
+    ->withMiddleware(function (Middleware $middleware) {
+        
+        // 1. Register your custom Role middleware
         $middleware->alias([
             'role' => RoleMiddleware::class,
         ]);
 
+        // 2. Disable CSRF for API routes
         $middleware->validateCsrfTokens(except: [
-            'api/*', 
+            'api/*',
         ]);
 
-        // 2.This enables CORS and Session support for your React Frontend
+        // 3. Force JSON and Prepend CORS 
+        // We use a closure here to force the 'Accept' header
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
+        // 4. Sanctum Support
         $middleware->statefulApi();
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
