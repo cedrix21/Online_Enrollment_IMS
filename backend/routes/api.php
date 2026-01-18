@@ -10,10 +10,12 @@ use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 
 
-// This forces every request in this file to be treated as JSON
-Route::middleware(function (Request $request, $next) {
+// ✅ This is the correct syntax for Laravel 11 to force JSON headers
+Route::group(['middleware' => function (Request $request, $next) {
     $request->headers->set('Accept', 'application/json');
     return $next($request);
+}], function () {
+    
 });
 
 
