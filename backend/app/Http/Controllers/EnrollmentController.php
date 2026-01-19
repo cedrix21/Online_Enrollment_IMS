@@ -238,13 +238,13 @@ private function sendEnrollmentEmail($enrollment, $section, $formattedId)
 {
     try {
         // 1. Safety Check: Verify logo exists to prevent crash
-        $logoPath = realpath('assets/sics-logo.png');
-        $logoBase64 = ''; 
+        // $logoPath = realpath('assets/sics-logo.png');
+         $logoBase64 = ''; 
 
-        if (file_exists($logoPath)) {
-            $logoData = base64_encode(file_get_contents($logoPath));
-            $logoBase64 = 'data:image/png;base64,' . $logoData;
-        }
+        // if (file_exists($logoPath)) {
+        //     $logoData = base64_encode(file_get_contents($logoPath));
+        //     $logoBase64 = 'data:image/png;base64,' . $logoData;
+        // }
 
         // 2. Load relationships for the schedule table
         $section->load(['schedules.subject', 'schedules.timeSlot', 'schedules.room', 'advisor']);
