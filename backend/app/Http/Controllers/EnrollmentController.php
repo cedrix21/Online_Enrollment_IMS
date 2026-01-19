@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Models\Enrollment;
 use App\Models\Student;
 use App\Models\Section;
-use App\Models\EnrollmentSibling; 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -239,7 +238,7 @@ private function sendEnrollmentEmail($enrollment, $section, $formattedId)
 {
     try {
         // 1. Safety Check: Verify logo exists to prevent crash
-        $logoPath = public_path('assets/sics-logo.png');
+        $logoPath = realpath('assets/sics-logo.png');
         $logoBase64 = ''; 
 
         if (file_exists($logoPath)) {
@@ -250,19 +249,26 @@ private function sendEnrollmentEmail($enrollment, $section, $formattedId)
         // 2. Load relationships for the schedule table
         $section->load(['schedules.subject', 'schedules.timeSlot', 'schedules.room', 'advisor']);
 
-        // 3. Generate the PDF
-        $pdf = Pdf::loadView('pdf.loadslip', [
-            'enrollment' => $enrollment,
-            'section'    => $section,
-            'studentId'  => $formattedId,
-            'logo'       => $logoBase64
-        ]);
+        // 3. Generate PDF - Wrap in try-catch specifically for DomPDF
+        try {
+            $pdf = Pdf::loadView('pdf.loadslip', [
+                'enrollment' => $enrollment,
+                'section'    => $section,
+                'studentId'  => $formattedId,
+                'logo'       => $logoBase64
+            ])->setPaper('a4', 'portrait'); // Force paper size to reduce memory usage
+            
+            $pdfOutput = $pdf->output();
+        } catch (\Exception $pdfError) {
+            Log::error("PDF Generation failed: " . $pdfError->getMessage());
+            return "but PDF generation failed.";
+        }
 
         // 4. Send the Mail
        // Send to the student/parent and CC the registrar
-    Mail::to($enrollment->email)
-    ->cc('cedrixravelo@gmail.com') 
-    ->send(new EnrollmentApproved($enrollment, $pdf->output()));
+            Mail::to($enrollment->email)
+            ->cc('ravelocedrix@gmail.com') 
+            ->send(new EnrollmentApproved($enrollment, $pdfOutput));
 
         return "and Loadslip sent to parent email.";
 
