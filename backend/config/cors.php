@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://online-enrollment-system.up.railway.app'],
+    'allowed_origins' => ['https://online-enrollment-system.up.railway.app', 'http://localhost:3000', 'http://127.0.0.1:8000'],
 
     'allowed_origins_patterns' => [],
 
