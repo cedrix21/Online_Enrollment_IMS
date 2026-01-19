@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -24,5 +25,7 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production' || $this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
+    
     }
 }
