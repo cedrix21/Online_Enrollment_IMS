@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 1. You MUST use .create() here to make a reusable instance
 const API = axios.create({
-  baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api',
+  baseURL: 'https://onlineenrollmentims-production-5b49.up.railway.app/api/login',
   withCredentials: true,
   headers: {
     'Accept': 'application/json',
