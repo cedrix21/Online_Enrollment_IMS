@@ -55,16 +55,36 @@ function App() {
           }
         />
 
-        <Route path="/students" element={<StudentRecords />} />
-        <Route path="/teachers" element={<TeacherDirectory />} />
-        <Route path="/section-management" element={<SectionManagement />} />
-        
-        {/* Redirect any unknown route to login */}
-        <Route path="*" element={<Navigate to="/login" />} />
-        <Route path="/load-slips" element={<LoadSlip />} />
+        <Route path="/students" 
+        element={
+          <ProtectedRoute roles={["admin", "registrar"]}>
+            <StudentRecords />
+          </ProtectedRoute>
+        }
+         />
 
-        {/* The 404 Route */}
-        <Route path="/404" element={<NotFound />} />
+
+        <Route path="/teachers" 
+        element={
+          <ProtectedRoute roles={["admin", "registrar"]}>
+            <TeacherDirectory />
+          </ProtectedRoute>
+        } 
+        />
+        <Route path="/section-management" 
+        element={
+          <ProtectedRoute roles={["admin", "registrar"]}>
+            <SectionManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/load-slips" 
+        element={
+          <ProtectedRoute roles={["admin", "registrar"]}>
+            <LoadSlip />
+          </ProtectedRoute>
+        } />
+
+
         {/* Catch-all route for any other invalid URLs */}
         <Route path="*" element={<NotFound />} />
 

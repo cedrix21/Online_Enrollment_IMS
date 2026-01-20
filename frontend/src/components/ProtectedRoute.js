@@ -20,12 +20,12 @@ export default function ProtectedRoute({ children, roles }) {
 
   // 1. If no token or no valid user object, redirect to login
   if (!token || !user) {
-    return <Navigate to="/404" replace />;
+    return <Navigate to="/*" replace />;
   }
 
   // 2. If roles are specified and user's role doesn't match
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />; 
+    return <Navigate to="/*" replace />; 
   }
 
   return children;
