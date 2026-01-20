@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User; // make sure your User model exists
+use App\Models\User;
 
 class UserSeeder extends Seeder
 {
@@ -14,21 +14,23 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Admin user
-        User::updateOrCreate([
-            'name' => 'Mark Cedrix',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('mark123'),
-            'role' => 'admin', // assuming you have a 'role' column
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@gmail.com'], // 1. Search only by email
+            [                               // 2. These are the values to set/update
+                'name' => 'Mark Cedrix',
+                'password' => Hash::make('mark123'),
+                'role' => 'admin',
+            ]
+        );
 
         // Registrar user
-        User::updateOrCreate([
-            'name' => 'Registrar User',
-            'email' => 'registrar@gmail.com',
-            'password' => Hash::make('registrar123'),
-            'role' => 'registrar',
-        ]);
-
-       
+        User::updateOrCreate(
+            ['email' => 'registrar@gmail.com'], // 1. Search only by email
+            [                                   // 2. These are the values to set/update
+                'name' => 'Registrar User',
+                'password' => Hash::make('registrar123'),
+                'role' => 'registrar',
+            ]
+        );
     }
 }
