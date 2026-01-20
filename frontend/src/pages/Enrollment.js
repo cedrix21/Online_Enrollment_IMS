@@ -123,7 +123,7 @@ export default function Enrollment() {
                 I Agree and Proceed
               </button>
               <button 
-                onClick={() => window.location.href = '/404'} // Redirect away if they disagree
+                onClick={() => window.location.href = '/*'} // Redirect away if they disagree
                 style={{
                   padding: '12px',
                   backgroundColor: '#eee',
@@ -199,7 +199,6 @@ export default function Enrollment() {
                     </select>
                     <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
                       <option value="">Enrolling For...</option>
-                      <option value="Nursery">Nursery (2 1/2 - 3 yrs)</option>
                       <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
                       <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
                       {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
