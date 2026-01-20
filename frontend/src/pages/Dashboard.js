@@ -74,7 +74,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <p>Loading dashboard...</p>;
 
   return (
     <div className="dashboard-layout">
