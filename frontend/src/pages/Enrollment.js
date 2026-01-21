@@ -6,7 +6,9 @@ export default function Enrollment() {
   // 1. Added isSubmitted state
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(true); // Default to true so it shows on load
+  const [showPrivacy, setShowPrivacy] = useState(true); 
+  const [paymentRef, setPaymentRef] = useState("");
+  const [receiptFile, setReceiptFile] = useState(null);
 
   const [formData, setFormData] = useState({
     registrationType: "", 
@@ -343,6 +345,20 @@ export default function Enrollment() {
                   <textarea name="medicalConditions" placeholder="Please list concerns..." value={formData.medicalConditions} onChange={handleChange} rows="3" />
                 </div>
               </div>  
+
+              <div className="payment-section">
+              <h3>Tuition Payment (GCash: 0912-XXX-XXXX)</h3>
+              <input 
+                type="text" 
+                placeholder="Enter Reference Number" 
+                onChange={(e) => setPaymentRef(e.target.value)} 
+              />
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => setReceiptFile(e.target.files[0])} 
+              />
+            </div>
 
               <button type="submit" className="enroll-button" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}

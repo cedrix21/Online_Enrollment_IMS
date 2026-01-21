@@ -1,8 +1,9 @@
 import axios from "axios";
+import { API_BASE_URL } from '../config';
 
 // 1. You MUST use .create() here to make a reusable instance
 const API = axios.create({
-  baseURL: 'https://onlineenrollmentims-production-8cb8.up.railway.app/api',
+  baseURL: `${API_BASE_URL}/api`,
   withCredentials: true,
   headers: {
     'Accept': 'application/json',
