@@ -72,8 +72,7 @@ class EnrollmentController extends Controller
         return DB::transaction(function () use ($request, $validated) {
             // 2. Save Main Enrollment Data
             $receiptPath = null;
-
-                
+  
             if ($request->hasFile('receipt_image')) {
                 // Stores in storage/app/public/receipts
                 $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
@@ -98,22 +97,6 @@ class EnrollmentController extends Controller
                     }
                 }
             }
-
-            // Handle File Upload if exists
-        $receiptPath = null;
-        if ($request->hasFile('receipt_image')) {
-            // Stores in storage/app/public/receipts
-            $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
-        }
-
-        // 2. Save Enrollment with Billing Data
-        $enrollment = Enrollment::create(array_merge($validated, [
-            'status' => 'pending',
-            'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
-            'payment_receipt_path' => $receiptPath,
-            'reference_number' => $request->reference_number,
-            'amount_paid' => $request->amount_paid ?? 0,
-        ]));
 
             return response()->json([
                 'message' => 'Enrollment and Payment Proof submitted!',

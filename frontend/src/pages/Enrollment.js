@@ -42,6 +42,8 @@ export default function Enrollment() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+     if (loading) return;
     setLoading(true);
 
     // 1. Create FormData object to handle both Text and Files
@@ -81,6 +83,7 @@ export default function Enrollment() {
             }
         });
 
+       
         setIsSubmitted(true);
         window.scrollTo(0, 0); 
     } catch (err) {
