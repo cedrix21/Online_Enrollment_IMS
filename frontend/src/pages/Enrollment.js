@@ -383,6 +383,23 @@ export default function Enrollment() {
                 </div>
               </div>  
 
+
+
+                 {/* Payment Section */}
+              <div className="payment-section">
+              <h3>Tuition Payment (GCash: 0912-XXX-XXXX)</h3>
+              <input 
+                type="text" 
+                placeholder="Enter Reference Number" 
+                onChange={(e) => setPaymentRef(e.target.value)} 
+              />
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => setReceiptFile(e.target.files[0])} 
+              />
+            </div>
+
               <button type="submit" className="enroll-button" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}
               </button>
