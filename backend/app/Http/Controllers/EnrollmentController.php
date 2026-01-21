@@ -78,13 +78,13 @@ class EnrollmentController extends Controller
                 $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
             }
 
-             $enrollment = Enrollment::create(array_merge($validated, [
-            'status' => 'pending',
-            'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
-            'payment_receipt_path' => $receiptPath,
-            'reference_number' => $request->reference_number,
-            'amount_paid' => $request->amount_paid ?? 0,
-        ]));
+             $enrollment = Enrollment::create(collect($validated)->except('siblings')->toArray() + [
+                'status' => 'pending',
+                'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
+                'payment_receipt_path' => $receiptPath,
+                'reference_number' => $request->reference_number,
+                'amount_paid' => $request->amount_paid ?? 0,
+            ]);
 
             // 3. Save Siblings if they exist
             if ($request->has('siblings')) {
