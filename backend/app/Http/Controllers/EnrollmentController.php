@@ -99,6 +99,22 @@ class EnrollmentController extends Controller
                 }
             }
 
+            // Handle File Upload if exists
+        $receiptPath = null;
+        if ($request->hasFile('receipt_image')) {
+            // Stores in storage/app/public/receipts
+            $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
+        }
+
+        // 2. Save Enrollment with Billing Data
+        $enrollment = Enrollment::create(array_merge($validated, [
+            'status' => 'pending',
+            'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
+            'payment_receipt_path' => $receiptPath,
+            'reference_number' => $request->reference_number,
+            'amount_paid' => $request->amount_paid ?? 0,
+        ]));
+
             return response()->json([
                 'message' => 'Enrollment and Payment Proof submitted!',
                 'enrollment' => $enrollment->load('siblings'),
@@ -308,38 +324,4 @@ private function sendEnrollmentEmail($enrollment, $section, $formattedId)
         return "but email failed to send (Check SMTP settings).";
     }
 }
-public function verifyPayment(Request $request, $id)
-{
-    $enrollment = Enrollment::findOrFail($id);
-    
-    // Simple update to the payment status
-    $enrollment->update([
-        'payment_status' => 'paid'
-    ]);
-
-    return response()->json(['message' => 'Payment verified successfully!']);
-}
-
-
-
-
-
-public function checkStatus($email)
-{
-    $enrollment = Enrollment::where('email', $email)
-                    ->latest()
-                    ->first();
-
-    if (!$enrollment) {
-        return response()->json(['message' => 'No enrollment record found.'], 404);
-    }
-
-    return response()->json([
-        'full_name' => $enrollment->firstName . ' ' . $enrollment->lastName,
-        'payment_status' => $enrollment->payment_status, // 'unpaid', 'pending_verification', or 'paid'
-        'reference_number' => $enrollment->reference_number
-    ]);
-}
-
-
 }
