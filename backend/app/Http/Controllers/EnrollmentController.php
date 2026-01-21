@@ -62,11 +62,30 @@ class EnrollmentController extends Controller
             'siblings' => 'nullable|array',
             'siblings.*.name' => 'nullable|string',
             'siblings.*.birthDate' => 'nullable|date',
+
+
+            'reference_number' => 'nullable|string',
+            'amount_paid' => 'nullable|numeric',
+            'receipt_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
             // 2. Save Main Enrollment Data
-            $enrollment = Enrollment::create(array_merge($validated, ['status' => 'pending']));
+            $receiptPath = null;
+
+                
+            if ($request->hasFile('receipt_image')) {
+                // Stores in storage/app/public/receipts
+                $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
+            }
+
+             $enrollment = Enrollment::create(array_merge($validated, [
+            'status' => 'pending',
+            'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
+            'payment_receipt_path' => $receiptPath,
+            'reference_number' => $request->reference_number,
+            'amount_paid' => $request->amount_paid ?? 0,
+        ]));
 
             // 3. Save Siblings if they exist
             if ($request->has('siblings')) {
@@ -81,11 +100,14 @@ class EnrollmentController extends Controller
             }
 
             return response()->json([
-                'message' => 'Enrollment submitted successfully',
+                'message' => 'Enrollment and Payment Proof submitted!',
                 'enrollment' => $enrollment->load('siblings'),
             ], 201);
         });
     }
+
+
+
 
  public function updateStatus(Request $request, $id)
     {
@@ -142,6 +164,10 @@ class EnrollmentController extends Controller
             return response()->json(['message' => 'Enrollment rejected']);
         });
     }
+
+
+
+
     public function summary()
 {
     return response()->json([
@@ -149,10 +175,14 @@ class EnrollmentController extends Controller
         'pending' => Enrollment::where('status', 'pending')->count(),
         'approved' => Enrollment::where('status', 'approved')->count(),
         'rejected' => Enrollment::where('status', 'rejected')->count(),
+        'unpaid_enrollments' => Enrollment::where('payment_status', 'unpaid')->count(),
+        'pending_payments' => Enrollment::where('payment_status', 'pending_verification')->count(),
     ]);
 }
 
-// EnrollmentController.php
+
+
+
 
 public function storeAndApprove(Request $request)
 {
@@ -278,4 +308,38 @@ private function sendEnrollmentEmail($enrollment, $section, $formattedId)
         return "but email failed to send (Check SMTP settings).";
     }
 }
+public function verifyPayment(Request $request, $id)
+{
+    $enrollment = Enrollment::findOrFail($id);
+    
+    // Simple update to the payment status
+    $enrollment->update([
+        'payment_status' => 'paid'
+    ]);
+
+    return response()->json(['message' => 'Payment verified successfully!']);
+}
+
+
+
+
+
+public function checkStatus($email)
+{
+    $enrollment = Enrollment::where('email', $email)
+                    ->latest()
+                    ->first();
+
+    if (!$enrollment) {
+        return response()->json(['message' => 'No enrollment record found.'], 404);
+    }
+
+    return response()->json([
+        'full_name' => $enrollment->firstName . ' ' . $enrollment->lastName,
+        'payment_status' => $enrollment->payment_status, // 'unpaid', 'pending_verification', or 'paid'
+        'reference_number' => $enrollment->reference_number
+    ]);
+}
+
+
 }

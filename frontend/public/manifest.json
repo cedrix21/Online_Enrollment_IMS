@@ -1,9 +1,9 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "SICS Enrollment",
+  "name": "SICS Online Enrollment System",
   "icons": [
     {
-      "src": "assets/sics-logo.png",
+      "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },
@@ -13,7 +13,7 @@
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "assets/sics-logo.png",
       "type": "image/png",
       "sizes": "512x512"
     }

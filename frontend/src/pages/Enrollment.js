@@ -6,7 +6,9 @@ export default function Enrollment() {
   // 1. Added isSubmitted state
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(true); // Default to true so it shows on load
+  const [showPrivacy, setShowPrivacy] = useState(true); 
+  const [paymentRef, setPaymentRef] = useState("");
+  const [receiptFile, setReceiptFile] = useState(null);
 
   const [formData, setFormData] = useState({
     registrationType: "", 
@@ -41,18 +43,55 @@ export default function Enrollment() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      await API.post('/enrollment/submit', formData);
-      // 2. Trigger success overlay instead of just an alert
-      setIsSubmitted(true);
-      window.scrollTo(0, 0); 
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Error submitting form.";
-      alert(errorMsg);
-    } finally {
-      setLoading(false);
+
+    // 1. Create FormData object to handle both Text and Files
+    const dataToSend = new FormData();
+
+    // 2. Append all basic fields from your existing formData state
+    // Replace 'formData' with whatever your state variable name is
+    Object.keys(formData).forEach(key => {
+        if (key !== 'siblings') { // Skip siblings here, we handle it below
+            dataToSend.append(key, formData[key]);
+        }
+    });
+
+    // 2. The "Solid" way to append the Siblings Array
+    if (formData.siblings && formData.siblings.length > 0) {
+        formData.siblings.forEach((sib, index) => {
+            // We append each property using the key[index][property] format
+            if (sib.name) {
+                dataToSend.append(`siblings[${index}][name]`, sib.name);
+            }
+            if (sib.birthDate) {
+                dataToSend.append(`siblings[${index}][birthDate]`, sib.birthDate);
+            }
+        });
     }
-  };
+
+    // 3. Append the Billing fields
+    // Assuming you have these in state variables from your inputs
+    if (paymentRef) dataToSend.append('reference_number', paymentRef);
+    if (receiptFile) dataToSend.append('receipt_image', receiptFile);
+
+    try {
+        // 4. Send with specific multipart headers
+        await API.post('/enrollment/submit', dataToSend, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        setIsSubmitted(true);
+        window.scrollTo(0, 0); 
+    } catch (err) {
+        // Log the full error to see validation issues from Laravel
+        console.error("Submission Error:", err.response?.data);
+        const errorMsg = err.response?.data?.message || "Error submitting form.";
+        alert(errorMsg);
+    } finally {
+        setLoading(false);
+    }
+};
 
   const addSibling = () => {
     setFormData({
@@ -343,6 +382,23 @@ export default function Enrollment() {
                   <textarea name="medicalConditions" placeholder="Please list concerns..." value={formData.medicalConditions} onChange={handleChange} rows="3" />
                 </div>
               </div>  
+
+
+
+                 {/* Payment Section */}
+              <div className="payment-section">
+              <h3>Tuition Payment (GCash: 0912-XXX-XXXX)</h3>
+              <input 
+                type="text" 
+                placeholder="Enter Reference Number" 
+                onChange={(e) => setPaymentRef(e.target.value)} 
+              />
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => setReceiptFile(e.target.files[0])} 
+              />
+            </div>
 
               <button type="submit" className="enroll-button" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}
