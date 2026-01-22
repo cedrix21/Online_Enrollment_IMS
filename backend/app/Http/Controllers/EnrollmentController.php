@@ -188,40 +188,67 @@ class EnrollmentController extends Controller
 
 public function storeAndApprove(Request $request)
 {
+    // 1. Expanded Validation to include all missing fields
     $validated = $request->validate([
         'firstName' => 'required|string',
         'lastName' => 'required|string',
-        'email' => 'required|email|unique:students,email',
+        'middleName' => 'nullable|string',
+        'nickname' => 'nullable|string',
+        'email' => 'required|email|unique:enrollments,email', // Check uniqueness in enrollment table
         'gradeLevel' => 'required|string',
         'gender' => 'required|string',
         'dateOfBirth' => 'required|date',
         'registrationType' => 'required|string',
+        'handedness' => 'nullable|string',
+        'medicalConditions' => 'nullable|string',
+        
+        // Parent/Guardian Info
+        'fatherName' => 'nullable|string',
+        'fatherContact' => 'nullable|string',
+        'motherName' => 'nullable|string',
+        'motherContact' => 'nullable|string',
         'emergencyContact' => 'required|string',
+
+        // Requirements Status
         'psaReceived' => 'nullable|boolean',
         'idPictureReceived' => 'nullable|boolean',
         'goodMoralReceived' => 'nullable|boolean',
         'reportCardReceived' => 'nullable|boolean',
         'kidsNoteInstalled' => 'nullable|boolean',
-        'middleName' => 'nullable|string',
-        'siblings' => 'nullable|array',
-    ]);
 
-    // We use a variable to track email success outside the transaction
-    $emailMessage = "";
+        // Siblings Array
+        'siblings' => 'nullable|array',
+        'siblings.*.name' => 'nullable|string',
+        'siblings.*.birthDate' => 'nullable|date',
+    ]);
 
     try {
         $result = DB::transaction(function () use ($request, $validated) {
-            // Create Enrollment
-            $enrollment = Enrollment::create(array_merge($validated, [
+            
+            // 2. Create Enrollment - Using collect()->except('siblings') 
+            // to prevent the siblings array from crashing the Enrollment insert.
+            $enrollment = Enrollment::create(collect($validated)->except('siblings')->toArray() + [
                 'status' => 'approved',
                 'psa_received' => $request->psaReceived ?? false,
                 'id_picture_received' => $request->idPictureReceived ?? false,
                 'good_moral_received' => $request->goodMoralReceived ?? false,
                 'report_card_received' => $request->reportCardReceived ?? false,
                 'kids_note_installed' => $request->kidsNoteInstalled ?? false,
-            ]));
+            ]);
 
-            // Find Section
+            // 3. Save Siblings if provided
+            if (!empty($validated['siblings'])) {
+                foreach ($validated['siblings'] as $sib) {
+                    if (!empty($sib['name'])) {
+                        $enrollment->siblings()->create([
+                            'full_name' => $sib['name'],
+                            'birth_date' => $sib['birthDate'],
+                        ]);
+                    }
+                }
+            }
+
+            // 4. Find Section vacancy
             $section = Section::where('gradeLevel', $validated['gradeLevel'])
                 ->whereColumn('students_count', '<', 'capacity')
                 ->first();
@@ -230,16 +257,17 @@ public function storeAndApprove(Request $request)
                 throw new \Exception("No vacancy for {$validated['gradeLevel']}.");
             }
 
-            // Generate Student ID
+            // 5. Generate Student ID
             $year = date('Y');
             $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
             $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
-            // Create Student
+            // 6. Create Student Record
             $student = Student::create([
                 'studentId'     => $formattedId,
                 'firstName'     => $validated['firstName'],
                 'lastName'      => $validated['lastName'],
+                'middleName'    => $validated['middleName'] ?? null,
                 'email'         => $validated['email'],
                 'gradeLevel'    => $validated['gradeLevel'],
                 'section_id'    => $section->id,
@@ -252,8 +280,7 @@ public function storeAndApprove(Request $request)
             return ['enrollment' => $enrollment, 'section' => $section, 'id' => $formattedId];
         });
 
-        // TRIGGER EMAIL AFTER TRANSACTION IS FINISHED
-        // This ensures the student exists in the DB before the PDF is generated
+        // 7. Send Email logic
         $emailMessage = $this->sendEnrollmentEmail($result['enrollment'], $result['section'], $result['id']);
 
         return response()->json([

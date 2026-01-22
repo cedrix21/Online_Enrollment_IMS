@@ -114,7 +114,6 @@ export default function AdminEnrollment() {
                               
                               <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
                                 <option value="">Select Grade Level</option>
-                                <option value="Nursery">Nursery</option>
                                 <option value="Kindergarten 1">K1</option>
                                 <option value="Kindergarten 2">K2</option>
                                 {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
