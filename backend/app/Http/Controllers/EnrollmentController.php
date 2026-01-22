@@ -84,6 +84,9 @@ class EnrollmentController extends Controller
                 'payment_receipt_path' => $receiptPath,
                 'reference_number' => $request->reference_number,
                 'amount_paid' => $request->amount_paid ?? 0,
+                'date_of_birth' => $validated['dateOfBirth'],
+                'middle_name' => $validated['middleName'] ?? null,
+                'registration_type' => $validated['registrationType'],
             ]);
 
             // 3. Save Siblings if they exist
