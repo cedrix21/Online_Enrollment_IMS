@@ -25,7 +25,7 @@ export default function ProtectedRoute({ children, roles }) {
 
   // 2. If roles are specified and user's role doesn't match
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/*" replace />; 
+    return <Navigate to="/login" replace />; 
   }
 
   return children;
