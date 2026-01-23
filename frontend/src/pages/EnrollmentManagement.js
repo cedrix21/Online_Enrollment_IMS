@@ -388,12 +388,12 @@ const exportToExcel = () => {
                               <label><strong>Proof of Payment:</strong></label>
                               <div style={{ marginTop: '10px' }}>
                                   <a 
-                                      href={`http://localhost:8000/storage/${selectedEnrollment.payments[0].receipt_path}`} 
+                                      href={`https://onlineenrollmentims-production-8cb8.up.railway.app/storage/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
                                       target="_blank" 
                                       rel="noreferrer"
                                   >
                                       <img 
-                                          src={`http://localhost:8000/storage/${selectedEnrollment.payments[0].receipt_path}`} 
+                                          src={`https://onlineenrollmentims-production-8cb8.up.railway.app/storage/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
                                           alt="Receipt" 
                                           style={{ 
                                               width: '100px', 
