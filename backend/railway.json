@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "php artisan migrate --force && php artisan route:clear && php artisan config:clear  && php artisan storage:link || true && start-php-apache",
+    "startCommand": "php artisan migrate --force && php artisan route:clear && php artisan config:clear  && php artisan storage:link || true && heroku-php-apache2 public/",
     "healthcheckPath": "/up",
     "restartPolicyType": "ON_FAILURE"
   }
