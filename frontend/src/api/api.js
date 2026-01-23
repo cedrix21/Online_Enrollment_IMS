@@ -33,7 +33,7 @@ API.interceptors.response.use(
 
       // Only redirect if they are trying to access a PROTECTED page
       if (!isPublicPage) {
-        window.location.href = "/*";
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
