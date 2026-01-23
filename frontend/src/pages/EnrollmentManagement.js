@@ -6,6 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import logo from "../assets/sics-logo.png";
+import { STORAGE_URL, API_BASE_URL } from "../config";
 
 
 // Import the Layout Components
@@ -388,12 +389,12 @@ const exportToExcel = () => {
                               <label><strong>Proof of Payment:</strong></label>
                               <div style={{ marginTop: '10px' }}>
                                   <a 
-                                      href={`https://onlineenrollmentims-production-8cb8.up.railway.app/storage/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
+                                      href={`${STORAGE_URL}/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
                                       target="_blank" 
                                       rel="noreferrer"
                                   >
                                       <img 
-                                          src={`https://onlineenrollmentims-production-8cb8.up.railway.app/storage/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
+                                          src={`${STORAGE_URL}/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
                                           alt="Receipt" 
                                           style={{ 
                                               width: '100px', 
