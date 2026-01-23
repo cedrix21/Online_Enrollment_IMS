@@ -10,7 +10,7 @@ export default function TopBar({ user }) {
       </div>
 
       <div className="topbar-user">
-        <span>{user.name}</span>
+        <span>{user?.name || 'Guest'}</span>
         <span className={`role ${user.role}`}>{user.role}</span>
       </div>
     </header>

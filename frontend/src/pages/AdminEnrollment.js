@@ -6,6 +6,7 @@ import "./Enrollment.css";
 
 export default function AdminEnrollment() {
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
+  
   const [formData, setFormData] = useState({
     registrationType: "New Student", 
     gradeLevel: "",
@@ -37,6 +38,10 @@ export default function AdminEnrollment() {
     reportCardReceived: false,
     kidsNoteInstalled: false,
     enrollmentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: "",      
+    amount_paid: "",
+    reference_number: "",
+    registrationType: "New Student",
   });
 
   const [message, setMessage] = useState("");
@@ -309,6 +314,53 @@ export default function AdminEnrollment() {
                   <textarea name="medicalConditions" value={formData.medicalConditions} onChange={handleChange} rows="3" />
                 </div>
               </div>
+
+
+              {/* Section: Payment Details */}
+              <div className="payment-section">
+             <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
+              <p style={{ fontSize: '0.8rem', marginBottom: '15px' }}>This payment will be recorded in the student's billing ledger.</p>
+              <div className="form-group">
+                <label>Payment Method</label>
+                <select 
+                  name="paymentMethod" 
+                  value={formData.paymentMethod} 
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Method</option>
+                  <option value="Cash">💵 Cash</option>
+                  <option value="GCash">📱 GCash</option>
+                  <option value="Bank Transfer">🏦 Bank Transfer</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Downpayment Amount</label>
+                <input 
+                  type="number" 
+                  name="amount_paid" 
+                  value={formData.amount_paid}
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Only show Reference Number field if not Cash */}
+              {formData.paymentMethod && formData.paymentMethod !== 'Cash' && (
+                <div className="form-group">
+                  <label>Reference Number</label>
+                  <input 
+                    type="text" 
+                    name="reference_number" 
+                    value={formData.reference_number}
+                    placeholder="Enter GCash/Bank Ref #"
+                    onChange={handleChange} 
+                    required 
+                  />
+                </div>
+              )}
+            </div>
 
               <button type="submit" className="enroll-button" disabled={loading}>
                 {loading ? "Processing..." : "Register & Approve Student"}

@@ -38,6 +38,7 @@ class Enrollment extends Model
     'good_moral_received', 
     'report_card_received', 
     'kids_note_installed',
+    'enrollmentDate',
     'status', 
 
 ];
@@ -50,4 +51,13 @@ class Enrollment extends Model
 {
     return $this->hasMany(EnrollmentSibling::class);
 }
+
+    public function payments() {
+        return $this->hasMany(Payment::class);
+    }
 }
+
+
+
+
+

@@ -18,7 +18,7 @@ class EnrollmentController extends Controller
 {
     try {
         // Fetch all enrollments, ordered by newest first, including siblings
-        $enrollments = Enrollment::with('siblings')->orderBy('created_at', 'desc')->get();
+        $enrollments = Enrollment::with('siblings','payments')->orderBy('created_at', 'desc')->get();
         
         return response()->json($enrollments, 200);
     } catch (\Exception $e) {
@@ -29,144 +29,182 @@ class EnrollmentController extends Controller
     }
 }
 
-    public function submit(Request $request)
-    {
-        // 1. Validation for all SICS Form fields
-        $validated = $request->validate([
-            'firstName' => 'required|string',
-            'lastName' => 'required|string',
-            'middleName' => 'nullable|string',
-            'nickname' => 'nullable|string',
-            'email' => 'required|email|unique:enrollments,email',
-            'gradeLevel' => 'required|string',
-            'gender' => 'required|string',
-            'dateOfBirth' => 'required|date',
-            'registrationType' => 'required|string',
-            'handedness' => 'nullable|string',
-            
-            // Parents
-            'fatherName' => 'nullable|string',
-            'fatherContact' => 'nullable|string',
-            'fatherOccupation' => 'nullable|string',
-            'fatherEmail' => 'nullable|string',
-            'fatherAddress' => 'nullable|string',
-            'motherName' => 'nullable|string',
-            'motherContact' => 'nullable|string',
-            'motherOccupation' => 'nullable|string',
-            'motherEmail' => 'nullable|string',
-            'motherAddress' => 'nullable|string',
-            'emergencyContact' => 'required|string',
-            'medicalConditions' => 'nullable|string',
+  public function submit(Request $request)
+{
+    // 1. Validation remains the same
+    $validated = $request->validate([
+        'firstName' => 'required|string',
+        'lastName' => 'required|string',
+        'middleName' => 'nullable|string',
+        'nickname' => 'nullable|string',
+        'email' => 'required|email|unique:enrollments,email',
+        'gradeLevel' => 'required|string',
+        'gender' => 'required|string',
+        'dateOfBirth' => 'required|date',
+        'registrationType' => 'required|string',
+        'handedness' => 'nullable|string',
+        
+        // Parents
+        'fatherName' => 'nullable|string',
+        'fatherContact' => 'nullable|string',
+        'fatherOccupation' => 'nullable|string',
+        'fatherEmail' => 'nullable|string',
+        'fatherAddress' => 'nullable|string',
+        'motherName' => 'nullable|string',
+        'motherContact' => 'nullable|string',
+        'motherOccupation' => 'nullable|string',
+        'motherEmail' => 'nullable|string',
+        'motherAddress' => 'nullable|string',
+        'emergencyContact' => 'required|string',
+        'medicalConditions' => 'nullable|string',
 
-            // Siblings Array from React
-            'siblings' => 'nullable|array',
-            'siblings.*.name' => 'nullable|string',
-            'siblings.*.birthDate' => 'nullable|date',
+        // Siblings
+        'siblings' => 'nullable|array',
+        'siblings.*.name' => 'nullable|string',
+        'siblings.*.birthDate' => 'nullable|date',
 
+        // Payment
+        'paymentMethod' => 'required|in:Cash,GCash,Bank Transfer',
+        'reference_number' => 'nullable|string',
+        'amount_paid' => 'nullable|numeric',
+        'receipt_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'payment_status' => 'nullable|string',
+    ]);
 
-            'reference_number' => 'nullable|string',
-            'amount_paid' => 'nullable|numeric',
-            'receipt_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
-
-        return DB::transaction(function () use ($request, $validated) {
-            // 2. Save Main Enrollment Data
-            $receiptPath = null;
-  
-            if ($request->hasFile('receipt_image')) {
-                // Stores in storage/app/public/receipts
-                $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
-            }
-
-             $enrollment = Enrollment::create(collect($validated)->except('siblings')->toArray() + [
-                'status' => 'pending',
-                'payment_status' => $request->reference_number ? 'pending_verification' : 'unpaid',
-                'payment_receipt_path' => $receiptPath,
-                'reference_number' => $request->reference_number,
-                'amount_paid' => $request->amount_paid ?? 0,
-                'date_of_birth' => $validated['dateOfBirth'],
-                'middle_name' => $validated['middleName'] ?? null,
-                'registration_type' => $validated['registrationType'],
-            ]);
-
-            // 3. Save Siblings if they exist
-            if ($request->has('siblings')) {
-                foreach ($request->siblings as $sib) {
-                    if (!empty($sib['name'])) {
-                        $enrollment->siblings()->create([
-                            'full_name' => $sib['name'],
-                            'birth_date' => $sib['birthDate'],
-                        ]);
-                    }
-                }
-            }
-
-            return response()->json([
-                'message' => 'Enrollment and Payment Proof submitted!',
-                'enrollment' => $enrollment->load('siblings'),
-            ], 201);
-        });
-    }
-
-
-
-
- public function updateStatus(Request $request, $id)
-    {
-        $request->validate(['status' => 'required|in:approved,rejected']);
-        $enrollment = Enrollment::findOrFail($id);
-
-        if ($enrollment->status !== 'pending') {
-            return response()->json(['message' => 'Enrollment already processed'], 400);
+    return DB::transaction(function () use ($request, $validated) {
+        // 1. Handle the file upload
+        $receiptPath = null;
+        if ($request->hasFile('receipt_image')) {
+            $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
         }
 
-        return DB::transaction(function () use ($enrollment, $request) {
-            $enrollment->status = $request->status;
-            $enrollment->save();
+        // 2. Create the Enrollment  
+        $enrollment = Enrollment::create([
+            'firstName'         => $validated['firstName'],
+            'lastName'          => $validated['lastName'],
+            'middleName'        => $validated['middleName'] ?? null,
+            'nickname'          => $validated['nickname'] ?? null,
+            'email'             => $validated['email'],
+            'gradeLevel'        => $validated['gradeLevel'],
+            'gender'            => $validated['gender'],
+            'dateOfBirth'       => $validated['dateOfBirth'],
+            'registrationType'  => $validated['registrationType'],
+            'handedness'        => $validated['handedness'] ?? null,
+            
+            // Parents Mapping
+            'fatherName'        => $validated['fatherName'] ?? null,
+            'fatherContact'     => $validated['fatherContact'] ?? null,
+            'fatherOccupation'  => $validated['fatherOccupation'] ?? null,
+            'fatherEmail'       => $validated['fatherEmail'] ?? null,
+            'fatherAddress'     => $validated['fatherAddress'] ?? null,
+            'motherName'        => $validated['motherName'] ?? null,
+            'motherContact'     => $validated['motherContact'] ?? null,
+            'motherOccupation'  => $validated['motherOccupation'] ?? null,
+            'motherEmail'       => $validated['motherEmail'] ?? null,
+            'motherAddress'     => $validated['motherAddress'] ?? null,
 
-            if ($request->status === 'approved') {
-                $section = Section::where('gradeLevel', $enrollment->gradeLevel)
-                    ->whereColumn('students_count', '<', 'capacity')
-                    ->first();
+            'emergencyContact'  => $validated['emergencyContact'],
+            'medicalConditions' => $validated['medicalConditions'] ?? null,
+            'status'            => 'pending',  
+        ]);
 
-                if (!$section) {
-                    throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
+        // 3. Create the Payment record linked to this enrollment
+        $enrollment->payments()->create([
+            'amount_paid'      => $validated['amount_paid'] ?? 0,
+            'paymentMethod'    => $validated['paymentMethod'], 
+            'reference_number' => $validated['reference_number'] ?? 'WALK-IN',
+            'payment_type'     => 'Downpayment',
+            'payment_date'     => now(),
+            'receipt_path'     => $receiptPath, 
+        ]);
+
+
+        // 4. Save Siblings
+        if (!empty($validated['siblings'])) {
+            foreach ($validated['siblings'] as $sib) {
+                if (!empty($sib['name'])) {
+                    $enrollment->siblings()->create([
+                        'full_name'  => $sib['name'],
+                        'birth_date' => $sib['birthDate'],
+                    ]);
                 }
-
-                $year = date('Y');
-                $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
-                $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
-
-                Student::create([
-                    'studentId'     => $formattedId,
-                    'firstName'     => $enrollment->firstName,
-                    'lastName'      => $enrollment->lastName,
-                    'middleName'    => $enrollment->middleName,
-                    'nickname'      => $enrollment->nickname,
-                    'email'         => $enrollment->email,
-                    'gradeLevel'    => $enrollment->gradeLevel,
-                    'gender'        => $enrollment->gender,
-                    'dateOfBirth'   => $enrollment->dateOfBirth,
-                    'enrollment_id' => $enrollment->id,
-                    'section_id'    => $section->id,
-                    'status'        => 'active',
-                ]);
-
-                $section->increment('students_count');
-
-                // --- EMAIL LOGIC ---
-                $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $formattedId);
-                
-                return response()->json([
-                    'message' => "Approved, assigned to {$section->name} {$emailStatus}",
-                    'generatedId' => $formattedId
-                ]);
             }
+        }
 
-            return response()->json(['message' => 'Enrollment rejected']);
-        });
+        return response()->json([
+            'message' => 'Enrollment submitted successfully!',
+            'enrollment' => $enrollment->load('siblings'),
+        ], 201);
+    });
+}
+
+
+
+public function updateStatus(Request $request, $id)
+{
+    $request->validate(['status' => 'required|in:approved,rejected']);
+    $enrollment = Enrollment::findOrFail($id);
+
+    if ($enrollment->status !== 'pending') {
+        return response()->json(['message' => 'Enrollment already processed'], 400);
     }
 
+    return DB::transaction(function () use ($enrollment, $request) {
+        $enrollment->status = $request->status;
+        $enrollment->save();
+
+        if ($request->status === 'approved') {
+            // 1. Find Section vacancy
+            $section = Section::where('gradeLevel', $enrollment->gradeLevel)
+                ->whereColumn('students_count', '<', 'capacity')
+                ->first();
+
+            if (!$section) {
+                throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
+            }
+
+            // 2. Generate Student ID
+            $year = date('Y');
+            $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
+            $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+            // 3. Create Student Record
+            $student = Student::create([
+                'studentId'     => $formattedId,
+                'firstName'     => $enrollment->firstName,
+                'lastName'      => $enrollment->lastName,
+                'middleName'    => $enrollment->middleName,
+                'nickname'      => $enrollment->nickname,
+                'email'         => $enrollment->email,
+                'gradeLevel'    => $enrollment->gradeLevel,
+                'gender'        => $enrollment->gender,
+                'dateOfBirth'   => $enrollment->dateOfBirth,
+                'enrollment_id' => $enrollment->id,
+                'section_id'    => $section->id,
+                'status'        => 'active',
+            ]);
+
+            // 4. LINK THE PAYMENT TO THE NEW STUDENT
+            // This finds the payment created during the 'submit' phase and attaches the student_id
+            $enrollment->payments()->update([
+                'student_id' => $student->id
+            ]);
+
+            // 5. Update section count
+            $section->increment('students_count');
+
+            // 6. Send Email
+            $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $formattedId);
+            
+            return response()->json([
+                'message' => "Approved, assigned to {$section->name}. {$emailStatus}",
+                'generatedId' => $formattedId
+            ]);
+        }
+
+        return response()->json(['message' => 'Enrollment rejected']);
+    });
+}
 
 
 
@@ -220,21 +258,42 @@ public function storeAndApprove(Request $request)
         'siblings' => 'nullable|array',
         'siblings.*.name' => 'nullable|string',
         'siblings.*.birthDate' => 'nullable|date',
+
+        // Payment
+        'paymentMethod' => 'required|in:Cash,GCash,Bank Transfer',
+        'reference_number' => 'nullable|string',
+        'amount_paid' => 'nullable|numeric',
+        'receipt_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'payment_status' => 'nullable|string',
+        'receipt_path' => 'nullable|string',
+        'payment_date' => 'nullable|date',
+        'payment_type' => 'nullable|string',
     ]);
 
     try {
         $result = DB::transaction(function () use ($request, $validated) {
+            $receiptPath = null;
+            if ($request->hasFile('receipt_image')) {
+                $receiptPath = $request->file('receipt_image')->store('receipts', 'public');
+            }
             
-            // 2. Create Enrollment - Using collect()->except('siblings') 
-            // to prevent the siblings array from crashing the Enrollment insert.
-            $enrollment = Enrollment::create(collect($validated)->except('siblings')->toArray() + [
-                'status' => 'approved',
-                'psa_received' => $request->psaReceived ?? false,
-                'id_picture_received' => $request->idPictureReceived ?? false,
-                'good_moral_received' => $request->goodMoralReceived ?? false,
-                'report_card_received' => $request->reportCardReceived ?? false,
-                'kids_note_installed' => $request->kidsNoteInstalled ?? false,
-            ]);
+            $enrollmentData = collect($validated)->except([
+                    'siblings', 'amount_paid', 'paymentMethod', 'reference_number', 'payment_type',
+                    'payment_status'
+                ])->toArray();
+
+                $enrollment = Enrollment::create($enrollmentData + [
+                    'status' => 'approved',
+                    'psa_received' => $request->psaReceived ?? false,
+                    'id_picture_received' => $request->idPictureReceived ?? false,
+                    'good_moral_received' => $request->goodMoralReceived ?? false,
+                    'report_card_received' => $request->reportCardReceived ?? false,
+                    'kids_note_installed' => $request->kidsNoteInstalled ?? false,
+                
+                    
+                ]);
+
+                
 
             // 3. Save Siblings if provided
             if (!empty($validated['siblings'])) {
@@ -275,6 +334,16 @@ public function storeAndApprove(Request $request)
                 'status'        => 'active',
             ]);
 
+            // 7. Create Payment Record
+                $enrollment->payments()->create([
+                'student_id'       => $student->id, 
+                'amount_paid'      => $validated['amount_paid'],
+                'paymentMethod'    => $validated['paymentMethod'],
+                'reference_number' => $validated['reference_number'] ?? 'WALK-IN-' . time(),
+                'payment_type'     => 'Downpayment',
+                'payment_date'     => now(),
+                'receipt_path'     => $receiptPath,
+            ]);
             $section->increment('students_count');
 
             return ['enrollment' => $enrollment, 'section' => $section, 'id' => $formattedId];

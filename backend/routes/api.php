@@ -9,6 +9,7 @@ use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
+use App\Http\Controllers\BillingController;
 
 
 
@@ -48,6 +49,11 @@ use App\Models\Subject;
         Route::get('/schedules', [ScheduleController::class, 'index']);
         Route::post('/schedules', [ScheduleController::class, 'store']);
         Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
+
+        Route::prefix('admin/billing')->group(function () {
+        Route::get('/student/{studentId}', [BillingController::class, 'getStudentLedger']);
+        Route::post('/student/{studentId}/pay', [BillingController::class, 'addPayment']);
+});
 
         // Admin/Registrar Only
         Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin,registrar')->group(function () {

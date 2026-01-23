@@ -9,6 +9,8 @@ export default function Enrollment() {
   const [showPrivacy, setShowPrivacy] = useState(true); 
   const [paymentRef, setPaymentRef] = useState("");
   const [receiptFile, setReceiptFile] = useState(null);
+  const [amountPaid, setAmountPaid] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
 
   const [formData, setFormData] = useState({
     registrationType: "", 
@@ -34,6 +36,14 @@ export default function Enrollment() {
     motherAddress: "", 
     emergencyContact: "",
     medicalConditions: "",
+
+
+    paymentMethod: "",    
+    reference_number: "",      
+    amount_paid: "",           
+    receipt_image: null,
+    payment_status: "",
+   
   });
 
   const handleChange = (e) => {
@@ -42,25 +52,35 @@ export default function Enrollment() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     
-     if (loading) return;
-    setLoading(true);
+    // 1. Validation Logic
+    if (!paymentMethod) {
+        alert("Please select a payment method.");
+        return;
+    }
 
-    // 1. Create FormData object to handle both Text and Files
+    // Only require Ref and File if it's NOT Cash
+    if (paymentMethod !== "Cash") {
+        if (!paymentRef || !receiptFile || !amountPaid) {
+            alert("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
+            return;
+        }
+    }
+
+    setLoading(true);
     const dataToSend = new FormData();
 
-    // 2. Append all basic fields from your existing formData state
-    // Replace 'formData' with whatever your state variable name is
+    // 2. Append Standard Form Fields
     Object.keys(formData).forEach(key => {
-        if (key !== 'siblings') { // Skip siblings here, we handle it below
+        if (key !== 'siblings' && key !== 'receipt_image') {
             dataToSend.append(key, formData[key]);
         }
     });
 
-    // 2. The "Solid" way to append the Siblings Array
+    // 3. Append Siblings Array
     if (formData.siblings && formData.siblings.length > 0) {
         formData.siblings.forEach((sib, index) => {
-            // We append each property using the key[index][property] format
             if (sib.name) {
                 dataToSend.append(`siblings[${index}][name]`, sib.name);
             }
@@ -70,24 +90,32 @@ export default function Enrollment() {
         });
     }
 
-    // 3. Append the Billing fields
-    // Assuming you have these in state variables from your inputs
-    if (paymentRef) dataToSend.append('reference_number', paymentRef);
-    if (receiptFile) dataToSend.append('receipt_image', receiptFile);
+    
+
+    // 4. --- UPDATED BILLING FIELDS LOGIC ---
+    dataToSend.append('paymentMethod', paymentMethod);
+
+    if (paymentMethod === "Cash") {
+        dataToSend.append('amount_paid', 0);
+        dataToSend.append('reference_number', 'WALK-IN-PENDING');
+        // We don't append receipt_image for Cash
+    } else {
+        dataToSend.append('amount_paid', amountPaid);
+        dataToSend.append('reference_number', paymentRef);
+        if (receiptFile) {
+            dataToSend.append('receipt_image', receiptFile);
+        }
+    }
 
     try {
-        // 4. Send with specific multipart headers
+        // 5. API Submission
         await API.post('/enrollment/submit', dataToSend, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
+            headers: { 'Content-Type': 'multipart/form-data' }
         });
-
-       
+        
         setIsSubmitted(true);
         window.scrollTo(0, 0); 
     } catch (err) {
-        // Log the full error to see validation issues from Laravel
         console.error("Submission Error:", err.response?.data);
         const errorMsg = err.response?.data?.message || "Error submitting form.";
         alert(errorMsg);
@@ -95,6 +123,8 @@ export default function Enrollment() {
         setLoading(false);
     }
 };
+
+
 
   const addSibling = () => {
     setFormData({
@@ -219,6 +249,14 @@ export default function Enrollment() {
             </button>
           </div>
         ) : (
+
+
+
+
+
+
+
+
           /* --- ORIGINAL FORM SECTION --- */
           <>
             <div className="form-header">
@@ -387,21 +425,74 @@ export default function Enrollment() {
               </div>  
 
 
+                {/* payment section */}
+                <div className="payment-section">
+                      <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
+                      <p style={{ fontSize: '0.8rem', marginBottom: '15px' }}>This payment will be recorded in the student's billing ledger.</p>
+                      
+                      <div className="input-group" style={{ marginBottom: '15px' }}>
+                          <label>Payment Method</label>
+                          <select 
+                              value={paymentMethod} 
+                              onChange={(e) => setPaymentMethod(e.target.value)} 
+                              required
+                          >
+                              <option value="">Select Method</option>
+                              <option value="Cash">💵 Cash (Walk-in)</option>
+                              <option value="GCash">📱 GCash</option>
+                              <option value="Bank Transfer">🏦 Bank Transfer</option>
+                          </select>
+                      </div>
 
-                 {/* Payment Section */}
-              <div className="payment-section">
-              <h3>Tuition Payment (GCash: 0912-XXX-XXXX)</h3>
-              <input 
-                type="text" 
-                placeholder="Enter Reference Number" 
-                onChange={(e) => setPaymentRef(e.target.value)} 
-              />
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={(e) => setReceiptFile(e.target.files[0])} 
-              />
-            </div>
+                      {paymentMethod === "Cash" && (
+                          <div style={{ padding: '15px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', color: '#0d47a1' }}>
+                              <strong>📌 Notice:</strong> Please proceed to the <strong>School Registrar Office</strong> to settle your payment. Your enrollment will remain "Pending" until the cash payment is verified.
+                          </div>
+                      )}
+
+                      {(paymentMethod === "GCash" || paymentMethod === "Bank Transfer") && (
+                          <>
+                              <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8', borderRadius: '8px', fontSize: '0.9rem' }}>
+                                  <strong>Account Details:</strong><br />
+                                  GCash: 0912-XXX-XXXX (SICS Official)<br />
+                                  Bank: BDO - 1234567890 (Siloam International Christian School)
+                              </div>
+                              
+                              <div className="input-grid-2">
+                                  <div className="input-group">
+                                      <label>Downpayment Amount(₱)</label>
+                                      <input 
+                                          type="number" 
+                                          value={amountPaid}
+                                          onChange={(e) => setAmountPaid(e.target.value)} 
+                                          placeholder="0.00"
+                                          required
+                                      />
+                                  </div>
+                                  <div className="input-group">
+                                      <label>Reference Number</label>
+                                      <input 
+                                          type="text" 
+                                          value={paymentRef}
+                                          onChange={(e) => setPaymentRef(e.target.value)} 
+                                          placeholder="Ref #"
+                                          required
+                                      />
+                                  </div>
+                              </div>
+                              
+                              <div className="input-group" style={{ marginTop: '15px' }}>
+                                  <label>Upload Receipt Image</label>
+                                  <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      onChange={(e) => setReceiptFile(e.target.files[0])} 
+                                      required
+                                  />
+                              </div>
+                          </>
+                      )}
+                  </div>
 
               <button type="submit" className="enroll-button" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Application"}

@@ -16,8 +16,36 @@ import TeacherDirectory from "./pages/TeacherDirectory";
 import SectionManagement from "./components/SectionManagement"; 
 import LoadSlip from "./components/LoadSlip";
 import NotFound from "./components/NotFound";
-
+import StudentBilling from "./components/StudentBilling";
+import BillingManagement from "./pages/BillingManagement";  
+import { useState, useEffect } from "react"; 
+import API from "./api/api";
+import LoadingScreen from "./components/LoadingScreen";
 function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Fetch the logged-in user so 'user' isn't undefined
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await API.get("/user");
+        setUser(res.data);
+      } catch (err) {
+        setUser(null);
+      }finally {
+        setTimeout(() => setAuthLoading(false), 500);
+      }
+    };
+    fetchUser();
+  }, []);
+
+if (authLoading) {
+    return <LoadingScreen />;
+  }
+
+
+
   return (
     <Router>
       <Routes>
@@ -87,6 +115,16 @@ function App() {
 
         {/* Catch-all route for any other invalid URLs */}
         <Route path="*" element={<NotFound />} />
+
+        <Route 
+          path="/admin/billing"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <BillingManagement user={user} />
+            </ProtectedRoute>
+          } 
+        />
+
 
 
       </Routes>

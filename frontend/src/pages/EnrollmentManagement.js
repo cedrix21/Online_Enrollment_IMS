@@ -303,46 +303,127 @@ const exportToExcel = () => {
       </div>
 
             {/* VIEW DETAILS MODAL */}
-            {selectedEnrollment && (
-              <div className="modal-overlay" onClick={closeModal}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                  <div className="modal-header">
-                    <h3>Student Profile: {selectedEnrollment.firstName} {selectedEnrollment.lastName}</h3>
-                    <button className="close-btn" onClick={closeModal}>&times;</button>
-                  </div>
-                  
-                  <div className="modal-body">
-                    <div className="info-grid">
-                      <section>
-                        <h4>Personal Information</h4>
-                        <p><strong>Nickname:</strong> {selectedEnrollment.nickname || 'N/A'}</p>
-                        <p><strong>Gender:</strong> {selectedEnrollment.gender}</p>
-                        <p><strong>Birthday:</strong> {selectedEnrollment.dateOfBirth}</p>
-                        <p><strong>Handedness:</strong> {selectedEnrollment.handedness || 'N/A'}</p>
-                        <p><strong>Medical:</strong> {selectedEnrollment.medicalConditions || 'None'}</p>
-                      </section>
-
-                      <section>
-                        <h4>Parent/Guardian Info</h4>
-                        <p><strong>Father:</strong> {selectedEnrollment.fatherName} ({selectedEnrollment.fatherContact})</p>
-                        <p><strong>Mother:</strong> {selectedEnrollment.motherName} ({selectedEnrollment.motherContact})</p>
-                        <p><strong>Emergency:</strong> {selectedEnrollment.emergencyContact}</p>
-                      </section>
+              {selectedEnrollment && (
+                <div className="modal-overlay" onClick={closeModal}>
+                  <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-header">
+                      <h3>Student Profile: {selectedEnrollment.firstName} {selectedEnrollment.lastName}</h3>
+                      <button className="close-btn" onClick={closeModal}>&times;</button>
                     </div>
+                    
+                    <div className="modal-body">
+                      <div className="info-grid">
+                        <section>
+                          <h4>Personal Information</h4>
+                          <p><strong>Nickname:</strong> {selectedEnrollment.nickname || 'N/A'}</p>
+                          <p><strong>Gender:</strong> {selectedEnrollment.gender}</p>
+                          <p><strong>Birthday:</strong> {selectedEnrollment.dateOfBirth}</p>
+                          <p><strong>Handedness:</strong> {selectedEnrollment.handedness || 'N/A'}</p>
+                          <p><strong>Medical:</strong> {selectedEnrollment.medicalConditions || 'None'}</p>
+                        </section>
 
-                    {selectedEnrollment.siblings && selectedEnrollment.siblings.length > 0 && (
-                      <section className="sibling-section">
-                        <h4>Siblings Enrolled</h4>
-                        <ul>
-                          {selectedEnrollment.siblings.map((s, idx) => (
-                            <li key={idx}>{s.full_name} - {s.birth_date}</li>
-                          ))}
-                        </ul>
-                      </section>
-                    )}
-                  </div>
-                  
-                 
+                        <section>
+                          <h4>Parent/Guardian Info</h4>
+                          <p><strong>Father:</strong> {selectedEnrollment.fatherName} ({selectedEnrollment.fatherContact})</p>
+                          <p><strong>Mother:</strong> {selectedEnrollment.motherName} ({selectedEnrollment.motherContact})</p>
+                          <p><strong>Emergency:</strong> {selectedEnrollment.emergencyContact}</p>
+                        </section>
+                      </div>
+
+                      <div className="payment-display-box" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+                          <h3>💳 Payment Information</h3>
+                            <div className="details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                
+                                {/* 1. PAYMENT METHOD */}
+                                <div className="detail-item">
+                                    <label><strong>Method:</strong></label>
+                                    <span style={{ 
+                                        marginLeft: '10px', 
+                                        padding: '4px 8px', 
+                                        borderRadius: '4px', 
+                                        backgroundColor: (selectedEnrollment.payments?.[0]?.paymentMethod === 'Cash') ? '#fff3e0' : '#e3f2fd', 
+                                        color: (selectedEnrollment.payments?.[0]?.paymentMethod === 'Cash') ? '#e65100' : '#0d47a1', 
+                                        fontWeight: 'bold' 
+                                    }}>
+                                        {selectedEnrollment.payments?.[0]?.paymentMethod || 'N/A'}
+                                    </span>
+                                </div>
+                              {/* 2. AMOUNT PAID */}
+                                <div className="detail-item">
+                                    <label><strong>Amount:</strong></label>
+                                    <span style={{ marginLeft: '10px' }}>
+                                        ₱{selectedEnrollment.payments?.[0] 
+                                            ? Number(selectedEnrollment.payments[0].amount_paid).toLocaleString() 
+                                            : '0.00'}
+                                    </span>
+                                </div>
+                              
+                              {/* 3. REFERENCE / STATUS */}
+                              <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                                  <label><strong>Reference / Status:</strong></label>
+                                  
+                                  {selectedEnrollment.status === 'approved' ? (
+                                      <span style={{ marginLeft: '10px', color: '#2e7d32', fontWeight: 'bold' }}>
+                                          ✅ Down payment is processed {(selectedEnrollment.payments?.[0]?.paymentMethod === 'Cash') ? '(Cash)' : `(Ref: ${selectedEnrollment.payments?.[0]?.reference_number})`}
+                                      </span>
+                                  ) : (
+                                      <>
+                                          {selectedEnrollment.payments?.[0]?.paymentMethod === 'Cash' ? (
+                                              <span style={{ marginLeft: '10px', color: '#d32f2f', fontWeight: 'bold' }}>
+                                                  ⚠️ WALK-IN: Await physical payment at Registrar
+                                              </span>
+                                          ) : (
+                                              <span className="ref-badge" style={{ marginLeft: '10px', backgroundColor: '#eee', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                                  {selectedEnrollment.payments?.[0]?.reference_number || 'No Reference'}
+                                              </span>
+                                          )}
+                                      </>
+                                  )}
+                              </div>
+                          </div>
+
+                         {/* Only show Receipt Image if it's NOT Cash and image exists */}
+                      {selectedEnrollment.payments?.[0]?.paymentMethod !== 'Cash' && selectedEnrollment.payments?.[0]?.receipt_path && (
+                          <div className="receipt-preview" style={{ marginTop: '15px' }}>
+                              <label><strong>Proof of Payment:</strong></label>
+                              <div style={{ marginTop: '10px' }}>
+                                  <a 
+                                      href={`http://localhost:8000/storage/${selectedEnrollment.payments[0].receipt_path}`} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                  >
+                                      <img 
+                                          src={`http://localhost:8000/storage/${selectedEnrollment.payments[0].receipt_path}`} 
+                                          alt="Receipt" 
+                                          style={{ 
+                                              width: '100px', 
+                                              height: '100px', 
+                                              objectFit: 'cover', 
+                                              borderRadius: '4px', 
+                                              border: '1px solid #ccc', 
+                                              cursor: 'pointer' 
+                                          }}
+                                      />
+                                  </a>
+                                  <p style={{ fontSize: '0.8rem', color: '#666' }}>Click image to enlarge</p>
+                              </div>
+                          </div>
+                      )}
+                      </div>
+
+
+                      {selectedEnrollment.siblings && selectedEnrollment.siblings.length > 0 && (
+                        <section className="sibling-section" style={{ marginTop: '20px' }}>
+                          <h4>Siblings Enrolled</h4>
+                          <ul>
+                            {selectedEnrollment.siblings.map((s, idx) => (
+                              <li key={idx}>{s.full_name} - {s.birth_date}</li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                    </div>
+                    
                     <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 20px' }}>
                       <button 
                         onClick={() => generatePDF(selectedEnrollment)} 
@@ -355,8 +436,7 @@ const exportToExcel = () => {
                     </div>
                   </div>
                 </div>
-       
-            )}
+              )}
 
     </div>
   );
