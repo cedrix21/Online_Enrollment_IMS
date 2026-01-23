@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "php artisan migrate --force && php artisan route:clear && php artisan config:clear  && php artisan storage:link || true && start-php-apache && php artisan serve --host 0.0.0.0 --port $PORT",
+    "startCommand": "php artisan migrate --force && php artisan route:clear && php artisan config:clear  && php artisan storage:link || true && start-php-apache",
     "healthcheckPath": "/up",
     "restartPolicyType": "ON_FAILURE"
   }
