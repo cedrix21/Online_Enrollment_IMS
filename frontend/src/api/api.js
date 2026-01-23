@@ -20,14 +20,20 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+// api.js
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.clear();
-      // Only redirect if not already on login to avoid loops
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      
+      // Define your public pages here
+      const publicPages = ["/login", "/enroll", "/enrollment-qr"];
+      const isPublicPage = publicPages.some(path => window.location.pathname.includes(path));
+
+      // Only redirect if they are trying to access a PROTECTED page
+      if (!isPublicPage) {
+        window.location.href = "/*";
       }
     }
     return Promise.reject(error);
