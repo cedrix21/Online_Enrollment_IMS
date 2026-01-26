@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "php artisan storage:link || true && chmod -R 775 storage bootstrap/cache && nixpacks-php-server",
+    "startCommand": "rm -rf public/storage && php artisan storage:link && chmod -R 775 storage bootstrap/cache && (nginx -g 'daemon off;' & php-fpm -F)",
     "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE"
   }
