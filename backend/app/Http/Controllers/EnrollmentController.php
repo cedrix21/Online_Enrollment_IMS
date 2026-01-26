@@ -208,15 +208,22 @@ public function updateStatus(Request $request, $id)
 
 
 
-    public function summary()
+  public function summary()
 {
     return response()->json([
         'total' => Enrollment::count(),
         'pending' => Enrollment::where('status', 'pending')->count(),
         'approved' => Enrollment::where('status', 'approved')->count(),
         'rejected' => Enrollment::where('status', 'rejected')->count(),
-        'unpaid_enrollments' => Enrollment::where('payment_status', 'unpaid')->count(),
-        'pending_payments' => Enrollment::where('payment_status', 'pending_verification')->count(),
+        
+        // Use whereHas to look into the payments relationship
+        'unpaid_enrollments' => Enrollment::whereHas('payments', function($query) {
+            $query->where('payment_status', 'unpaid');
+        })->count(),
+        
+        'pending_payments' => Enrollment::whereHas('payments', function($query) {
+            $query->where('payment_status', 'pending_verification');
+        })->count(),
     ]);
 }
 
