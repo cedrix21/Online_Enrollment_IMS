@@ -10,33 +10,8 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 use App\Http\Controllers\BillingController;
-use Illuminate\Support\Facades\Artisan;
-use Symfony\Component\Process\Process;
 
-Route::get('/fix-storage', function () {
-    try {
-        // 1. Create the link if it's missing
-        Artisan::call('storage:link', ['--force' => true]);
-        
-        // 2. Ensure the receipts directory exists
-        $receiptsPath = storage_path('app/public/receipts');
-        if (!file_exists($receiptsPath)) {
-            mkdir($receiptsPath, 0775, true);
-        }
 
-        // 3. Force permissions on the whole storage tree
-        $process = new Process(['chmod', '-R', '775', storage_path()]);
-        $process->run();
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Storage link recreated and permissions fixed!',
-            'output' => Artisan::output()
-        ]);
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-});
 
 
 
