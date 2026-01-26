@@ -4,6 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
+    "startCommand": "php artisan migrate:fresh --force --seed && php artisan storage:link || true && chmod -R 775 storage bootstrap/cache && heroku-php-apache2 public/",
     "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE"
   }
