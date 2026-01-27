@@ -10,9 +10,11 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev
 
-# 2. Fix "More than one MPM loaded" - disable ALL MPM modules and configs
-RUN a2dismod mpm_event mpm_worker mpm_prefork || true && \
-    a2disconf mpm_event_apache2 mpm_worker_apache2 || true && \
+# 2. Aggressively remove ALL conflicting MPM symlinks and load only prefork
+RUN rm -f /etc/apache2/mods-enabled/mpm_* && \
+    rm -f /etc/apache2/mods-available/mpm_event.load && \
+    rm -f /etc/apache2/mods-available/mpm_worker.load && \
+    a2dismod mpm_event mpm_worker || true && \
     a2enmod mpm_prefork && \
     a2enmod rewrite
 
