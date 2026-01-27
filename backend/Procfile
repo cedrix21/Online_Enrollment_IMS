@@ -1,1 +1,0 @@
-web: chmod -R 775 storage bootstrap/cache && php artisan storage:link && nginx -c /etc/nginx/nginx.conf && php-fpm -F
