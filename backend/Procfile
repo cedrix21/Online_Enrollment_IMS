@@ -1,1 +1,1 @@
-web: php artisan storage:link || true && chmod -R 775 storage bootstrap/cache && heroku-php-apache2 public/
+web: rm -rf public/storage && php artisan storage:link && heroku-php-apache2 public/
