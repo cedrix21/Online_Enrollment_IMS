@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": {
+          "nixPkgs": ["php82", "nginx", "php82Extensions.pdo_mysql", "php82Extensions.bcmath", "php82Extensions.fileinfo"]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "chmod -R 775 storage bootstrap/cache && php artisan storage:link && nginx -c /etc/nginx/nginx.conf && php-fpm -F",
+    "healthcheckPath": "/",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
