@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm as php
 
 # 1. Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -10,41 +10,35 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev
 
-# 2. Aggressively remove ALL conflicting MPM symlinks and load only prefork
-RUN rm -f /etc/apache2/mods-enabled/mpm_* && \
-    rm -f /etc/apache2/mods-available/mpm_event.load && \
-    rm -f /etc/apache2/mods-available/mpm_worker.load && \
-    a2dismod mpm_event mpm_worker || true && \
-    a2enmod mpm_prefork && \
-    a2enmod rewrite
-
-# 3. Install PHP extensions
+# 2. Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# 4. Set working directory
+# 3. Set working directory
 WORKDIR /var/www/html
 
-# 5. Copy project files
+# 4. Copy project files
 COPY . /var/www/html
 
-# 6. Install Composer
+# 5. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# 7. Set permissions and Storage Link
+# 6. Set permissions and Storage Link
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
     chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && \
     rm -rf public/storage && php artisan storage:link
 
-# 8. Configure Apache Port to 8080
-RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
-    sed -i 's/:80/:8080/' /etc/apache2/sites-available/000-default.conf
+# Stage 2: Nginx
+FROM nginx:alpine
 
-# 9. Set Public Folder as Root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf && \
-    sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+WORKDIR /var/www/html
+
+# Copy PHP files from PHP stage
+COPY --from=php /var/www/html /var/www/html
+
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
 
-CMD ["apache2-foreground"]
+CMD ["nginx", "-g", "daemon off;"]
