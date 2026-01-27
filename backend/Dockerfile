@@ -10,9 +10,11 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev
 
-# 2. Fix "More than one MPM loaded" error
-# We disable 'event' and 'worker' to ensure only 'prefork' (required for PHP) is active
-RUN a2dismod mpm_event mpm_worker || true && a2enmod mpm_prefork rewrite
+# 2. FORCE FIX for "More than one MPM loaded"
+# We manually remove the conflicting module files so they CANNOT be loaded
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf \
+    && a2enmod mpm_prefork rewrite
 
 # 3. Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
@@ -20,28 +22,26 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 # 4. Set working directory
 WORKDIR /var/www/html
 
-# 5. Copy the project files
+# 5. Copy project files
 COPY . /var/www/html
 
 # 6. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# 7. Set permissions
+# 7. Set permissions and Storage Link
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && \
+    rm -rf public/storage && php artisan storage:link
 
-# 8. Handle the Storage Link
-RUN rm -rf public/storage && php artisan storage:link
+# 8. Configure Apache Port to 8080
+RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
+    sed -i 's/:80/:8080/' /etc/apache2/sites-available/000-default.conf
 
-# 9. Configure Apache port (Railway usually uses 8080)
-RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf
-RUN sed -i 's/:80/:8080/' /etc/apache2/sites-available/000-default.conf
-
-# 10. Point Apache to the Laravel /public folder
+# 9. Set Public Folder as Root
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf && \
+    sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 
 EXPOSE 8080
 
