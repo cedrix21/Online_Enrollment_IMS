@@ -10,11 +10,9 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev
 
-# 2. FORCE FIX for "More than one MPM loaded"
-# We manually remove the conflicting module files so they CANNOT be loaded
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf \
-    && rm -f /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf \
-    && a2enmod mpm_prefork rewrite
+# 2. Fix "More than one MPM loaded" by disabling conflicting MPMs and enabling prefork
+RUN a2dismod mpm_event mpm_worker && \
+    a2enmod mpm_prefork rewrite
 
 # 3. Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
