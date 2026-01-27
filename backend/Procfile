@@ -1,1 +1,0 @@
-web: rm -rf public/storage && php artisan storage:link && heroku-php-apache2 public/
