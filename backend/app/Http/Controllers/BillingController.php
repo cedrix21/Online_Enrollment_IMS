@@ -8,33 +8,50 @@ use Illuminate\Support\Facades\DB;
 
 class BillingController extends Controller
 {
-    /**
-     * Record a new payment for a student
-     */
     public function addPayment(Request $request, $studentId)
     {
         $validated = $request->validate([
             'amount_paid'      => 'required|numeric|min:1',
-            'paymentMethod'   => 'required|string|in:Cash,GCash,Bank Transfer',
-            'payment_type'     => 'required|string', // e.g., "Monthly Installment", "Prelim Exam"
+            'paymentMethod'    => 'required|string|in:Cash,GCash,Bank Transfer',
+            'payment_type'     => 'required|string',
             'reference_number' => 'nullable|string',
         ]);
 
         try {
-            $student = Student::findOrFail($studentId);
+            $student = Student::with('payments')->findOrFail($studentId);
+
+            // Calculate tuition and check if fully paid
+            $rates = [
+                'Kindergarten 1' => 20000,
+                'Kindergarten 2' => 20000,
+                'Grade 1' => 25000,
+                'Grade 2' => 27500,
+                'Grade 3' => 30000,
+                'Grade 4' => 32000,
+                'Grade 5' => 34000,
+                'Grade 6' => 36000,
+            ];
+            
+            $totalTuition = $rates[$student->gradeLevel] ?? 25000;
+            $totalPaid = $student->payments->sum('amount_paid') + $validated['amount_paid'];
+            
+            // Determine payment status
+            $paymentStatus = $totalPaid >= $totalTuition ? 'fully_paid' : 'partial';
 
             $payment = $student->payments()->create([
                 'enrollment_id'    => $student->enrollment_id,
                 'amount_paid'      => $validated['amount_paid'],
-                'paymentMethod'   => $validated['paymentMethod'],
+                'paymentMethod'    => $validated['paymentMethod'],
                 'payment_type'     => $validated['payment_type'],
                 'reference_number' => $validated['reference_number'] ?? 'CASH-' . time(),
                 'payment_date'     => now(),
+                'payment_status'   => $paymentStatus,
             ]);
 
             return response()->json([
                 'message' => 'Payment recorded successfully',
-                'payment' => $payment
+                'payment' => $payment,
+                'account_status' => $paymentStatus
             ], 201);
 
         } catch (\Exception $e) {
@@ -42,34 +59,38 @@ class BillingController extends Controller
         }
     }
 
-    /**
-     * Get all payments and calculate balance for a student
-     */
     public function getStudentLedger($studentId)
     {
         $student = Student::with(['payments'])->findOrFail($studentId);
         
-       // Define your tuition rates here
-            $rates = [
-                'Grade 1' => 25000,
-                'Grade 2' => 27500,
-                'Grade 3' => 30000,
-                // Add more as needed...
-            ];
-             // Get the rate based on student's grade_level, default to 25000 if not found
-         $totalTuition = $rates[$student->grade_level] ?? 25000;
-
+        $rates = [
+            'Kindergarten 1' => 20000,
+            'Kindergarten 2' => 20000,
+            'Grade 1' => 25000,
+            'Grade 2' => 27500,
+            'Grade 3' => 30000,
+            'Grade 4' => 32000,
+            'Grade 5' => 34000,
+            'Grade 6' => 36000,
+        ];
+        
+        $totalTuition = $rates[$student->gradeLevel] ?? 25000;
         $totalPaid = $student->payments->sum('amount_paid');
+        $balance = $totalTuition - $totalPaid;
+        
+        // Determine account status
+        $accountStatus = $balance <= 0 ? 'fully_paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
         
         return response()->json([
-        'student' => $student->firstName . ' ' . $student->lastName,
-        'grade_level' => $student->grade_level, // Send this to frontend
-        'ledger' => $student->payments,
-        'summary' => [
-            'total_tuition' => $totalTuition,
-            'total_paid' => $totalPaid,
-            'balance' => $totalTuition - $totalPaid
-        ]
-    ]);
+            'student' => $student->firstName . ' ' . $student->lastName,
+            'grade_level' => $student->gradeLevel,
+            'ledger' => $student->payments,
+            'summary' => [
+                'total_tuition' => $totalTuition,
+                'total_paid' => $totalPaid,
+                'balance' => $balance,
+                'status' => $accountStatus
+            ]
+        ]);
     }
 }

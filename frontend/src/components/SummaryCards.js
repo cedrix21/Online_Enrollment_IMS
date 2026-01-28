@@ -26,6 +26,20 @@ export default function SummaryCards({ summary }) {
       icon: <FaTimesCircle />,
       class: "rejected-card",
       status: "rejected"
+    },
+    {
+      label: "Unpaid Enrollments",
+      count: summary.unpaid_enrollments || 0,
+      icon: <FaDollarSign />,
+      class: "unpaid-card",
+      route: "/billing-management"
+    },
+    {
+      label: "Pending Payments",
+      count: summary.pending_payments || 0,
+      icon: <FaExclamationTriangle />,
+      class: "pending-payment-card",
+      route: "/billing-management"
     }
   ];
 

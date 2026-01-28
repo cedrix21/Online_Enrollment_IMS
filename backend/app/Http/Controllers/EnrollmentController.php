@@ -258,9 +258,12 @@ class EnrollmentController extends Controller
             'approved' => Enrollment::where('status', 'approved')->count(),
             'rejected' => Enrollment::where('status', 'rejected')->count(),
             
-            'unpaid_enrollments' => Enrollment::whereHas('payments', function($query) {
-                $query->where('payment_status', 'unpaid');
-            })->count(),
+            'unpaid_enrollments' => DB::table('students')
+            ->leftJoin('payments', 'students.id', '=', 'payments.student_id')
+            ->selectRaw('students.id, SUM(COALESCE(payments.amount_paid, 0)) as total_paid')
+            ->groupBy('students.id')
+            ->havingRaw('total_paid < 25000') // Adjust based on your tuition rates
+            ->count(),
             
             'pending_payments' => Enrollment::whereHas('payments', function($query) {
                 $query->where('payment_status', 'pending_verification');

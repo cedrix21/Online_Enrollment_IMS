@@ -27,6 +27,9 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
         }
     };
 
+
+    
+
     return (
         <div className="modal-overlay">
             <div className="modal-content">
@@ -102,9 +105,13 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 // --- MAIN COMPONENT: The Ledger View ---
 const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAdded }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [accountStatus, setAccountStatus] = useState('partial');
 
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
     const balance = totalTuition - totalPaid;
+    
+    // Determine status
+    const status = balance <= 0 ? 'fully_paid' : (totalPaid > 0 ? 'partial' : 'unpaid');
 
     return (
         <div className="billing-container">
@@ -128,9 +135,11 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                     <small>Total Paid</small>
                     <h3>₱{totalPaid.toLocaleString()}</h3>
                 </div>
-                <div className="summary-card balance">
-                    <small>Remaining Balance</small>
-                    <h3>₱{balance.toLocaleString()}</h3>
+                <div className={`summary-card ${balance <= 0 ? 'paid-full' : 'balance'}`}>
+                    <small>{balance <= 0 ? 'Status' : 'Remaining Balance'}</small>
+                    <h3 style={{ color: balance <= 0 ? '#4caf50' : '#f5222d' }}>
+                        {balance <= 0 ? '✓ PAID' : `₱${balance.toLocaleString()}`}
+                    </h3>
                 </div>
             </div>
 
