@@ -3,14 +3,15 @@ import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
 import StudentBilling from '../components/StudentBilling';
 import API from '../api/api';
+import './BillingManagement.css';
 
 const BillingManagement = ({ user }) => {
     const [students, setStudents] = useState([]);
-    const [searchTerm, setSearchTerm] = useState(''); // New state for search
+    const [searchTerm, setSearchTerm] = useState('');
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [totalTuition, setTotalTuition] = useState(25000); // Default
+    const [totalTuition, setTotalTuition] = useState(25000);
 
     useEffect(() => {
         fetchStudents();
@@ -18,7 +19,7 @@ const BillingManagement = ({ user }) => {
 
     const fetchStudents = async () => {
         try {
-            const res = await API.get('/students'); 
+            const res = await API.get('/students');
             setStudents(res.data);
             setLoading(false);
         } catch (err) {
@@ -37,81 +38,60 @@ const BillingManagement = ({ user }) => {
         }
     };
 
-    // Filter students based on search term (First Name, Last Name, or ID)
-    // Filter students with safety checks (ensures values exist before calling toLowerCase)
-const filteredStudents = students.filter(s => {
-    const search = searchTerm.toLowerCase();
-    
-    // Check if fields exist, otherwise default to an empty string
-    const fName = s.firstName ? s.firstName.toLowerCase() : '';
-    const lName = s.lastName ? s.lastName.toLowerCase() : '';
-    const idNum = s.student_id_number ? s.student_id_number.toLowerCase() : '';
+    const filteredStudents = students.filter(s => {
+        const search = searchTerm.toLowerCase();
+        const fName = s.firstName ? s.firstName.toLowerCase() : '';
+        const lName = s.lastName ? s.lastName.toLowerCase() : '';
+        const idNum = s.studentId ? s.studentId.toLowerCase() : '';
 
-    return fName.includes(search) || 
-           lName.includes(search) || 
-           idNum.includes(search);
-});
+        return fName.includes(search) || 
+               lName.includes(search) || 
+               idNum.includes(search);
+    });
 
     return (
         <div className="dashboard-layout">
             <SideBar user={user} />
             <div className="main-content">
                 <TopBar user={user} />
-
                 
-                
-                <div className="content-body" style={{ padding: '20px' }}>
-                    <div className="billing-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px' }}>
+                <div className="billing-content-body">
+                    <div className="billing-grid">
                         
                         {/* Student List Column */}
-                        <div className="student-list-card" style={{ background: '#fff', borderRadius: '8px', padding: '15px', height: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Enrolled Students</h3>
+                        <div className="student-list-card">
+                            <h3>Enrolled Students</h3>
                             
-                            {/* SEARCH BAR INPUT */}
-                            <div style={{ marginBottom: '15px', position: 'relative' }}>
+                            {/* Search Bar */}
+                            <div className="student-search-wrapper">
                                 <input 
                                     type="text"
                                     placeholder="Search student..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 10px 10px 35px',
-                                        borderRadius: '20px',
-                                        border: '1px solid #ddd',
-                                        fontSize: '0.9rem',
-                                        boxSizing: 'border-box'
-                                    }}
+                                    className="student-search-input"
                                 />
-                                <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#aaa' }}></i>
+                                <i className="fas fa-search search-icon"></i>
                             </div>
 
-                            <div className="scroll-area" style={{ flex: 1, overflowY: 'auto' }}>
+                            <div className="student-scroll-area">
                                 {loading ? (
-                                    <p style={{ textAlign: 'center', color: '#888' }}>Loading...</p>
+                                    <p className="student-loading">Loading...</p>
                                 ) : filteredStudents.length > 0 ? (
                                     filteredStudents.map(s => (
                                         <div 
                                             key={s.id} 
                                             onClick={() => handleSelectStudent(s)}
-                                            style={{ 
-                                                padding: '12px', 
-                                                cursor: 'pointer', 
-                                                borderRadius: '8px',
-                                                marginBottom: '8px',
-                                                transition: 'all 0.2s',
-                                                background: selectedStudent?.id === s.id ? '#eef6ff' : 'transparent',
-                                                border: selectedStudent?.id === s.id ? '1px solid #007bff' : '1px solid #f0f0f0'
-                                            }}
+                                            className={`student-item ${selectedStudent?.id === s.id ? 'selected' : ''}`}
                                         >
-                                            <div style={{ fontWeight: 'bold', color: selectedStudent?.id === s.id ? '#007bff' : '#333' }}>
+                                            <div className="student-name">
                                                 {s.lastName}, {s.firstName}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#777' }}>ID: {s.student_id_number}</div>
+                                            <div className="student-id">ID: {s.studentId}</div>
                                         </div>
                                     ))
                                 ) : (
-                                    <p style={{ textAlign: 'center', color: '#999', fontSize: '0.9rem', marginTop: '20px' }}>No students found.</p>
+                                    <p className="student-empty">No students found.</p>
                                 )}
                             </div>
                         </div>
@@ -123,12 +103,11 @@ const filteredStudents = students.filter(s => {
                                     studentId={selectedStudent.id}
                                     payments={payments}
                                     onPaymentAdded={(newPayment) => setPayments([...payments, newPayment])}
-                                   totalTuition={totalTuition}
-                                    
+                                    totalTuition={totalTuition}
                                 />
                             ) : (
-                                <div style={{ textAlign: 'center', marginTop: '100px', color: '#ccc', background: '#fff', padding: '50px', borderRadius: '12px' }}>
-                                    <i className="fas fa-user-circle" style={{ fontSize: '4rem', marginBottom: '15px', display: 'block' }}></i>
+                                <div className="ledger-empty-state">
+                                    <i className="fas fa-user-circle"></i>
                                     <h3>No Student Selected</h3>
                                     <p>Please select a student from the left panel to manage their billing records.</p>
                                 </div>

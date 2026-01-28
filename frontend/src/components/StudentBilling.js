@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import API from '../api/api';
+import './StudentBilling.css';
 
 // --- SUB-COMPONENT: The Modal Form ---
 const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
@@ -17,7 +18,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
         try {
             const response = await API.post(`/admin/billing/student/${studentId}/pay`, paymentData);
             alert("Payment recorded successfully!");
-            onPaymentSuccess(response.data.payment); 
+            onPaymentSuccess(response.data.payment);
             onClose();
         } catch (err) {
             alert("Error: " + (err.response?.data?.message || "Failed to save payment"));
@@ -27,16 +28,14 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
     };
 
     return (
-
-        
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '400px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
-                <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Add New Payment</h3>
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Add New Payment</h3>
                 <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Payment Type</label>
+                    <div className="form-group">
+                        <label className="form-label">Payment Type</label>
                         <select 
-                            style={{ width: '100%', padding: '8px' }}
+                            className="form-select"
                             value={paymentData.payment_type}
                             onChange={(e) => setPaymentData({...paymentData, payment_type: e.target.value})}
                         >
@@ -49,23 +48,23 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                         </select>
                     </div>
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Amount (₱)</label>
+                    <div className="form-group">
+                        <label className="form-label">Amount (₱)</label>
                         <input 
-                            type="number" 
-                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                            type="number"
+                            className="form-input"
                             required
                             value={paymentData.amount_paid}
                             onChange={(e) => setPaymentData({...paymentData, amount_paid: e.target.value})}
                         />
                     </div>
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Method</label>
+                    <div className="form-group">
+                        <label className="form-label">Method</label>
                         <select 
-                            style={{ width: '100%', padding: '8px' }}
-                            value={paymentData.payment_method}
-                            onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
+                            className="form-select"
+                            value={paymentData.paymentMethod}
+                            onChange={(e) => setPaymentData({...paymentData, paymentMethod: e.target.value})}
                         >
                             <option value="Cash">Cash</option>
                             <option value="GCash">GCash</option>
@@ -73,12 +72,12 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                         </select>
                     </div>
 
-                    {paymentData.payment_method !== 'Cash' && (
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Reference Number</label>
+                    {paymentData.paymentMethod !== 'Cash' && (
+                        <div className="form-group">
+                            <label className="form-label">Reference Number</label>
                             <input 
-                                type="text" 
-                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                type="text"
+                                className="form-input"
                                 required
                                 value={paymentData.reference_number}
                                 onChange={(e) => setPaymentData({...paymentData, reference_number: e.target.value})}
@@ -86,11 +85,11 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                        <button type="submit" disabled={loading} style={{ flex: 1, padding: '10px', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                    <div className="modal-buttons">
+                        <button type="submit" disabled={loading} className="btn-submit">
                             {loading ? "Saving..." : "Record Payment"}
                         </button>
-                        <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px', background: '#ccc', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                        <button type="button" onClick={onClose} className="btn-cancel">
                             Cancel
                         </button>
                     </div>
@@ -108,63 +107,62 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
     const balance = totalTuition - totalPaid;
 
     return (
-        <div className="billing-container" style={{ padding: '20px', background: '#fff', borderRadius: '8px' }}>
+        <div className="billing-container">
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ margin: 0 }}>Student Ledger</h2>
+            <div className="billing-header">
+                <h2>Student Ledger</h2>
                 <button 
                     onClick={() => setIsModalOpen(true)}
-                    style={{ padding: '10px 20px', backgroundColor: '#b8860b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    className="add-payment-btn"
                 >
                     + Add New Payment
                 </button>
             </div>
 
-            <div className="billing-summary" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ padding: '15px', background: '#f0f7ff', borderRadius: '8px', borderLeft: '5px solid #007bff' }}>
+            <div className="billing-summary">
+                <div className="summary-card tuition">
                     <small>Total Tuition</small>
-                    <h3 style={{ margin: 0 }}>₱{totalTuition.toLocaleString()}</h3>
+                    <h3>₱{totalTuition.toLocaleString()}</h3>
                 </div>
-                <div style={{ padding: '15px', background: '#f6ffed', borderRadius: '8px', borderLeft: '5px solid #52c41a' }}>
+                <div className="summary-card paid">
                     <small>Total Paid</small>
-                    <h3 style={{ margin: 0, color: '#52c41a' }}>₱{totalPaid.toLocaleString()}</h3>
+                    <h3>₱{totalPaid.toLocaleString()}</h3>
                 </div>
-                <div style={{ padding: '15px', background: '#fff1f0', borderRadius: '8px', borderLeft: '5px solid #f5222d' }}>
+                <div className="summary-card balance">
                     <small>Remaining Balance</small>
-                    <h3 style={{ margin: 0, color: '#f5222d' }}>₱{balance.toLocaleString()}</h3>
+                    <h3>₱{balance.toLocaleString()}</h3>
                 </div>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="payment-table">
                 <thead>
-                    <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
-                        <th style={{ padding: '10px' }}>Date</th>
+                    <tr>
+                        <th>Date</th>
                         <th>Type</th>
                         <th>Method</th>
                         <th>Ref #</th>
-                        <th style={{ textAlign: 'right' }}>Amount</th>
+                        <th className="text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     {payments.length > 0 ? (
                         payments.map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '10px' }}>{new Date(p.payment_date || p.created_at).toLocaleDateString()}</td>
-                                <td><strong>{p.payment_type}</strong></td>
-                                <td>{p.payment_method}</td>
-                                <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{p.reference_number}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₱{parseFloat(p.amount_paid).toLocaleString()}</td>
+                            <tr key={p.id}>
+                                <td>{new Date(p.payment_date || p.created_at).toLocaleDateString()}</td>
+                                <td className="payment-type">{p.payment_type}</td>
+                                <td>{p.paymentMethod}</td>
+                                <td className="payment-ref">{p.reference_number}</td>
+                                <td className="payment-amount">₱{parseFloat(p.amount_paid).toLocaleString()}</td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#888' }}>No payment records found.</td>
+                            <td colSpan="5" className="no-payments">No payment records found.</td>
                         </tr>
                     )}
                 </tbody>
             </table>
 
-            {/* Modal Logic */}
             {isModalOpen && (
                 <AddPaymentModal 
                     studentId={studentId} 
