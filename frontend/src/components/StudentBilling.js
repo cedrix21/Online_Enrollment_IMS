@@ -66,7 +66,6 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                             value={paymentData.paymentMethod}
                             onChange={(e) => setPaymentData({...paymentData, paymentMethod: e.target.value})}
                         >
-                            <option value="Select Method">Select Method</option>
                             <option value="Cash">Cash</option>
                             <option value="GCash">GCash</option>
                             <option value="Bank Transfer">Bank Transfer</option>
