@@ -1,22 +1,33 @@
 # Use the optimized Laravel image
 FROM serversideup/php:8.2-fpm-nginx
 
+# Switch to root to create directories
+USER root
+
 WORKDIR /var/www/html
 
-COPY . .
+# Copy application files
+COPY --chown=www-data:www-data . .
 
-# 1. Create missing folders (just in case .gitignore excluded them)
+# Create required directories with proper ownership
 RUN mkdir -p storage/framework/sessions \
     storage/framework/views \
     storage/framework/cache \
+    storage/framework/testing \
     storage/logs \
-    bootstrap/cache
+    storage/app/public \
+    bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# 2. Fix Permissions FIRST (So Composer can write to them)
-RUN chmod -R 775 storage bootstrap/cache
+# Switch back to www-data user for security
+USER www-data
 
-# 3. Install dependencies (Now safe to run scripts)
-RUN composer install --no-dev --optimize-autoloader
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# 4. Create the storage link
+# Create storage link
 RUN php artisan storage:link
+
+# Expose port
+EXPOSE 8080
