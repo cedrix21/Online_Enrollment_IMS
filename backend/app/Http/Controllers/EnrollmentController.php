@@ -17,37 +17,44 @@ class EnrollmentController extends Controller
 {
     // NEW METHOD: Upload to Supabase
     private function uploadToSupabase($file)
-    {
-        try {
-            $client = new Client();
-            $supabaseUrl = env('SUPABASE_URL');
-            $supabaseKey = env('SUPABASE_KEY');
-            
-            // Generate unique filename
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $filePath = 'receipts/' . $fileName;
-            
-            // Upload to Supabase Storage
-            $response = $client->post(
-                "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}",
-                [
-                    'headers' => [
-                        'Authorization' => "Bearer {$supabaseKey}",
-                        'Content-Type' => $file->getMimeType(),
-                    ],
-                    'body' => file_get_contents($file->getRealPath())
-                ]
-            );
+{
+    try {
+        $client = new Client([
+            'verify' => env('APP_ENV') === 'production'
+        ]);
+        
+        $supabaseUrl = env('SUPABASE_URL');
+        $supabaseKey = env('SUPABASE_KEY');
+        
+        // Generate unique filename
+        $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        
+        // Upload to Supabase Storage
+        $response = $client->post(
+            "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}",
+            [
+                'headers' => [
+                    'Authorization' => "Bearer {$supabaseKey}",
+                    'Content-Type' => $file->getMimeType(),
+                ],
+                'body' => file_get_contents($file->getRealPath())
+            ]
+        );
 
-            // Return public URL
-            return "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
-            
-        } catch (\Exception $e) {
-            Log::error("Supabase upload failed: " . $e->getMessage());
-            throw new \Exception("File upload failed: " . $e->getMessage());
-        }
+        // Log success for debugging
+        Log::info("File uploaded successfully: {$fileName}", [
+            'status' => $response->getStatusCode(),
+            'file' => $fileName
+        ]);
+
+        // Return public URL
+        return "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
+        
+    } catch (\Exception $e) {
+        Log::error("Supabase upload failed: " . $e->getMessage());
+        throw new \Exception("File upload failed: " . $e->getMessage());
     }
-
+}
     public function index()
     {
         try {
