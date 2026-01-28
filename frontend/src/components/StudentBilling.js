@@ -6,7 +6,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [paymentData, setPaymentData] = useState({
         amount_paid: '',
-        payment_method: 'Cash',
+        paymentMethod: 'Cash',
         payment_type: 'Monthly Installment',
         reference_number: ''
     });
