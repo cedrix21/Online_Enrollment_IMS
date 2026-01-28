@@ -26,7 +26,7 @@ class BillingController extends Controller
             $payment = $student->payments()->create([
                 'enrollment_id'    => $student->enrollment_id,
                 'amount_paid'      => $validated['amount_paid'],
-                'payment_method'   => $validated['payment_method'],
+                'paymentMethod'   => $validated['paymentMethod'],
                 'payment_type'     => $validated['payment_type'],
                 'reference_number' => $validated['reference_number'] ?? 'CASH-' . time(),
                 'payment_date'     => now(),
