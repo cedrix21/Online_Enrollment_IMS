@@ -1,7 +1,7 @@
 import { useState } from "react";
 import API from "../api/api";
 import "./Enrollment.css";
-import "./LoadingSpinner.css"; 
+import "./components/LoadingSpinner.css";
 
 export default function Enrollment() {
   // 1. Added isSubmitted state
