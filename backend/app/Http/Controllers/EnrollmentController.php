@@ -26,38 +26,51 @@ class EnrollmentController extends Controller
         $supabaseUrl = env('SUPABASE_URL');
         $supabaseKey = env('SUPABASE_KEY');
         
+        // Log for debugging
+        Log::info("Starting Supabase upload", [
+            'url' => $supabaseUrl,
+            'key_length' => strlen($supabaseKey),
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize()
+        ]);
+        
         // Generate unique filename
         $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}";
+        
+        Log::info("Upload URL: {$uploadUrl}");
         
         // Upload to Supabase Storage
-        $response = $client->post(
-            "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}",
-            [
-                'headers' => [
-                    'Authorization' => "Bearer {$supabaseKey}",
-                    'Content-Type' => $file->getMimeType(),
-                ],
-                'body' => file_get_contents($file->getRealPath())
-            ]
-        );
-
-        // Check if upload was successful (accept both 200 and 201)
-        $statusCode = $response->getStatusCode();
-        if ($statusCode !== 200 && $statusCode !== 201) {
-            throw new \Exception("Upload failed with status code: {$statusCode}");
-        }
-
-        // Log success for debugging
-        Log::info("File uploaded successfully: {$fileName}", [
-            'status' => $statusCode,
-            'file' => $fileName
+        $response = $client->post($uploadUrl, [
+            'headers' => [
+                'Authorization' => "Bearer {$supabaseKey}",
+                'Content-Type' => $file->getMimeType(),
+            ],
+            'body' => file_get_contents($file->getRealPath())
         ]);
 
+        $statusCode = $response->getStatusCode();
+        $responseBody = $response->getBody()->getContents();
+        
+        Log::info("Supabase response", [
+            'status' => $statusCode,
+            'body' => $responseBody
+        ]);
+
+        if ($statusCode !== 200 && $statusCode !== 201) {
+            throw new \Exception("Upload failed with status code: {$statusCode}. Response: {$responseBody}");
+        }
+
         // Return public URL
-        return "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
+        $publicUrl = "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
+        Log::info("Generated public URL: {$publicUrl}");
+        
+        return $publicUrl;
         
     } catch (\Exception $e) {
-        Log::error("Supabase upload failed: " . $e->getMessage());
+        Log::error("Supabase upload failed: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
         throw new \Exception("File upload failed: " . $e->getMessage());
     }
 }
