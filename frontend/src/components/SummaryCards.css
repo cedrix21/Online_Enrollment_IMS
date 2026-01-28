@@ -5,6 +5,7 @@
   margin-bottom: 30px;
 }
 
+
 .summary-card {
   background: #fff;
   border-radius: 12px;
@@ -72,17 +73,15 @@
 .rejected-card .summary-icon-wrapper { background: #fff5f5; color: #f56565; }
 .rejected-card:hover .summary-footer { color: #f56565; }
 
-.summary-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
 
-.unpaid-card {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-}
+.unpaid-card { border-top: 4px solid #ff9800; }
+.unpaid-card .summary-icon-wrapper { background: #ebf8ff; color: #ff9800; }
+.unpaid-card:hover .summary-footer { color: #ff9800; }
 
 .pending-payment-card {
     background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
 }
+
+.pending-payment-card { border-top: 4px solid #9c27b0; }
+.pending-payment-card .summary-icon-wrapper { background: #ebf8ff; color: #9c27b0; }
+.pending-payment-card:hover .summary-footer { color: #9c27b0; }
