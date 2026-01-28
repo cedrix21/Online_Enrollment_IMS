@@ -15,7 +15,7 @@ class BillingController extends Controller
     {
         $validated = $request->validate([
             'amount_paid'      => 'required|numeric|min:1',
-            'payment_method'   => 'required|string|in:Cash,GCash,Bank Transfer',
+            'paymentMethod'   => 'required|string|in:Cash,GCash,Bank Transfer',
             'payment_type'     => 'required|string', // e.g., "Monthly Installment", "Prelim Exam"
             'reference_number' => 'nullable|string',
         ]);

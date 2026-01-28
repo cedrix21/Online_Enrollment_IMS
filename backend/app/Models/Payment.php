@@ -17,4 +17,20 @@ class Payment extends Model
         'payment_date',
         'payment_status',
     ];
+    // Relationships
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    public function enrollment()
+    {
+        return $this->belongsTo(Enrollment::class);
+    }
+
+    // Cast payment_date as date
+    protected $casts = [
+        'payment_date' => 'date',
+        'amount_paid' => 'decimal:2',
+    ];
 }

@@ -11,42 +11,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 use App\Http\Controllers\BillingController;
 
-Route::get('/debug-enrollment/{id}', function($id) {
-    $enrollment = \App\Models\Enrollment::with('payments')->find($id);
-    return response()->json([
-        'enrollment_id' => $enrollment->id,
-        'student_name' => $enrollment->firstName . ' ' . $enrollment->lastName,
-        'payment_data' => $enrollment->payments->first(),
-        'receipt_path' => $enrollment->payments->first()?->receipt_path,
-        'receipt_path_type' => gettype($enrollment->payments->first()?->receipt_path)
-    ]);
-});
 
-Route::get('/test-supabase-connection', function() {
-    try {
-        $client = new \GuzzleHttp\Client(['verify' => false]);
-        $url = env('SUPABASE_URL');
-        $key = env('SUPABASE_KEY');
-        
-        $response = $client->get("{$url}/storage/v1/bucket/receipts", [
-            'headers' => [
-                'Authorization' => "Bearer {$key}",
-                'apikey' => $key
-            ]
-        ]);
-        
-        return response()->json([
-            'status' => 'Connected to Supabase!',
-            'bucket_exists' => true,
-            'response_code' => $response->getStatusCode()
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'Connection failed',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-});
     /*
     |--------------------------------------------------------------------------
     | Public Routes (Now correctly wrapped for CORS)
