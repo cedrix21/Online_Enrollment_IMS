@@ -1,6 +1,7 @@
 import { useState } from "react";
 import API from "../api/api";
 import "./Enrollment.css";
+import "./LoadingSpinner.css"; 
 
 export default function Enrollment() {
   // 1. Added isSubmitted state
@@ -515,6 +516,22 @@ export default function Enrollment() {
           </>
         )}
       </div>
+
+
+
+      <div className="enrollment-container">
+
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner"></div>
+          <p className="loading-text">Submitting Application...</p>
+          <p className="loading-subtext">Please wait, do not close this window</p>
+        </div>
+      )}
+
     </div>
+    </div>
+
   );
+  
 }
