@@ -6,18 +6,14 @@ use Illuminate\Database\Seeder;
 use App\Models\Teacher;
 use App\Models\Section;
 use App\Models\Subject;
-use App\Models\Student;
 use App\Models\Room;
 use App\Models\TimeSlot;
 use Illuminate\Support\Facades\DB; 
-   
 
 class SchoolDataSeeder extends Seeder
 {
     public function run()
     {
-       
-
         $year = date('Y');
 
         // 1. CREATE 8 TEACHERS
@@ -59,83 +55,51 @@ class SchoolDataSeeder extends Seeder
             ]);
         }
 
-        // 3. CREATE 10 SUBJECTS
-            $baseSubjects = [
-            ['Mathematics', 'MATH'], ['English', 'ENG'], 
-            ['Science', 'SCI'], ['Filipino', 'FIL'],
+        // 3. CREATE SUBJECTS FOR EACH GRADE LEVEL
+        $baseSubjects = [
+            ['Mathematics', 'MATH'], 
+            ['English', 'ENG'], 
+            ['Science', 'SCI'], 
+            ['Filipino', 'FIL'],
             ['Araling Panlipunan', 'AP']
         ];
 
         foreach ($levels as $level) {
-        foreach ($baseSubjects as $base) {
-        Subject::create([
-            'subjectName' => $base[0],
-            'subjectCode' => $base[1] . '-' . strtoupper(str_replace(' ', '', $level)),
-            'description' => "Core $base[0] subject for $level",
-            'gradeLevel'  => $level, // Fixed: Adding the missing mandatory field
-            'teacher_id'  => $teachers[array_rand($teachers)]->id 
-        ]);
-    }
-}
-
-        // 4. CREATE 10 STUDENTS
-        $studentData = [
-            ['first' => 'Juan', 'last' => 'Dela Cruz', 'lvl' => 'Grade 1'],
-            ['first' => 'Maria', 'last' => 'Clara', 'lvl' => 'Grade 1'],
-            ['first' => 'Jose', 'last' => 'Rizal', 'lvl' => 'Grade 2'],
-            ['first' => 'Andres', 'last' => 'Bonifacio', 'lvl' => 'Grade 2'],
-            ['first' => 'Emilio', 'last' => 'Aguinaldo', 'lvl' => 'Grade 3'],
-            ['first' => 'Apolinario', 'last' => 'Mabini', 'lvl' => 'Grade 4'],
-            ['first' => 'Melchora', 'last' => 'Aquino', 'lvl' => 'Grade 5'],
-            ['first' => 'Gabriela', 'last' => 'Silang', 'lvl' => 'Grade 6'],
-            ['first' => 'Antonio', 'last' => 'Luna', 'lvl' => 'Kindergarten 1'],
-            ['first' => 'Marcelo', 'last' => 'Del Pilar', 'lvl' => 'Kindergarten 2'],
-        ];
-
-        foreach ($studentData as $index => $data) {
-            $currentSection = $createdSections[$data['lvl']] ?? null;
-
-            Student::create([
-                'studentId'  => "SICS-$year-" . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
-                'firstName'  => $data['first'],
-                'lastName'   => $data['last'],
-                'email'      => strtolower($data['first']) . $index . "@example.com",
-                'gradeLevel' => $data['lvl'],
-                'section_id' => $currentSection ? $currentSection->id : null,
-                'status'     => 'active',
-            ]);
-
-            if ($currentSection) {
-                $currentSection->increment('students_count');
+            foreach ($baseSubjects as $base) {
+                Subject::create([
+                    'subjectName' => $base[0],
+                    'subjectCode' => $base[1] . '-' . strtoupper(str_replace(' ', '', $level)),
+                    'description' => "Core $base[0] subject for $level",
+                    'gradeLevel'  => $level,
+                    'teacher_id'  => $teachers[array_rand($teachers)]->id 
+                ]);
             }
         }
-        
+
+        // 4. CREATE ROOMS AND TIME SLOTS
         // Disable foreign key checks
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
-         Room::truncate(); // Clear existing
-         TimeSlot::truncate(); // Clear existing  
+        Room::truncate(); // Clear existing
+        TimeSlot::truncate(); // Clear existing  
             
-       //  Re-enable foreign key checks
+        // Re-enable foreign key checks
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-
-        // 1. Create 10 Rooms
+        // Create 10 Rooms
         for ($i = 1; $i <= 10; $i++) {
             Room::create([
                 'room_name' => "Room " . (100 + $i),
                 'building'  => "Main Building"
             ]);
         }
-            
 
-            // 2. Create 8 Time Slots (1 hour each)
-       
+        // Create 8 Time Slots (1 hour each)
         $slots = [
             ['08:00:00', '09:00:00', '08:00 AM - 09:00 AM'],
             ['09:00:00', '10:00:00', '09:00 AM - 10:00 AM'],
             ['10:00:00', '11:00:00', '10:00 AM - 11:00 AM'],
-            ['11:00:00', '12:00:00', '11:00 AM - 12:00 AM'],
+            ['11:00:00', '12:00:00', '11:00 AM - 12:00 PM'],
             ['13:00:00', '14:00:00', '01:00 PM - 02:00 PM'],
             ['14:00:00', '15:00:00', '02:00 PM - 03:00 PM'],
             ['15:00:00', '16:00:00', '03:00 PM - 04:00 PM'],
@@ -149,7 +113,12 @@ class SchoolDataSeeder extends Seeder
                 'display_label' => $slot[2],
             ]);
         }
-    }
 
-    
+        echo "✅ School data seeded successfully!\n";
+        echo "   - 8 Teachers created\n";
+        echo "   - 8 Sections created\n";
+        echo "   - " . (count($levels) * count($baseSubjects)) . " Subjects created\n";
+        echo "   - 10 Rooms created\n";
+        echo "   - 8 Time Slots created\n";
+    }
 }
