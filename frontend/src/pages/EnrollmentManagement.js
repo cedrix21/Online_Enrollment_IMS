@@ -384,32 +384,40 @@ const exportToExcel = () => {
                           </div>
 
                          {/* Only show Receipt Image if it's NOT Cash and image exists */}
-                      {selectedEnrollment.payments?.[0]?.paymentMethod !== 'Cash' && selectedEnrollment.payments?.[0]?.receipt_path && (
-                          <div className="receipt-preview" style={{ marginTop: '15px' }}>
-                              <label><strong>Proof of Payment:</strong></label>
-                              <div style={{ marginTop: '10px' }}>
-                                  <a 
-                                      href={`${STORAGE_URL}/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
-                                      target="_blank" 
-                                      rel="noreferrer"
-                                  >
-                                      <img 
-                                          src={`${STORAGE_URL}/${selectedEnrollment.payments?.[0]?.receipt_path}`} 
-                                          alt="Receipt" 
-                                          style={{ 
-                                              width: '100px', 
-                                              height: '100px', 
-                                              objectFit: 'cover', 
-                                              borderRadius: '4px', 
-                                              border: '1px solid #ccc', 
-                                              cursor: 'pointer' 
-                                          }}
-                                      />
-                                  </a>
-                                  <p style={{ fontSize: '0.8rem', color: '#666' }}>Click image to enlarge</p>
+                          {selectedEnrollment.payments?.[0]?.paymentMethod !== 'Cash' && selectedEnrollment.payments?.[0]?.receipt_path && (
+                              <div className="receipt-preview" style={{ marginTop: '15px' }}>
+                                  <label><strong>Proof of Payment:</strong></label>
+                                  <div style={{ marginTop: '10px' }}>
+                                      <a 
+                                          href={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                          target="_blank" 
+                                          rel="noreferrer"
+                                      >
+                                          <img 
+                                              src={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                              alt="Receipt" 
+                                              style={{ 
+                                                  width: '150px', 
+                                                  height: '150px', 
+                                                  objectFit: 'contain', 
+                                                  borderRadius: '8px', 
+                                                  border: '2px solid #b8860b', 
+                                                  cursor: 'pointer',
+                                                  backgroundColor: '#f9f9f9'
+                                              }}
+                                              onError={(e) => {
+                                                  console.error('Failed to load receipt image:', selectedEnrollment.payments?.[0]?.receipt_path);
+                                                  e.target.src = 'https://via.placeholder.com/150?text=Image+Unavailable';
+                                                  e.target.style.border = '2px solid #d32f2f';
+                                              }}
+                                          />
+                                      </a>
+                                      <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
+                                          📸 Click image to view full size
+                                      </p>
+                                  </div>
                               </div>
-                          </div>
-                      )}
+                          )}
                       </div>
 
 

@@ -41,9 +41,15 @@ class EnrollmentController extends Controller
             ]
         );
 
+        // Check if upload was successful (accept both 200 and 201)
+        $statusCode = $response->getStatusCode();
+        if ($statusCode !== 200 && $statusCode !== 201) {
+            throw new \Exception("Upload failed with status code: {$statusCode}");
+        }
+
         // Log success for debugging
         Log::info("File uploaded successfully: {$fileName}", [
-            'status' => $response->getStatusCode(),
+            'status' => $statusCode,
             'file' => $fileName
         ]);
 
@@ -55,6 +61,10 @@ class EnrollmentController extends Controller
         throw new \Exception("File upload failed: " . $e->getMessage());
     }
 }
+
+
+
+
     public function index()
     {
         try {

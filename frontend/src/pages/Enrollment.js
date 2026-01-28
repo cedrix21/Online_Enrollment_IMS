@@ -66,6 +66,11 @@ export default function Enrollment() {
             alert("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
             return;
         }
+
+        if (receiptFile.size > 2048 * 1024) { // 2MB
+            alert("Receipt image must be less than 2MB");
+            return;
+        }
     }
 
     setLoading(true);
@@ -110,7 +115,12 @@ export default function Enrollment() {
     try {
         // 5. API Submission
         await API.post('/enrollment/submit', dataToSend, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                console.log(`Upload Progress: ${percentCompleted}%`);
+                // Optional: You can update a progress bar here
+            }
         });
         
         setIsSubmitted(true);
