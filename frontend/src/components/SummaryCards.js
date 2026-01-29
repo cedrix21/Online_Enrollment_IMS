@@ -34,7 +34,7 @@ export default function SummaryCards({ summary }) {
       label: "Cash Walk-in Pending",
       count: summary.cash_enrollments || 0,
       icon: <FaMoneyBillWave />,
-      class: "cash-card",
+      class: "pending-payment-card",
       route: "/enrollment-management",
       state: { filter: "pending", paymentFilter: "Cash" }
     },
