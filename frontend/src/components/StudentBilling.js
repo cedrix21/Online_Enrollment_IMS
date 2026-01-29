@@ -158,7 +158,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                     </h3>
                 </div>
             </div>
-
+            <div className="table-container">
             <table className="payment-table">
                 <thead>
                     <tr>
@@ -195,7 +195,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                     )}
                 </tbody>
             </table>
-
+            </div>
             {isModalOpen && (
                 <AddPaymentModal 
                     studentId={studentId} 
@@ -204,6 +204,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                 />
             )}
         </div>
+       
     );
 };
 

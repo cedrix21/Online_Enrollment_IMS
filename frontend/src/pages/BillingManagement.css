@@ -1,12 +1,15 @@
 /* Main Layout */
 .billing-content-body {
     padding: 20px;
+    height: calc(100vh - 80px); /* Adjust based on your TopBar height */
+    overflow: hidden;
 }
 
 .billing-grid {
     display: grid;
     grid-template-columns: 300px 1fr;
     gap: 20px;
+    height: 100%;
 }
 
 /* Student List Card */
@@ -110,6 +113,10 @@
 }
 
 /* Empty Ledger State */
+.ledger-display {
+    height: 100%;
+    overflow: hidden;
+}
 .ledger-empty-state {
     text-align: center;
     margin-top: 100px;
