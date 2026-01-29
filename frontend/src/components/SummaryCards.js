@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { FaClock, FaCheckCircle, FaTimesCircle, FaDollarSign, FaExclamationTriangle } from "react-icons/fa";
+import { FaClock, FaCheckCircle, FaTimesCircle, FaDollarSign, FaMoneyBillWave } from "react-icons/fa";
 import "./SummaryCards.css";
 
 export default function SummaryCards({ summary }) {

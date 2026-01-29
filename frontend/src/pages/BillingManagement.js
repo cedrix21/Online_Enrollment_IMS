@@ -12,6 +12,7 @@ const BillingManagement = ({ user }) => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalTuition, setTotalTuition] = useState(25000);
+    const location = useLocation();
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
