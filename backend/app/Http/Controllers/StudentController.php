@@ -9,8 +9,11 @@ class StudentController extends Controller
 {
     public function index()
     {
-        // This only fetches students who have been approved and moved to the students table
-        $students = Student::all(); 
-        return response()->json(Student::orderBy('created_at', 'desc')->get());
+        // ✅ FIXED: Eagerly load payments, section, and enrollment relationships
+        $students = Student::with(['payments', 'section', 'enrollment'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return response()->json($students);
     }
 }
