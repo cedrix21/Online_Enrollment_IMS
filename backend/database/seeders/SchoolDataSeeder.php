@@ -8,6 +8,7 @@ use App\Models\Section;
 use App\Models\Subject;
 use App\Models\Room;
 use App\Models\TimeSlot;
+use App\Models\Student;
 use Illuminate\Support\Facades\DB; 
 
 class SchoolDataSeeder extends Seeder
@@ -30,11 +31,13 @@ class SchoolDataSeeder extends Seeder
 
         $teachers = [];
         foreach ($teacherData as $index => $data) {
+            // Remove spaces from last name to handle multi-word names like "Dela Cruz"
+            $lastNameNoSpace = str_replace(' ', '', $data['last']);
             $teachers[] = Teacher::create([
                 'teacherId'      => 'TCH-' . $year . '-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
                 'firstName'      => $data['first'],
                 'lastName'       => $data['last'],
-                'email'          => strtolower($data['first']) . $index . '@school.edu',
+                'email'          => strtolower($data['first'] . '.' . $lastNameNoSpace) . '@sics.com',
                 'specialization' => $data['spec'],
                 'status'         => 'active'
             ]);
@@ -64,15 +67,21 @@ class SchoolDataSeeder extends Seeder
             ['Araling Panlipunan', 'AP']
         ];
 
-        foreach ($levels as $level) {
+        // Store subject codes for later reference
+        $createdSubjects = [];
+
+        foreach ($levels as $levelIndex => $level) {
             foreach ($baseSubjects as $base) {
-                Subject::create([
-                    'subjectName' => $base[0],
-                    'subjectCode' => $base[1] . '-' . strtoupper(str_replace(' ', '', $level)),
-                    'description' => "Core $base[0] subject for $level",
-                    'gradeLevel'  => $level,
-                    'teacher_id'  => $teachers[array_rand($teachers)]->id 
-                ]);
+                $subjectCode = $base[1] . '-' . strtoupper(str_replace(' ', '', $level));
+                $subject = Subject::updateOrCreate(
+                    ['subjectCode' => $subjectCode],
+                    [
+                        'subjectName' => $base[0],
+                        'gradeLevel'  => $level,
+                        'teacher_id'  => $teachers[$levelIndex]->id // Assign to the corresponding teacher
+                    ]
+                );
+                $createdSubjects[$level][] = $subject;
             }
         }
 
@@ -114,8 +123,26 @@ class SchoolDataSeeder extends Seeder
             ]);
         }
 
+        // 9. SETUP TEACHER ADVISORY SYSTEM
+        // Assign each teacher as advisor to their corresponding grade level
+        foreach ($levels as $index => $gradeLevel) {
+            $teacher = $teachers[$index];
+            
+            // Update teacher's advisory grade
+            $teacher->update([
+                'advisory_grade' => $gradeLevel
+            ]);
+
+            // Assign this teacher to all subjects of their grade level
+            if (isset($createdSubjects[$gradeLevel])) {
+                foreach ($createdSubjects[$gradeLevel] as $subject) {
+                    $subject->update(['teacher_id' => $teacher->id]);
+                }
+            }
+        }
+
         echo "✅ School data seeded successfully!\n";
-        echo "   - 8 Teachers created\n";
+        echo "   - 8 Teachers created with advisory grades assigned\n";
         echo "   - 8 Sections created\n";
         echo "   - " . (count($levels) * count($baseSubjects)) . " Subjects created\n";
         echo "   - 10 Rooms created\n";

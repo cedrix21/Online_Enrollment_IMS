@@ -10,6 +10,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Models\Subject;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\GradeController;
 
 
     /*
@@ -54,6 +55,16 @@ use App\Http\Controllers\BillingController;
         Route::post('/student/{studentId}/pay', [BillingController::class, 'addPayment']);
 });
 
+        // Teacher Only - Grade Advisory
+        Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':teacher')->group(function () {
+            Route::get('/teacher/info', [GradeController::class, 'getTeacherInfo']);
+            Route::get('/teacher/students', [GradeController::class, 'getTeacherStudents']);
+            Route::get('/teacher/subjects', [GradeController::class, 'getTeacherSubjects']);
+            Route::get('/teacher/grades', [GradeController::class, 'getGrades']);
+            Route::get('/teacher/grades/subject/{subjectId}', [GradeController::class, 'getSubjectGrades']);
+            Route::post('/teacher/grades', [GradeController::class, 'submitGrade']);
+        });
+
         // Admin/Registrar Only
         Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin,registrar')->group(function () {
             Route::get('/enrollments/summary', [EnrollmentController::class, 'summary']);
@@ -61,5 +72,9 @@ use App\Http\Controllers\BillingController;
             Route::put('/enrollment/{id}/status', [EnrollmentController::class, 'updateStatus']);
             // Fixed the route name to be consistent
             Route::post('/admin/enroll-student', [EnrollmentController::class, 'storeAndApprove']);
-        });
+
+            // Admin/Registrar - Grade Management
+            Route::get('/admin/grades', [GradeController::class, 'getAllGrades']);
+            Route::put('/admin/grades/{gradeId}', [GradeController::class, 'updateGrade']);
+            Route::get('/admin/grades/statistics', [GradeController::class, 'getGradeStatistics']);        });
     });

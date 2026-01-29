@@ -8,6 +8,7 @@ import {
   FaTachometerAlt,
   FaUserPlus,
   FaClipboardList,
+  FaBook,
 } from "react-icons/fa";
 import "./SideBar.css";
 
@@ -51,6 +52,13 @@ export default function Sidebar({ user }) {
         <FaFileInvoice className="icon" />
         <span>Load Slips</span>
         </Link>
+
+      {(user?.role === "admin" || user?.role === "registrar") && (
+        <Link to="/admin/evaluation" className={location.pathname.includes('/admin/evaluation') ? 'active' : ''}>
+          <FaBook />
+          <span>Evaluations</span>
+        </Link>
+      )}
 
       <Link 
           to="/admin/billing" 

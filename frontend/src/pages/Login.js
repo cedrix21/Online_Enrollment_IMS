@@ -28,8 +28,12 @@ export default function Login() {
 
       console.log("Login successful:", response.data);
 
-      // Redirect to dashboard
-      window.location.href = "/dashboard";
+      // Redirect based on user role
+      if (user.role === "teacher") {
+        window.location.href = "/teacher-advisory";
+      } else {
+        window.location.href = "/dashboard";
+      }
     } catch (err) {
       // Handle network errors vs API errors
       if (err.response) {

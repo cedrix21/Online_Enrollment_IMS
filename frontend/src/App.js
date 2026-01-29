@@ -17,7 +17,9 @@ import SectionManagement from "./components/SectionManagement";
 import LoadSlip from "./components/LoadSlip";
 import NotFound from "./components/NotFound";
 import StudentBilling from "./components/StudentBilling";
-import BillingManagement from "./pages/BillingManagement";  
+import BillingManagement from "./pages/BillingManagement";
+import TeacherAdvisory from "./pages/TeacherAdvisory";
+import EvaluationManagement from "./pages/EvaluationManagement";
 import { useState, useEffect } from "react"; 
 import API from "./api/api";
 import LoadingScreen from "./components/LoadingScreen";
@@ -112,6 +114,23 @@ if (authLoading) {
           </ProtectedRoute>
         } />
 
+        <Route 
+          path="/teacher-advisory"
+          element={
+            <ProtectedRoute roles={["teacher"]}>
+              <TeacherAdvisory />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/admin/evaluation"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <EvaluationManagement />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Catch-all route for any other invalid URLs */}
         <Route path="*" element={<NotFound />} />

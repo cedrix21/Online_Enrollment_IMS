@@ -25,15 +25,20 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear();
-      
-      // Define your public pages here
-      const publicPages = ["/login", "/enroll", "/enrollment-qr"];
-      const isPublicPage = publicPages.some(path => window.location.pathname.includes(path));
+      // Clear auth data
+      const token = localStorage.getItem("token");
+      if (!token) {
+        // Token doesn't exist, clear storage and redirect
+        localStorage.clear();
+        
+        // Define your public pages here
+        const publicPages = ["/login", "/enroll", "/enrollment-qr"];
+        const isPublicPage = publicPages.some(path => window.location.pathname.includes(path));
 
-      // Only redirect if they are trying to access a PROTECTED page
-      if (!isPublicPage) {
-        window.location.href = "/login";
+        // Only redirect if they are trying to access a PROTECTED page
+        if (!isPublicPage) {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);

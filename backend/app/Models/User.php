@@ -48,4 +48,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the teacher associated with this user.
+     */
+    public function teacher()
+    {
+        return $this->hasOne(Teacher::class, 'email', 'email');
+    }
 }

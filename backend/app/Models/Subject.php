@@ -12,4 +12,12 @@ class Subject extends Model
     'gradeLevel', // The "Class" this subject belongs to
     'teacher_id'  // The teacher assigned to teach this subject
 ];
+
+    /**
+     * Get the teacher that teaches this subject
+     */
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class, 'teacher_id');
+    }
 }
