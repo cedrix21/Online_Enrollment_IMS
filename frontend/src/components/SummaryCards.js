@@ -11,45 +11,50 @@ export default function SummaryCards({ summary }) {
       count: summary.pending,
       icon: <FaClock />,
       class: "pending-card",
-      status: "pending"
+      route: "/enrollment-management",
+      state: { filter: "pending" }
     },
     {
       label: "Approved Students",
       count: summary.approved,
       icon: <FaCheckCircle />,
       class: "approved-card",
-      status: "approved"
+      route: "/enrollment-management",
+      state: { filter: "approved" }
     },
     {
       label: "Rejected Applications",
       count: summary.rejected,
       icon: <FaTimesCircle />,
       class: "rejected-card",
-      status: "rejected"
+      route: "/enrollment-management",
+      state: { filter: "rejected" }
     },
     {
-      label: "Unpaid Enrollments",
-      count: summary.unpaid_enrollments || 0,
+      label: "Cash Walk-in Pending",
+      count: summary.cash_enrollments || 0,
+      icon: <FaMoneyBillWave />,
+      class: "cash-card",
+      route: "/enrollment-management",
+      state: { filter: "pending", paymentFilter: "Cash" }
+    },
+    {
+      label: "Students with Balance",
+      count: summary.unpaid_students || 0,
       icon: <FaDollarSign />,
       class: "unpaid-card",
-      route: "/billing-management"
-    },
-    {
-      label: "Pending Payments",
-      count: summary.pending_payments || 0,
-      icon: <FaExclamationTriangle />,
-      class: "pending-payment-card",
-      route: "/billing-management"
+      route: "/billing-management",
+      state: { paymentFilter: "unpaid" }
     }
   ];
 
   return (
-    <div className="summary-container">
+   <div className="summary-container">
       {stats.map((item, index) => (
         <div 
           key={index} 
           className={`summary-card ${item.class}`}
-          onClick={() => navigate("/enrollment-management", { state: { filter: item.status } })}
+          onClick={() => navigate(item.route, item.state ? { state: item.state } : {})}
         >
           <div className="summary-content">
             <div className="summary-info">

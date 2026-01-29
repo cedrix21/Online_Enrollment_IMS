@@ -12,10 +12,20 @@ const BillingManagement = ({ user }) => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalTuition, setTotalTuition] = useState(25000);
+    const [filterPaymentStatus, setFilterPaymentStatus] = useState(
+        location.state?.paymentFilter || 'all'
+    );
 
     useEffect(() => {
         fetchStudents();
     }, []);
+
+     useEffect(() => {
+        // Handle incoming filter from dashboard
+        if (location.state?.paymentFilter) {
+            setFilterPaymentStatus(location.state.paymentFilter);
+        }
+    }, [location.state]);
 
     const fetchStudents = async () => {
         try {
@@ -37,16 +47,37 @@ const BillingManagement = ({ user }) => {
             console.error("Error fetching ledger", err);
         }
     };
+    // Define tuition rates
+    const rates = {
+        'Kindergarten 1': 20000,
+        'Kindergarten 2': 20000,
+        'Grade 1': 25000,
+        'Grade 2': 27500,
+        'Grade 3': 30000,
+        'Grade 4': 32000,
+        'Grade 5': 34000,
+        'Grade 6': 36000,
+    };
 
-    const filteredStudents = students.filter(s => {
+     const filteredStudents = students.filter(s => {
         const search = searchTerm.toLowerCase();
         const fName = s.firstName ? s.firstName.toLowerCase() : '';
         const lName = s.lastName ? s.lastName.toLowerCase() : '';
         const idNum = s.studentId ? s.studentId.toLowerCase() : '';
 
-        return fName.includes(search) || 
+        const matchesSearch = fName.includes(search) || 
                lName.includes(search) || 
                idNum.includes(search);
+
+        // Calculate if student has unpaid balance
+        if (filterPaymentStatus === 'unpaid') {
+            const totalTuition = rates[s.gradeLevel] || 25000;
+            const totalPaid = s.payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0) || 0;
+            const hasBalance = (totalTuition - totalPaid) > 0;
+            return matchesSearch && hasBalance;
+        }
+
+        return matchesSearch;
     });
 
     return (
@@ -60,7 +91,21 @@ const BillingManagement = ({ user }) => {
                         
                         {/* Student List Column */}
                         <div className="student-list-card">
-                            <h3>Enrolled Students</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <h3>Enrolled Students</h3>
+                                {filterPaymentStatus === 'unpaid' && (
+                                    <span style={{
+                                        padding: '4px 8px',
+                                        backgroundColor: '#ff9800',
+                                        color: 'white',
+                                        borderRadius: '12px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        Unpaid Only
+                                    </span>
+                                )}
+                            </div>
                             
                             {/* Search Bar */}
                             <div className="student-search-wrapper">
@@ -72,6 +117,23 @@ const BillingManagement = ({ user }) => {
                                     className="student-search-input"
                                 />
                                 <i className="fas fa-search search-icon"></i>
+                            </div>
+
+                            {/* Filter Toggle */}
+                            <div style={{ marginBottom: '15px' }}>
+                                <select
+                                    value={filterPaymentStatus}
+                                    onChange={(e) => setFilterPaymentStatus(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #ddd'
+                                    }}
+                                >
+                                    <option value="all">All Students</option>
+                                    <option value="unpaid">Unpaid Balance Only</option>
+                                </select>
                             </div>
 
                             <div className="student-scroll-area">

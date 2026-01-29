@@ -250,26 +250,47 @@ class EnrollmentController extends Controller
         });
     }
 
-    public function summary()
-    {
-        return response()->json([
-            'total' => Enrollment::count(),
-            'pending' => Enrollment::where('status', 'pending')->count(),
-            'approved' => Enrollment::where('status', 'approved')->count(),
-            'rejected' => Enrollment::where('status', 'rejected')->count(),
-            
-            'unpaid_enrollments' => DB::table('students')
-            ->leftJoin('payments', 'students.id', '=', 'payments.student_id')
-            ->selectRaw('students.id, SUM(COALESCE(payments.amount_paid, 0)) as total_paid')
-            ->groupBy('students.id')
-            ->havingRaw('total_paid < 25000') // Adjust based on your tuition rates
-            ->count(),
-            
-            'pending_payments' => Enrollment::whereHas('payments', function($query) {
-                $query->where('payment_status', 'pending_verification');
-            })->count(),
-        ]);
-    }
+   public function summary()
+{
+    // Define tuition rates (same as BillingController)
+    $rates = [
+        'Kindergarten 1' => 20000,
+        'Kindergarten 2' => 20000,
+        'Grade 1' => 25000,
+        'Grade 2' => 27500,
+        'Grade 3' => 30000,
+        'Grade 4' => 32000,
+        'Grade 5' => 34000,
+        'Grade 6' => 36000,
+    ];
+
+    // Count enrollments where payment method is Cash (walk-in pending)
+    $cashEnrollments = Enrollment::whereHas('payments', function($query) {
+        $query->where('paymentMethod', 'Cash');
+    })->where('status', 'pending')->count();
+
+    // Count students with unpaid balance (not fully paid)
+    $unpaidStudents = Student::get()->filter(function($student) use ($rates) {
+        $totalTuition = $rates[$student->gradeLevel] ?? 25000;
+        $totalPaid = $student->payments->sum('amount_paid');
+        return ($totalTuition - $totalPaid) > 0;
+    })->count();
+
+    return response()->json([
+        'total' => Enrollment::count(),
+        'pending' => Enrollment::where('status', 'pending')->count(),
+        'approved' => Enrollment::where('status', 'approved')->count(),
+        'rejected' => Enrollment::where('status', 'rejected')->count(),
+        
+        // Cash enrollments awaiting walk-in payment
+        'cash_enrollments' => $cashEnrollments,
+        
+        // Students with unpaid balance
+        'unpaid_students' => $unpaidStudents,
+    ]);
+}
+
+
 
     public function storeAndApprove(Request $request)
     {

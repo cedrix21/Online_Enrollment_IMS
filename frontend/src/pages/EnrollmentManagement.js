@@ -21,13 +21,18 @@ export default function EnrollmentManagement() {
 
   const location = useLocation();
   const navigate = useNavigate();
+
+
   const [filterStatus, setFilterStatus] = useState(
     location.state?.filter || "all"
   );
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState(
+    location.state?.paymentFilter || "all"
+  );
 
-const [selectedEnrollment, setSelectedEnrollment] = useState(null);
+  const [selectedEnrollment, setSelectedEnrollment] = useState(null);
 
-const closeModal = () => setSelectedEnrollment(null);
+  const closeModal = () => setSelectedEnrollment(null);
 
   useEffect(() => {
     if (!user || (user.role !== "admin" && user.role !== "registrar")) {
@@ -36,6 +41,18 @@ const closeModal = () => setSelectedEnrollment(null);
       fetchEnrollments();
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+
+    if (location.state?.filter) {
+      setFilterStatus(location.state.filter);
+    }
+    if (location.state?.paymentFilter) {
+      setFilterPaymentMethod(location.state.paymentFilter);
+    }
+  }, [location.state]);
+
+
 
   const fetchEnrollments = async () => {
     try {
@@ -65,7 +82,13 @@ const closeModal = () => setSelectedEnrollment(null);
       e.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter =
       filterStatus === "all" ? true : e.status === filterStatus;
-    return matchesSearch && matchesFilter;
+    // Filter by payment method
+    const matchesPaymentMethod =
+      filterPaymentMethod === "all" 
+        ? true 
+        : e.payments?.[0]?.paymentMethod === filterPaymentMethod;
+
+    return matchesSearch && matchesFilter && matchesPaymentMethod;
   });
 
   if (!user) return null;
@@ -156,59 +179,65 @@ const exportToExcel = () => {
   
 
   return (
-    <div className="dashboard-layout">
-      {/* LEFT SIDEBAR */}
+     <div className="dashboard-layout">
       <SideBar user={user} />
-
-      {/* MAIN CONTENT AREA */}
       <div className="main-content">
         <TopBar user={user} />
 
-      <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-
-        <div className="management-container">
-          <div className="management-header">
-            <h2>Enrollment Management</h2>
-            {message && <p className="message-toast">{message}</p>}
-          </div>
-
-          <div className="admin-actions">
-            <div className="search-filter-group">
-              <input
-                type="text"
-                placeholder="Search name or email..."
-                className="search-input"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
+        <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+          <div className="management-container">
+            <div className="management-header">
+              <h2>Enrollment Management</h2>
+              {message && <p className="message-toast">{message}</p>}
             </div>
-            <div className="button-group">
-              <button className="btn-add" onClick={() => navigate("/admin/enroll")}>Add Student</button>
-              <button 
-              className="btn-excel" 
-              onClick={exportToExcel}
-              style={{ backgroundColor: '#1d6f42', color: 'white' }}
-            >
-              📊 Export to Excel
-            </button>
-              <button
-                className="btn-qr"
-                onClick={() => navigate("/enrollment-qr")}
-              >
-                Show QR
-              </button>
+
+            <div className="admin-actions">
+              <div className="search-filter-group">
+                <input
+                  type="text"
+                  placeholder="Search name or email..."
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Payment Methods</option>
+                  <option value="Cash">Cash (Walk-in)</option>
+                  <option value="GCash">GCash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+              <div className="button-group">
+                <button className="btn-add" onClick={() => navigate("/admin/enroll")}>Add Student</button>
+                <button 
+                  className="btn-excel" 
+                  onClick={exportToExcel}
+                  style={{ backgroundColor: '#1d6f42', color: 'white' }}
+                >
+                  📊 Export to Excel
+                </button>
+                <button
+                  className="btn-qr"
+                  onClick={() => navigate("/enrollment-qr")}
+                >
+                  Show QR
+                </button>
+              </div>
             </div>
-          </div>
 
           <div className="table-responsive">
             <table className="management-table">

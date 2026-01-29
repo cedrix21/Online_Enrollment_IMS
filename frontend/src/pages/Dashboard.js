@@ -45,6 +45,8 @@ export default function Dashboard() {
         pending: res.data?.pending || 0,
         approved: res.data?.approved || 0,
         rejected: res.data?.rejected || 0,
+        cash_enrollments: res.data?.cash_enrollments || 0,
+        unpaid_students: res.data?.unpaid_students || 0,
       });
     } catch (err) {
       setError("Failed to load enrollment summary.");
