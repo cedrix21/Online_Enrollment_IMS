@@ -105,22 +105,38 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 // --- MAIN COMPONENT: The Ledger View ---
 const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAdded }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [accountStatus, setAccountStatus] = useState('partial');
 
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
     const balance = totalTuition - totalPaid;
     
-    // Determine status
-    const status = balance <= 0 ? 'fully_paid' : (totalPaid > 0 ? 'partial' : 'unpaid');
+    // Check if any payment has "paid" status (means fully paid)
+    const isFullyPaid = payments.some(p => p.payment_status === 'paid') || balance <= 0;
 
     return (
         <div className="billing-container">
             
             <div className="billing-header">
-                <h2>Student Ledger</h2>
+                <div>
+                    <h2>Student Ledger</h2>
+                    {isFullyPaid && (
+                        <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            backgroundColor: '#4caf50',
+                            color: 'white',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            marginLeft: '10px'
+                        }}>
+                            ✓ FULLY PAID
+                        </span>
+                    )}
+                </div>
                 <button 
                     onClick={() => setIsModalOpen(true)}
                     className="add-payment-btn"
+                    disabled={isFullyPaid}
                 >
                     + Add New Payment
                 </button>
@@ -135,10 +151,10 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                     <small>Total Paid</small>
                     <h3>₱{totalPaid.toLocaleString()}</h3>
                 </div>
-                <div className={`summary-card ${balance <= 0 ? 'paid-full' : 'balance'}`}>
-                    <small>{balance <= 0 ? 'Status' : 'Remaining Balance'}</small>
-                    <h3 style={{ color: balance <= 0 ? '#4caf50' : '#f5222d' }}>
-                        {balance <= 0 ? '✓ PAID' : `₱${balance.toLocaleString()}`}
+                <div className={`summary-card ${isFullyPaid ? 'paid-full' : 'balance'}`}>
+                    <small>{isFullyPaid ? 'Status' : 'Remaining Balance'}</small>
+                    <h3 style={{ color: isFullyPaid ? '#4caf50' : '#f5222d' }}>
+                        {isFullyPaid ? '✓ PAID' : `₱${balance.toLocaleString()}`}
                     </h3>
                 </div>
             </div>
@@ -150,6 +166,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                         <th>Type</th>
                         <th>Method</th>
                         <th>Ref #</th>
+                        <th>Status</th>
                         <th className="text-right">Amount</th>
                     </tr>
                 </thead>
@@ -161,12 +178,19 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAd
                                 <td className="payment-type">{p.payment_type}</td>
                                 <td>{p.paymentMethod}</td>
                                 <td className="payment-ref">{p.reference_number}</td>
+                                <td>
+                                    <span className={`status-badge ${p.payment_status}`}>
+                                        {p.payment_status === 'paid' ? '✓ Paid' : 
+                                         p.payment_status === 'pending' ? '⏳ Pending' : 
+                                         '✓ Completed'}
+                                    </span>
+                                </td>
                                 <td className="payment-amount">₱{parseFloat(p.amount_paid).toLocaleString()}</td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan="5" className="no-payments">No payment records found.</td>
+                            <td colSpan="6" className="no-payments">No payment records found.</td>
                         </tr>
                     )}
                 </tbody>

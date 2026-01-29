@@ -20,7 +20,7 @@ class BillingController extends Controller
         try {
             $student = Student::with('payments')->findOrFail($studentId);
 
-            // Calculate tuition and check if fully paid
+            // Define tuition rates
             $rates = [
                 'Kindergarten 1' => 20000,
                 'Kindergarten 2' => 20000,
@@ -34,10 +34,9 @@ class BillingController extends Controller
             
             $totalTuition = $rates[$student->gradeLevel] ?? 25000;
             $totalPaid = $student->payments->sum('amount_paid') + $validated['amount_paid'];
-            
-            // Determine payment status
-            $paymentStatus = $totalPaid >= $totalTuition ? 'fully_paid' : 'partial';
+            $balance = $totalTuition - $totalPaid;
 
+            // Create the new payment record
             $payment = $student->payments()->create([
                 'enrollment_id'    => $student->enrollment_id,
                 'amount_paid'      => $validated['amount_paid'],
@@ -45,13 +44,19 @@ class BillingController extends Controller
                 'payment_type'     => $validated['payment_type'],
                 'reference_number' => $validated['reference_number'] ?? 'CASH-' . time(),
                 'payment_date'     => now(),
-                'payment_status'   => $paymentStatus,
+                'payment_status'   => 'completed', // This individual payment is completed
             ]);
+
+            // 🔥 KEY PART: Update ALL payment statuses to "paid" if balance is zero or less
+            if ($balance <= 0) {
+                $student->payments()->update(['payment_status' => 'paid']);
+            }
 
             return response()->json([
                 'message' => 'Payment recorded successfully',
                 'payment' => $payment,
-                'account_status' => $paymentStatus
+                'balance' => $balance,
+                'fully_paid' => $balance <= 0
             ], 201);
 
         } catch (\Exception $e) {
@@ -63,6 +68,7 @@ class BillingController extends Controller
     {
         $student = Student::with(['payments'])->findOrFail($studentId);
         
+        // Define tuition rates
         $rates = [
             'Kindergarten 1' => 20000,
             'Kindergarten 2' => 20000,
@@ -78,8 +84,8 @@ class BillingController extends Controller
         $totalPaid = $student->payments->sum('amount_paid');
         $balance = $totalTuition - $totalPaid;
         
-        // Determine account status
-        $accountStatus = $balance <= 0 ? 'fully_paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
+        // Determine overall account status
+        $accountStatus = $balance <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
         
         return response()->json([
             'student' => $student->firstName . ' ' . $student->lastName,
