@@ -18,12 +18,23 @@ const BillingManagement = ({ user }) => {
         location.state?.paymentFilter || 'all'
     );
 
+    // Define tuition rates (Keep this outside or useMemo for performance)
+    const rates = {
+        'Kindergarten 1': 20000,
+        'Kindergarten 2': 20000,
+        'Grade 1': 25000,
+        'Grade 2': 27500,
+        'Grade 3': 30000,
+        'Grade 4': 32000,
+        'Grade 5': 34000,
+        'Grade 6': 36000,
+    };
+
     useEffect(() => {
         fetchStudents();
     }, []);
 
-     useEffect(() => {
-        // Handle incoming filter from dashboard
+    useEffect(() => {
         if (location.state?.paymentFilter) {
             setFilterPaymentStatus(location.state.paymentFilter);
         }
@@ -49,33 +60,22 @@ const BillingManagement = ({ user }) => {
             console.error("Error fetching ledger", err);
         }
     };
-    // Define tuition rates
-    const rates = {
-        'Kindergarten 1': 20000,
-        'Kindergarten 2': 20000,
-        'Grade 1': 25000,
-        'Grade 2': 27500,
-        'Grade 3': 30000,
-        'Grade 4': 32000,
-        'Grade 5': 34000,
-        'Grade 6': 36000,
-    };
 
-     const filteredStudents = students.filter(s => {
+    const filteredStudents = students.filter(s => {
         const search = searchTerm.toLowerCase();
-        const fName = s.firstName ? s.firstName.toLowerCase() : '';
-        const lName = s.lastName ? s.lastName.toLowerCase() : '';
-        const idNum = s.studentId ? s.studentId.toLowerCase() : '';
+        const fName = s.firstName?.toLowerCase() || '';
+        const lName = s.lastName?.toLowerCase() || '';
+        const idNum = s.studentId?.toLowerCase() || '';
 
-        const matchesSearch = fName.includes(search) || 
-               lName.includes(search) || 
-               idNum.includes(search);
+        const matchesSearch = fName.includes(search) || lName.includes(search) || idNum.includes(search);
 
-        // Calculate if student has unpaid balance
+        // STRICTOR UNPAID FILTER LOGIC
         if (filterPaymentStatus === 'unpaid') {
-            const totalTuition = rates[s.gradeLevel] || 25000;
+            const tuitionAmount = rates[s.gradeLevel] || 25000;
             const totalPaid = s.payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0) || 0;
-            const hasBalance = (totalTuition - totalPaid) > 0;
+            const hasBalance = (tuitionAmount - totalPaid) > 0;
+            
+            // If it matches search BUT has no balance, we return false to hide them
             return matchesSearch && hasBalance;
         }
 
@@ -96,20 +96,12 @@ const BillingManagement = ({ user }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                 <h3>Enrolled Students</h3>
                                 {filterPaymentStatus === 'unpaid' && (
-                                    <span style={{
-                                        padding: '4px 8px',
-                                        backgroundColor: '#ff9800',
-                                        color: 'white',
-                                        borderRadius: '12px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 'bold'
-                                    }}>
+                                    <span style={{ padding: '4px 8px', backgroundColor: '#ff9800', color: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
                                         Unpaid Only
                                     </span>
                                 )}
                             </div>
                             
-                            {/* Search Bar */}
                             <div className="student-search-wrapper">
                                 <input 
                                     type="text"
@@ -121,17 +113,11 @@ const BillingManagement = ({ user }) => {
                                 <i className="fas fa-search search-icon"></i>
                             </div>
 
-                            {/* Filter Toggle */}
                             <div style={{ marginBottom: '15px' }}>
                                 <select
                                     value={filterPaymentStatus}
                                     onChange={(e) => setFilterPaymentStatus(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #ddd'
-                                    }}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
                                 >
                                     <option value="all">All Students</option>
                                     <option value="unpaid">Unpaid Balance Only</option>
@@ -148,9 +134,7 @@ const BillingManagement = ({ user }) => {
                                             onClick={() => handleSelectStudent(s)}
                                             className={`student-item ${selectedStudent?.id === s.id ? 'selected' : ''}`}
                                         >
-                                            <div className="student-name">
-                                                {s.lastName}, {s.firstName}
-                                            </div>
+                                            <div className="student-name">{s.lastName}, {s.firstName}</div>
                                             <div className="student-id">ID: {s.studentId}</div>
                                         </div>
                                     ))
@@ -163,12 +147,24 @@ const BillingManagement = ({ user }) => {
                         {/* Billing Ledger Column */}
                         <div className="ledger-display">
                             {selectedStudent ? (
-                                <StudentBilling 
-                                    studentId={selectedStudent.id}
-                                    payments={payments}
-                                    onPaymentAdded={(newPayment) => setPayments([...payments, newPayment])}
-                                    totalTuition={totalTuition}
-                                />
+                                <>
+                                    {/* ADDED STUDENT NAME HEADER HERE */}
+                                    <div className="ledger-header" style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #eee' }}>
+                                        <h2 style={{ margin: 0, color: '#2c3e50' }}>
+                                            {selectedStudent.firstName} {selectedStudent.lastName}
+                                        </h2>
+                                        <p style={{ margin: 0, color: '#7f8c8d', fontSize: '0.9rem' }}>
+                                            Student ID: {selectedStudent.studentId} | {selectedStudent.gradeLevel}
+                                        </p>
+                                    </div>
+
+                                    <StudentBilling 
+                                        studentId={selectedStudent.id}
+                                        payments={payments}
+                                        onPaymentAdded={(newPayment) => setPayments([...payments, newPayment])}
+                                        totalTuition={totalTuition}
+                                    />
+                                </>
                             ) : (
                                 <div className="ledger-empty-state">
                                     <i className="fas fa-user-circle"></i>
