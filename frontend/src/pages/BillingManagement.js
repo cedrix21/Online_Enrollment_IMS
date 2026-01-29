@@ -77,9 +77,9 @@ const BillingManagement = ({ user }) => {
             
             // If it matches search BUT has no balance, we return false to hide them
             return matchesSearch && hasBalance;
-        }else {
-            return matchesSearch;
         }
+
+        return matchesSearch;
     });
 
     return (
