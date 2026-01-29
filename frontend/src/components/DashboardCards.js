@@ -40,7 +40,7 @@ export default function DashboardCards({ role }) {
       title: "System Settings",
       desc: "Configure academic years and users",
       icon: <FaCog />,
-      path: "/404",
+      path: "/*",
       color: "orange-accent",
       show: role === "admin",
     },

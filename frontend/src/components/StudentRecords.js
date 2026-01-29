@@ -134,7 +134,7 @@ export default function StudentRecords() {
                             <button 
                               className="billing-btn" 
                               title="View Billing"
-                              onClick={() => navigate('/billing-management')}
+                              onClick={() => navigate('/admin/billing')}
                             >
                               <FaMoneyBillWave />
                             </button>

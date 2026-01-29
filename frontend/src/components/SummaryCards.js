@@ -43,7 +43,7 @@ export default function SummaryCards({ summary }) {
       count: summary.unpaid_students || 0,
       icon: <FaDollarSign />,
       class: "unpaid-card",
-      route: "/billing-management",
+      route: "/admin/billing",
       state: { paymentFilter: "unpaid" }
     }
   ];
