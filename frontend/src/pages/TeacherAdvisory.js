@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../api/api";
-import "./TeacherAdvisory.css";
 import { FaSyncAlt } from 'react-icons/fa';
-
+import "./TeacherAdvisory.css";
 export default function TeacherAdvisory() {
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -174,7 +173,7 @@ export default function TeacherAdvisory() {
         <button 
           onClick={handleRefresh} 
           disabled={refreshing}
-          className="refresh-btn"
+          className="refresh-bton"
           title="Refresh student data"
         >
           <FaSyncAlt className={refreshing ? 'spinning' : ''} />

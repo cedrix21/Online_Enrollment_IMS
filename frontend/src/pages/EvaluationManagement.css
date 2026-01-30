@@ -659,9 +659,12 @@
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(255, 240, 28, 0.3);
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .refresh-btn:hover:not(:disabled) {

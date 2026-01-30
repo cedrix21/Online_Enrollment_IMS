@@ -41,65 +41,24 @@
   font-weight: 500;
 }
 
-/* Advisory Header */
 .advisory-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  text-align: center;
   color: white;
-  margin-bottom: 30px;
-  gap: 20px;
+  margin-bottom: 40px;
 }
 
-.advisory-header > div h1 {
+.advisory-header h1 {
   font-size: 2.5em;
   font-weight: 700;
   margin-bottom: 10px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.advisory-header > div p {
+.advisory-header p {
   font-size: 1.1em;
   opacity: 0.95;
 }
 
-/* Refresh Button */
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(38, 92, 209, 0.2);
-  color: white;
-  border: 2px solid rgba(55, 63, 138, 0.3);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.spinning {
-  animation: spin 1s linear infinite;
-}
-
-/* Teacher Info Box */
 .teacher-info-box {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -110,7 +69,7 @@
   border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  max-width: 1200px;
+  max-width: 900px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -139,7 +98,6 @@
   color: white;
 }
 
-/* Alerts */
 .alert {
   padding: 15px 20px;
   margin-bottom: 20px;
@@ -162,7 +120,6 @@
   border: 1px solid #c3e6cb;
 }
 
-/* Quarter Selector */
 .quarter-selector {
   display: flex;
   align-items: center;
@@ -175,6 +132,7 @@
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+  margin-top: 10px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
@@ -206,7 +164,6 @@
   box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
 }
 
-/* No Students */
 .no-students {
   background: white;
   padding: 40px;
@@ -223,7 +180,13 @@
   margin: 0;
 }
 
-/* Grades Table */
+.loading {
+  text-align: center;
+  color: white;
+  font-size: 1.3em;
+  padding: 40px;
+}
+
 .grades-table-wrapper {
   background: white;
   border-radius: 10px;
@@ -241,7 +204,6 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95em;
-  min-width: 800px; /* Prevent table from being too squished */
 }
 
 .grades-table thead {
@@ -255,10 +217,6 @@
   text-align: left;
   border-bottom: 3px solid #667eea;
   white-space: nowrap;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .grades-table tbody tr {
@@ -314,7 +272,6 @@
   font-size: 0.95em;
   transition: all 0.3s ease;
   background-color: #f9f9f9;
-  min-width: 60px;
 }
 
 .grade-input:focus {
@@ -339,7 +296,6 @@
   transition: all 0.3s ease;
   font-size: 0.9em;
   min-width: 36px;
-  flex-shrink: 0;
 }
 
 .save-grade-btn:hover {
@@ -353,13 +309,11 @@
   box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
 }
 
-/* Action Buttons */
 .action-buttons {
   display: flex;
   justify-content: center;
   gap: 15px;
   margin-top: 30px;
-  padding: 0 20px;
 }
 
 .submit-all-btn {
@@ -390,75 +344,18 @@
   cursor: not-allowed;
 }
 
-/* ============================================
-   RESPONSIVE DESIGN - MOBILE OPTIMIZATION
-   ============================================ */
-
-/* Tablet (768px and below) */
+/* Responsive design */
 @media (max-width: 768px) {
-  .teacher-advisory-container {
-    padding: 20px 10px;
-  }
-
-  /* Header */
-  .advisory-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
-  }
-
-  .advisory-header > div h1 {
+  .advisory-header h1 {
     font-size: 1.8em;
-    text-align: center;
   }
 
-  .advisory-header > div p {
+  .advisory-header p {
     font-size: 1em;
-    text-align: center;
-  }
-
-  .refresh-btn {
-    width: 100%;
-    justify-content: center;
-    padding: 12px;
-  }
-
-  /* Teacher Info */
-  .teacher-info-box {
-    grid-template-columns: 1fr;
-    padding: 20px;
-    gap: 15px;
-  }
-
-  .teacher-info-item {
-    padding: 12px;
-  }
-
-  /* Quarter Selector */
-  .quarter-selector {
-    flex-direction: column;
-    gap: 10px;
-    padding: 15px;
-  }
-
-  .quarter-selector label {
-    font-size: 1em;
-  }
-
-  .quarter-select {
-    width: 100%;
-    padding: 12px;
-  }
-
-  /* Table */
-  .grades-table-wrapper {
-    border-radius: 8px;
-    margin: 0 -10px 20px -10px;
   }
 
   .grades-table {
     font-size: 0.85em;
-    min-width: 600px;
   }
 
   .grades-table th,
@@ -467,99 +364,40 @@
   }
 
   .grade-inputs {
-    flex-wrap: nowrap;
+    flex-direction: column;
     gap: 5px;
   }
 
-  .grade-input {
-    min-width: 50px;
-    padding: 6px 8px;
-    font-size: 0.9em;
-  }
-
   .save-grade-btn {
-    padding: 6px 10px;
-    font-size: 0.85em;
-    min-width: 32px;
+    width: 100%;
   }
 
-  /* Action Buttons */
+  .quarter-selector {
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .submit-all-btn {
     width: 100%;
     padding: 12px 20px;
-    font-size: 1em;
   }
 
-  /* Alerts */
-  .alert {
-    font-size: 0.9em;
-    padding: 12px 15px;
+  .grades-table-wrapper {
+    font-size: 0.85em;
   }
 }
 
-/* Mobile (480px and below) */
 @media (max-width: 480px) {
   .teacher-advisory-container {
-    padding: 15px 5px;
+    padding: 20px 10px;
   }
 
-  /* Header */
-  .advisory-header > div h1 {
+  .advisory-header h1 {
     font-size: 1.5em;
-    margin-bottom: 8px;
   }
 
-  .advisory-header > div p {
-    font-size: 0.9em;
-  }
-
-  .refresh-btn {
-    font-size: 0.85rem;
-    padding: 10px;
-  }
-
-  /* Teacher Info */
-  .teacher-info-box {
-    padding: 15px;
-    gap: 12px;
-    margin-top: 20px;
-  }
-
-  .teacher-info-item {
-    padding: 10px;
-  }
-
-  .teacher-info-item label {
-    font-size: 0.75em;
-  }
-
-  .teacher-info-item span {
-    font-size: 1em;
-  }
-
-  /* Quarter Selector */
-  .quarter-selector {
-    padding: 12px;
-    gap: 8px;
-  }
-
-  .quarter-selector label {
-    font-size: 0.95em;
-  }
-
-  .quarter-select {
-    font-size: 0.95em;
-    padding: 10px;
-  }
-
-  /* Table - Card Style for Mobile */
   .grades-table-wrapper {
-    border-radius: 6px;
-    font-size: 0.8em;
-  }
-
-  .grades-table {
-    min-width: 500px;
+    border-radius: 8px;
     font-size: 0.75em;
   }
 
@@ -568,128 +406,181 @@
     padding: 8px 6px;
   }
 
-  .grades-table th {
-    font-size: 0.85em;
-  }
-
-  .student-id,
-  .student-name,
-  .student-section {
-    min-width: 80px;
-  }
-
-  .grade-cell {
-    min-width: 100px;
-  }
-
   .grade-input {
-    padding: 5px 6px;
+    padding: 6px 8px;
     font-size: 0.85em;
-    min-width: 45px;
   }
 
   .save-grade-btn {
-    padding: 5px 8px;
-    font-size: 0.75em;
-    min-width: 28px;
-  }
-
-  /* Action Buttons */
-  .submit-all-btn {
-    padding: 10px 15px;
-    font-size: 0.95em;
-  }
-
-  /* Alerts */
-  .alert {
-    font-size: 0.85em;
-    padding: 10px 12px;
-    margin-bottom: 15px;
-  }
-
-  /* No Students Message */
-  .no-students {
-    padding: 30px 15px;
-  }
-
-  .no-students p {
-    font-size: 1em;
-  }
-}
-
-/* Extra Small Mobile (360px and below) */
-@media (max-width: 360px) {
-  .teacher-advisory-container {
-    padding: 10px 3px;
-  }
-
-  .advisory-header > div h1 {
-    font-size: 1.3em;
-  }
-
-  .advisory-header > div p {
-    font-size: 0.85em;
-  }
-
-  .grades-table {
-    min-width: 450px;
-  }
-
-  .grade-inputs {
-    gap: 3px;
-  }
-
-  .teacher-info-box {
-    padding: 12px;
-  }
-}
-
-/* Landscape Mode for Phones */
-@media (max-height: 500px) and (orientation: landscape) {
-  .teacher-advisory-container {
-    padding: 15px 10px;
-  }
-
-  .advisory-header > div h1 {
-    font-size: 1.5em;
-    margin-bottom: 5px;
-  }
-
-  .advisory-header > div p {
-    font-size: 0.9em;
-  }
-
-  .teacher-info-box {
-    grid-template-columns: repeat(2, 1fr);
-    margin-top: 15px;
-    padding: 15px;
-  }
-
-  .quarter-selector {
-    padding: 10px;
-  }
-
-  .grades-table th,
-  .grades-table td {
     padding: 6px 8px;
+    font-size: 0.8em;
   }
 }
-
-/* Scrollbar Styling for Better Mobile UX */
-.grades-table-wrapper::-webkit-scrollbar {
-  height: 8px;
+/* Refresh Button Styles */
+.evaluation-header,
+.advisory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    gap: 20px;
 }
 
-.grades-table-wrapper::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+.refresh-bton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #b690e7 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.grades-table-wrapper::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 10px;
+.refresh-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.grades-table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.refresh-btn-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.refresh-btn-large:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Spinning animation for refresh icon */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .evaluation-header,
+    .advisory-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .refresh-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+/* Refresh Button Styles */
+.evaluation-header,
+.advisory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    gap: 20px;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #4993f3 0%, #0e45ac 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 240, 28, 0.3);
+}
+
+.refresh-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 200, 50, 0.432);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.refresh-btn-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #5b83f3 0%, #308aff 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.refresh-btn-large:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Spinning animation for refresh icon */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .evaluation-header,
+    .advisory-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .refresh-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
