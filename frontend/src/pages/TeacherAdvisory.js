@@ -165,10 +165,11 @@ export default function TeacherAdvisory() {
 
   return (
     <div className="teacher-advisory-container">
+        <div className="sticky-header-wrapper">
       <div className="advisory-header">
         <div>
-          <h1>Teacher Advisory - Grade Evaluation</h1>
-          <p>Input grades for your advisory students</p>
+          <h1>Teacher {teacherInfo.firstName} {teacherInfo.lastName} - {teacherInfo.advisory_grade} Evaluation</h1>
+          <p><strong>Input grades for Section {teacherInfo.section} students</strong></p>
         </div>
         <button 
           onClick={handleRefresh} 
@@ -180,7 +181,7 @@ export default function TeacherAdvisory() {
           {refreshing ? ' Refreshing...' : ' Refresh'}
         </button>
       </div>
-        {teacherInfo && (
+        {/* {teacherInfo && (
         <div className="teacher-info-box">
           <div className="teacher-info-item">
             <label>Teacher:</label>
@@ -199,7 +200,7 @@ export default function TeacherAdvisory() {
             <span>{teacherInfo.specialization}</span>
           </div>
         </div>
-      )}
+      )} */}
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
@@ -217,7 +218,9 @@ export default function TeacherAdvisory() {
           <option value="Q4">Quarter 4</option>
         </select>
       </div>
-
+      </div>
+      {/* Scrollable Content starts here */}
+    <div className="scrollable-content">
       {students.length === 0 ? (
         <div className="no-students">
           <p>No students assigned to your advisory class</p>
@@ -305,5 +308,8 @@ export default function TeacherAdvisory() {
         </button>
       </div>
     </div>
+    
+    </div>
   );
+  
 }
