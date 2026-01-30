@@ -247,7 +247,7 @@ export default function TeacherAdvisory() {
                     {student.firstName} {student.lastName}
                   </td>
                   <td className="student-section">
-                    {student.section?.sectionName || "N/A"}
+                    {student.section?.name || "N/A"}
                   </td>
                   {subjects.length > 0 ? (
                     subjects.map((subject) => {
