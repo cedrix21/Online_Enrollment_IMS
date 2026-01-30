@@ -4,6 +4,7 @@ import './EvaluationManagement.css';
 import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
 import { useNavigate } from 'react-router-dom';
+import { FaSyncAlt } from 'react-icons/fa';
 
 const EvaluationManagement = () => {
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
@@ -11,6 +12,7 @@ const EvaluationManagement = () => {
   const [allGrades, setAllGrades] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
@@ -71,6 +73,36 @@ const EvaluationManagement = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setSuccess('Refreshing data...');
+      
+      const res = await API.get('/admin/grades');
+      const gradesData = res.data.data || [];
+      setAllGrades(gradesData);
+
+      const uniqueLevels = [...new Set(gradesData.map(g => g.student?.gradeLevel))].filter(Boolean).sort();
+      setGradeLevels(uniqueLevels);
+
+      setSuccess('Data refreshed successfully!');
+      setTimeout(() => setSuccess(''), 2000);
+      setError('');
+    } catch (err) {
+      console.error('Error refreshing grades:', err);
+      
+      if (err.response?.status === 404 || err.response?.data?.message?.includes('No grades found')) {
+        setAllGrades([]);
+        setSuccess('No grades available yet');
+        setTimeout(() => setSuccess(''), 2000);
+      } else if (err.response?.status !== 401) {
+        setError('Failed to refresh: ' + (err.response?.data?.message || err.message));
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -191,15 +223,26 @@ const EvaluationManagement = () => {
         <TopBar user={user} />
         <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
           <div className="evaluation-container">
+            {/* ✅ UPDATED HEADER with Refresh Button */}
             <div className="evaluation-header">
-              <h1>Student Grade Evaluation</h1>
-              <p>Select a grade level and student to manage grades</p>
+              <div>
+                <h1>Student Grade Evaluation</h1>
+                <p>Select a grade level and student to manage grades</p>
+              </div>
+              <button 
+                onClick={handleRefresh} 
+                disabled={refreshing}
+                className="refresh-btn"
+                title="Refresh grades data"
+              >
+                <FaSyncAlt className={refreshing ? 'spinning' : ''} />
+                {refreshing ? ' Refreshing...' : ' Refresh'}
+              </button>
             </div>
 
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 
-            {/* ✅ ADDED: Show message when no grades exist */}
             {!loading && allGrades.length === 0 ? (
               <div className="no-data-state" style={{
                 textAlign: 'center',
@@ -213,9 +256,18 @@ const EvaluationManagement = () => {
                 <p style={{ color: '#666', marginTop: '10px' }}>
                   Grades will appear here once teachers start inputting student evaluations.
                 </p>
+                <button 
+                  onClick={handleRefresh} 
+                  disabled={refreshing}
+                  className="refresh-btn-large"
+                  style={{ marginTop: '20px' }}
+                >
+                  <FaSyncAlt className={refreshing ? 'spinning' : ''} />
+                  {refreshing ? ' Checking...' : ' Check for Updates'}
+                </button>
               </div>
             ) : (
-                <></>
+              <></>
             )}
 
             {/* Grade Level Filter */}
@@ -235,31 +287,31 @@ const EvaluationManagement = () => {
             </div>
 
             {/* Students List */}
-            <div className="students-section">
-              <h3>Students in {selectedGradeLevel || 'Selected Grade'}</h3>
-              <div className="students-grid">
-                {students.length > 0 ? (
-                  students.map(student => (
-                    <div
-                      key={student.id}
-                      className="student-card"
-                      onClick={() => openStudentModal(student)}
-                    >
-                      <div className="student-card-header">
-                        <h4>{student.firstName || student.firstname || ''} {student.lastName || student.lastname || ''}</h4>
+           <div className="students-section">
+                  <h3>Students in {selectedGradeLevel || 'Selected Grade'}</h3>
+                  <div className="students-grid">
+                    {students.length > 0 ? (
+                      students.map(student => (
+                        <div
+                          key={student.id}
+                          className="student-card"
+                          onClick={() => openStudentModal(student)}
+                        >
+                          <div className="student-card-header">
+                            <h4>{student.firstName || student.firstname || ''} {student.lastName || student.lastname || ''}</h4>
+                          </div>
+                          <div className="student-card-body">
+                            <p><strong>ID:</strong> {student.studentId || 'N/A'}</p>
+                            <p><strong>Section:</strong> {student.section?.name || student.section?.sectionName || 'N/A'}</p>
+                            <p className="click-hint">Click to view grades</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-students">
+                        <p>No students found in {selectedGradeLevel}</p>
                       </div>
-                      <div className="student-card-body">
-                        <p><strong>ID:</strong> {student.studentId || 'N/A'}</p>
-                        <p><strong>Section:</strong> {student.section?.name || student.section?.sectionName || 'N/A'}</p>
-                        <p className="click-hint">Click to grade</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-students">
-                    <p>No students found in {selectedGradeLevel}</p>
-                  </div>
-                )}
+                    )}
               </div>
             </div>
           </div>

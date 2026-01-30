@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import API from "../api/api";
 import "./TeacherAdvisory.css";
+import { FaSyncAlt } from 'react-icons/fa';
 
 export default function TeacherAdvisory() {
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [grades, setGrades] = useState({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selectedQuarter, setSelectedQuarter] = useState("Q1");
@@ -48,6 +50,43 @@ export default function TeacherAdvisory() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setSuccess("Refreshing data...");
+      
+      const [teacherRes, studentsRes, subjectsRes, gradesRes] = await Promise.all([
+        API.get("/teacher/info"),
+        API.get("/teacher/students"),
+        API.get("/teacher/subjects"),
+        API.get("/teacher/grades"),
+      ]);
+
+      setTeacherInfo(teacherRes.data);
+      setStudents(studentsRes.data);
+      setSubjects(subjectsRes.data);
+
+      const gradesObj = {};
+      gradesRes.data.forEach((grade) => {
+        const key = `${grade.student_id}-${grade.subject_id}-${grade.quarter || 'Q1'}`;
+        gradesObj[key] = {
+          score: grade.score,
+          remarks: grade.remarks,
+        };
+      });
+      setGrades(gradesObj);
+
+      setSuccess("Data refreshed successfully!");
+      setTimeout(() => setSuccess(""), 2000);
+      setError("");
+    } catch (err) {
+      console.error("Error refreshing data:", err);
+      setError(err.response?.data?.message || "Failed to refresh data");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -128,29 +167,40 @@ export default function TeacherAdvisory() {
   return (
     <div className="teacher-advisory-container">
       <div className="advisory-header">
-        <h1>Teacher Advisory - Grade Evaluation</h1>
-        <p>Input grades for your advisory students</p>
-        {teacherInfo && (
-          <div className="teacher-info-box">
-            <div className="teacher-info-item">
-              <label>Teacher:</label>
-              <span>{teacherInfo.firstName} {teacherInfo.lastName}</span>
-            </div>
-            <div className="teacher-info-item">
-              <label>Grade Level:</label>
-              <span>{teacherInfo.advisory_grade}</span>
-            </div>
-            <div className="teacher-info-item">
-              <label>Section:</label>
-              <span>{teacherInfo.section}</span>
-            </div>
-            <div className="teacher-info-item">
-              <label>Specialization:</label>
-              <span>{teacherInfo.specialization}</span>
-            </div>
-          </div>
-        )}
+        <div>
+          <h1>Teacher Advisory - Grade Evaluation</h1>
+          <p>Input grades for your advisory students</p>
+        </div>
+        <button 
+          onClick={handleRefresh} 
+          disabled={refreshing}
+          className="refresh-btn"
+          title="Refresh student data"
+        >
+          <FaSyncAlt className={refreshing ? 'spinning' : ''} />
+          {refreshing ? ' Refreshing...' : ' Refresh'}
+        </button>
       </div>
+        {teacherInfo && (
+        <div className="teacher-info-box">
+          <div className="teacher-info-item">
+            <label>Teacher:</label>
+            <span>{teacherInfo.firstName} {teacherInfo.lastName}</span>
+          </div>
+          <div className="teacher-info-item">
+            <label>Grade Level:</label>
+            <span>{teacherInfo.advisory_grade}</span>
+          </div>
+          <div className="teacher-info-item">
+            <label>Section:</label>
+            <span>{teacherInfo.section}</span>
+          </div>
+          <div className="teacher-info-item">
+            <label>Specialization:</label>
+            <span>{teacherInfo.specialization}</span>
+          </div>
+        </div>
+      )}
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
