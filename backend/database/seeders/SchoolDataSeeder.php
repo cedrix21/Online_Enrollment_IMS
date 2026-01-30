@@ -26,7 +26,7 @@ class SchoolDataSeeder extends Seeder
             ['first' => 'Sonia', 'last' => 'Bautista', 'spec' => 'Social Studies'],
             ['first' => 'Pedro', 'last' => 'Penduko', 'spec' => 'MAPEH'],
             ['first' => 'Liza', 'last' => 'Soerano', 'spec' => 'General Ed'],
-            ['first' => 'Antonio', 'last' => 'Luna', 'spec' => 'History'],
+            ['first' => 'Raynalyn', 'last' => 'Ocaris', 'spec' => 'History'],
         ];
 
         $teachers = [];

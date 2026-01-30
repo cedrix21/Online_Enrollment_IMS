@@ -42,7 +42,7 @@ class UserSeeder extends Seeder
             ['name' => 'Sonia Bautista', 'email' => 'sonia.bautista@sics.com'],
             ['name' => 'Pedro Penduko', 'email' => 'pedro.penduko@sics.com'],
             ['name' => 'Liza Soerano', 'email' => 'liza.soerano@sics.com'],
-            ['name' => 'Antonio Luna', 'email' => 'antonio.luna@sics.com'],
+            ['name' => 'Raynalyn Ocaris', 'email' => 'raynalyn.ocaris@sics.com'],
         ];
 
         foreach ($teacherData as $teacher) {

@@ -27,18 +27,19 @@ const EvaluationManagement = () => {
   // Check user role on mount only
   useEffect(() => {
     if (!user) {
-      navigate("/dashboard");
-    } else if (user.role !== "admin" && user.role !== "registrar") {
-      navigate("/dashboard");
+      navigate("/login");
+      return;
     }
+    
+    if (user.role !== "admin" && user.role !== "registrar") {
+      navigate("/dashboard");
+      return;
+    }
+
+    // User is valid, fetch data
+    fetchAllGrades();
   }, []);
 
-  // Fetch all grades on component mount
-  useEffect(() => {
-    if (user && (user.role === "admin" || user.role === "registrar")) {
-      fetchAllGrades();
-    }
-  }, [user]);
 
   const fetchAllGrades = async () => {
     try {
@@ -58,7 +59,16 @@ const EvaluationManagement = () => {
 
       setError('');
     } catch (err) {
-      setError('Failed to fetch grades: ' + (err.response?.data?.message || err.message));
+      console.error('Error fetching grades:', err);
+      
+      // ✅ FIXED: Don't show error for empty data
+      if (err.response?.status === 404 || err.response?.data?.message?.includes('No grades found')) {
+        setError('');
+        setAllGrades([]);
+      } else if (err.response?.status !== 401) {
+        // Only show error if it's not an auth error (401 is handled by interceptor)
+        setError('Failed to fetch grades: ' + (err.response?.data?.message || err.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -188,6 +198,25 @@ const EvaluationManagement = () => {
 
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
+
+            {/* ✅ ADDED: Show message when no grades exist */}
+            {!loading && allGrades.length === 0 ? (
+              <div className="no-data-state" style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                backgroundColor: '#f9f9f9',
+                borderRadius: '12px',
+                marginTop: '40px'
+              }}>
+                <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📊</div>
+                <h3>No Grades Available Yet</h3>
+                <p style={{ color: '#666', marginTop: '10px' }}>
+                  Grades will appear here once teachers start inputting student evaluations.
+                </p>
+              </div>
+            ) : (
+                <></>
+            )}
 
             {/* Grade Level Filter */}
             <div className="filters-section">
