@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../api/api";
-import { FaSyncAlt } from 'react-icons/fa';
+import { FaSyncAlt, FaChevronUp, FaChevronDown, FaSave } from 'react-icons/fa';
 import "./TeacherAdvisory.css";
 export default function TeacherAdvisory() {
   const [students, setStudents] = useState([]);
@@ -12,6 +12,7 @@ export default function TeacherAdvisory() {
   const [success, setSuccess] = useState("");
   const [selectedQuarter, setSelectedQuarter] = useState("Q1");
   const [teacherInfo, setTeacherInfo] = useState(null);
+  const [expandedStudentId, setExpandedStudentId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -50,6 +51,10 @@ export default function TeacherAdvisory() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleStudent = (id) => {
+    setExpandedStudentId(expandedStudentId === id ? null : id);
   };
 
   const handleRefresh = async () => {
@@ -165,150 +170,120 @@ export default function TeacherAdvisory() {
 
   return (
     <div className="teacher-advisory-container">
-        <div className="sticky-header-wrapper">
-      <div className="advisory-header">
-        <div>
-          <h1>Teacher {teacherInfo.firstName} {teacherInfo.lastName} - {teacherInfo.advisory_grade} Evaluation</h1>
-          <p><strong>Input grades for Section {teacherInfo.section} students</strong></p>
+      {/* Sticky Header Wrapper */}
+      <div className="sticky-header-wrapper">
+        <div className="advisory-header">
+          <div>
+            <h1>Teacher {teacherInfo?.firstName} {teacherInfo?.lastName} - {teacherInfo?.advisory_grade} Evaluation</h1>
+            <p><strong>Input grades for Section {teacherInfo?.section} students</strong></p>
+          </div>
+          <button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            className="refresh-btn"
+            title="Refresh student data"
+          >
+            <FaSyncAlt className={refreshing ? 'spinning' : ''} />
+            {refreshing ? ' Refreshing...' : ' Refresh'}
+          </button>
         </div>
-        <button 
-          onClick={handleRefresh} 
-          disabled={refreshing}
-          className="refresh-bton"
-          title="Refresh student data"
-        >
-          <FaSyncAlt className={refreshing ? 'spinning' : ''} />
-          {refreshing ? ' Refreshing...' : ' Refresh'}
-        </button>
-      </div>
-        {/* {teacherInfo && (
-        <div className="teacher-info-box">
-          <div className="teacher-info-item">
-            <label>Teacher:</label>
-            <span>{teacherInfo.firstName} {teacherInfo.lastName}</span>
-          </div>
-          <div className="teacher-info-item">
-            <label>Grade Level:</label>
-            <span>{teacherInfo.advisory_grade}</span>
-          </div>
-          <div className="teacher-info-item">
-            <label>Section:</label>
-            <span>{teacherInfo.section}</span>
-          </div>
-          <div className="teacher-info-item">
-            <label>Specialization:</label>
-            <span>{teacherInfo.specialization}</span>
-          </div>
-        </div>
-      )} */}
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
+        {error && <div className="alert alert-error">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
 
-      <div className="quarter-selector">
-        <label>Select Quarter:</label>
-        <select
-          value={selectedQuarter}
-          onChange={(e) => setSelectedQuarter(e.target.value)}
-          className="quarter-select"
-        >
-          <option value="Q1">Quarter 1</option>
-          <option value="Q2">Quarter 2</option>
-          <option value="Q3">Quarter 3</option>
-          <option value="Q4">Quarter 4</option>
-        </select>
-      </div>
-      </div>
-      {/* Scrollable Content starts here */}
-    <div className="scrollable-content">
-      {students.length === 0 ? (
-        <div className="no-students">
-          <p>No students assigned to your advisory class</p>
+        <div className="quarter-selector">
+          <label>Select Quarter:</label>
+          <select
+            value={selectedQuarter}
+            onChange={(e) => setSelectedQuarter(e.target.value)}
+            className="quarter-select"
+          >
+            <option value="Q1">Quarter 1</option>
+            <option value="Q2">Quarter 2</option>
+            <option value="Q3">Quarter 3</option>
+            <option value="Q4">Quarter 4</option>
+          </select>
         </div>
-      ) : (
-        <div className="grades-table-wrapper">
-          <table className="grades-table">
-            <thead>
-              <tr>
-                <th>Student ID</th>
-                <th>Student Name</th>
-                <th>Section</th>
-                {subjects.length > 0 ? (
-                  subjects.map((subject) => (
-                    <th key={subject.id}>{subject.subjectName}</th>
-                  ))
-                ) : (
-                  <th>No Subjects</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id}>
-                  <td className="student-id">{student.studentId}</td>
-                  <td className="student-name">
-                    {student.firstName} {student.lastName}
-                  </td>
-                  <td className="student-section">
-                    {student.section?.name || "N/A"}
-                  </td>
-                  {subjects.length > 0 ? (
-                    subjects.map((subject) => {
-                      const key = `${student.id}-${subject.id}-${selectedQuarter}`;
-                      const gradeData = grades[key] || { score: "", remarks: "" };
-                      return (
-                        <td key={`${student.id}-${subject.id}`} className="grade-cell">
-                          <div className="grade-inputs">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              placeholder="Score"
-                              value={gradeData.score}
-                              onChange={(e) =>
-                                handleGradeChange(
-                                  student.id,
-                                  subject.id,
-                                  "score",
-                                  e.target.value
-                                )
-                              }
-                              className="grade-input"
-                            />
-                            <button
-                              onClick={() =>
-                                handleSubmitGrade(student.id, subject.id)
-                              }
-                              className="save-grade-btn"
-                              title="Save this grade"
-                            >
-                              ✓
-                            </button>
+      </div>
+
+      {/* Scrollable Content: Accordion Style */}
+      <div className="scrollable-content">
+        {students.length === 0 ? (
+          <div className="no-students">
+            <p>No students assigned to your advisory class</p>
+          </div>
+        ) : (
+          <div className="student-accordion-list">
+            {students.map((student) => (
+              <div 
+                key={student.id} 
+                className={`student-card ${expandedStudentId === student.id ? 'active' : ''}`}
+              >
+                {/* Clickable Header for each Student */}
+                <div className="student-card-header" onClick={() => toggleStudent(student.id)}>
+                  <div className="student-info-main">
+                    <span className="sid">{student.studentId}</span>
+                    <span className="sname">{student.lastName}, {student.firstName}</span>
+                    <span className="ssection">({student.section?.name || "N/A"})</span>
+                  </div>
+                  <div className="chevron">
+                    {expandedStudentId === student.id ? <FaChevronUp /> : <FaChevronDown />}
+                  </div>
+                </div>
+
+                {/* Expanded Subject List */}
+                {expandedStudentId === student.id && (
+                  <div className="student-card-body">
+                    {subjects.length > 0 ? (
+                      subjects.map((subject) => {
+                        const key = `${student.id}-${subject.id}-${selectedQuarter}`;
+                        const gradeData = grades[key] || { score: "", remarks: "" };
+                        return (
+                          <div key={subject.id} className="subject-row">
+                            <span className="subject-name">{subject.subjectName}</span>
+                            <div className="grade-inputs">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="Score"
+                                value={gradeData.score}
+                                onChange={(e) =>
+                                  handleGradeChange(student.id, subject.id, "score", e.target.value)
+                                }
+                                className="grade-input"
+                              />
+                              <button
+                                onClick={() => handleSubmitGrade(student.id, subject.id)}
+                                className="save-grade-btn"
+                                title="Save this grade"
+                              >
+                                <FaSave />
+                              </button>
+                            </div>
                           </div>
-                        </td>
-                      );
-                    })
-                  ) : (
-                    <td>No subjects assigned</td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                        );
+                      })
+                    ) : (
+                      <p className="no-subjects">No subjects assigned</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-      <div className="action-buttons">
-        <button
-          onClick={handleSubmitAllGrades}
-          className="submit-all-btn"
-          disabled={students.length === 0}
-        >
-          Save All Grades
-        </button>
+        <div className="action-buttons">
+          <button
+            onClick={handleSubmitAllGrades}
+            className="submit-all-btn"
+            disabled={students.length === 0}
+          >
+            Save All Grades
+          </button>
+        </div>
       </div>
-    </div>
-    
     </div>
   );
   

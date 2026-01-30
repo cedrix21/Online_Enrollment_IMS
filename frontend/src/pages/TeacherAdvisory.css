@@ -4,14 +4,7 @@
   padding: 0 20px 40px 20px;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
-.sticky-header-wrapper {
-  position: sticky;
-  top: 0;
-  z-index: 100; /* Stays above the table rows */
-  padding-top: 40px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+
 
 .loading-overlay {
   position: fixed;
@@ -596,4 +589,98 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* Student Accordion List */
+.student-accordion-list {
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: 50px;
+}
+
+.student-card {
+  background: white;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.student-card-header {
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: #fff;
+}
+
+.student-card-header:hover {
+  background: #f8f9ff;
+}
+
+.student-card.active .student-card-header {
+  border-bottom: 1px solid #eee;
+  background: #f0f4ff;
+}
+
+.student-info-main .sid {
+  font-weight: bold;
+  color: #667eea;
+  margin-right: 15px;
+}
+
+.student-info-main .sname {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Inside the Dropdown */
+.student-card-body {
+  padding: 15px 20px;
+  background: #fafbfc;
+}
+
+.subject-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.subject-row:last-child {
+  border-bottom: none;
+}
+
+.subject-label {
+  font-size: 0.95rem;
+  color: #555;
+  font-weight: 500;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.input-group input {
+  width: 80px;
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.input-group button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.input-group button:hover {
+  background: #218838;
 }
