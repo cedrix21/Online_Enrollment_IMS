@@ -180,7 +180,7 @@ export default function TeacherAdvisory() {
           <button 
             onClick={handleRefresh} 
             disabled={refreshing}
-            className="refresh-btn"
+            className="refresh-bton"
             title="Refresh student data"
           >
             <FaSyncAlt className={refreshing ? 'spinning' : ''} />

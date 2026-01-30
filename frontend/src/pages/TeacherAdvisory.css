@@ -433,6 +433,7 @@
 }
 
 .refresh-bton {
+    margin-top: 40px;
     display: flex;
     align-items: center;
     gap: 8px;
