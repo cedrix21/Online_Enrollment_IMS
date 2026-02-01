@@ -58,7 +58,7 @@ export default function Login() {
         {error && <p className="error-message">{error}</p>}
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label>Email</label>
+            <label>Email:</label>
             <input
               type="email"
               value={email}
@@ -68,7 +68,7 @@ export default function Login() {
             />
           </div>
           <div className="input-group">
-            <label>Password</label>
+            <label>Password:</label>
             <input
               type="password"
               value={password}

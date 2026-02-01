@@ -18,6 +18,7 @@ class Student extends Model
         'enrollment_id',
         'section_id',
         'status',
+        'school_year',
         // 'created_at' removed from here
     ];
 

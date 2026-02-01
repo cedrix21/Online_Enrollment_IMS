@@ -660,28 +660,3 @@
   color: #555;
   font-weight: 500;
 }
-
-.input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.input-group input {
-  width: 80px;
-  padding: 5px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.input-group button {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.input-group button:hover {
-  background: #218838;
-}

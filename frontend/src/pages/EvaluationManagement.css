@@ -725,3 +725,22 @@
         justify-content: center;
     }
 }
+
+.school-year-badge {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #bbdefb;
+    display: inline-block;
+}
+
+.enrollment-details-card {
+    background: #f8f9fa;
+    border-left: 4px solid #1976d2;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
+}

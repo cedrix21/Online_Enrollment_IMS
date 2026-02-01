@@ -191,6 +191,16 @@ class EnrollmentController extends Controller
         });
     }
 
+
+
+    private function getSchoolYear(): string {
+    $month = (int) date('n'); 
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}–" . ($year + 1) : ($year - 1) . "–{$year}";
+}
+
+
+
     public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
@@ -229,6 +239,7 @@ class EnrollmentController extends Controller
                     'dateOfBirth'   => $enrollment->dateOfBirth,
                     'enrollment_id' => $enrollment->id,
                     'section_id'    => $section->id,
+                    'school_year' => $this->getSchoolYear(),
                     'status'        => 'active',
                 ]);
 
@@ -387,6 +398,7 @@ class EnrollmentController extends Controller
                     'gradeLevel'    => $validated['gradeLevel'],
                     'section_id'    => $section->id,
                     'enrollment_id' => $enrollment->id,
+                    'school_year' => $this->getSchoolYear(),
                     'status'        => 'active',
                 ]);
 

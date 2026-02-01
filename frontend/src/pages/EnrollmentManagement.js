@@ -18,21 +18,39 @@ export default function EnrollmentManagement() {
   const [enrollments, setEnrollments] = useState([]);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
   const location = useLocation();
   const navigate = useNavigate();
-
-
   const [filterStatus, setFilterStatus] = useState(
     location.state?.filter || "all"
   );
   const [filterPaymentMethod, setFilterPaymentMethod] = useState(
     location.state?.paymentFilter || "all"
   );
-
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
+  const [linkedStudent, setLinkedStudent] = useState(null);
 
-  const closeModal = () => setSelectedEnrollment(null);
+  // Fetch student info when modal opens
+  useEffect(() => {
+    const fetchLinkedStudent = async () => {
+      if (selectedEnrollment && selectedEnrollment.status === 'approved') {
+        try {
+          // Assuming your backend can find a student by their enrollment ID or Email
+          const res = await API.get(`/students/search?email=${selectedEnrollment.email}`);
+          setLinkedStudent(res.data);
+        } catch (err) {
+          console.error("Could not find linked student record");
+        }
+      } else {
+        setLinkedStudent(null);
+      }
+    };
+    fetchLinkedStudent();
+  }, [selectedEnrollment]);
+
+  const closeModal = () => {
+    setSelectedEnrollment(null);
+    setLinkedStudent(null);
+  };
 
   useEffect(() => {
     if (!user || (user.role !== "admin" && user.role !== "registrar")) {
@@ -177,6 +195,10 @@ const exportToExcel = () => {
   XLSX.writeFile(workbook, `Enrollment_List_${filterStatus}_${new Date().toLocaleDateString()}.xlsx`);
 };
   
+
+
+
+
 
   return (
      <div className="dashboard-layout">
@@ -398,6 +420,20 @@ const exportToExcel = () => {
                                       </span>
                                   ) : (
                                       <>
+
+                                      {selectedEnrollment.status === 'approved' && linkedStudent && (
+                                          <div className="enrollment-details-card" style={{ gridColumn: 'span 2', marginBottom: '15px' }}>
+                                            <h4 style={{ color: '#1976d2', borderBottom: '2px solid #1976d2', paddingBottom: '5px' }}>
+                                              🎓 Official Enrollment Details
+                                            </h4>
+                                            <div className="details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                                              <p><strong>Student ID:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{linkedStudent.studentId}</span></p>
+                                              <p><strong>School Year:</strong> <span className="school-year-badge">{linkedStudent.school_year}</span></p>
+                                              <p><strong>Grade Level:</strong> {linkedStudent.grade_level}</p>
+                                              <p><strong>Section:</strong> {linkedStudent.section?.name || "Unassigned"}</p>
+                                            </div>
+                                          </div>
+                                      )}
                                           {selectedEnrollment.payments?.[0]?.paymentMethod === 'Cash' ? (
                                               <span style={{ marginLeft: '10px', color: '#d32f2f', fontWeight: 'bold' }}>
                                                   ⚠️ WALK-IN: Await physical payment at Registrar

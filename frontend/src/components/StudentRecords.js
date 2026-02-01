@@ -19,6 +19,7 @@ export default function StudentRecords() {
   const [filterGrade, setFilterGrade] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const navigate = useNavigate();
+  const [filterSY, setFilterSY] = useState("all");
 
   useEffect(() => {
     fetchApprovedStudents();
@@ -33,6 +34,10 @@ export default function StudentRecords() {
     }
   };
 
+  const schoolYearOptions = [...new Set(students.map((s) => s.school_year))]
+    .filter(Boolean)
+    .sort();
+
   const filteredStudents = students.filter((s) => {
     const fullName = `${s.firstName} ${s.lastName}`.toLowerCase();
     const matchesSearch =
@@ -43,7 +48,9 @@ export default function StudentRecords() {
       filterGrade === "all" ? true : s.gradeLevel === filterGrade;
     const matchesStatus =
       filterStatus === "all" ? true : s.status === filterStatus;
-    return matchesSearch && matchesGrade && matchesStatus;
+    const matchesSY = filterSY === "all" ? true : s.school_year === filterSY;
+
+    return matchesSearch && matchesGrade && matchesStatus && matchesSY;
   });
 
   return (
@@ -52,7 +59,7 @@ export default function StudentRecords() {
       <div className="main-content">
         <TopBar user={user} />
 
-        <div className="content-scroll-area" style={{ padding: '20px' }}>
+        <div className="content-scroll-area" style={{ padding: "20px" }}>
           <div className="records-container">
             <div className="records-header">
               <div className="header-title">
@@ -82,8 +89,10 @@ export default function StudentRecords() {
                 <option value="all">All Grades</option>
                 <option value="Kindergarten 1">Kindergarten 1</option>
                 <option value="Kindergarten 2">Kindergarten 2</option>
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <option key={n} value={`Grade ${n}`}>Grade {n}</option>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={`Grade ${n}`}>
+                    Grade {n}
+                  </option>
                 ))}
               </select>
               <select
@@ -95,6 +104,19 @@ export default function StudentRecords() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+
+              <select
+                className="sy-filter"
+                value={filterSY}
+                onChange={(e) => setFilterSY(e.target.value)}
+              >
+                <option value="all">All School Years</option>
+                {schoolYearOptions.map((sy) => (
+                  <option key={sy} value={sy}>
+                    {sy}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="table-wrapper">
@@ -103,6 +125,7 @@ export default function StudentRecords() {
                   <tr>
                     <th>Student ID</th>
                     <th>Full Name</th>
+                    <th>S.Y.</th>
                     <th>Grade Level</th>
                     <th>Section</th>
                     <th>Status</th>
@@ -119,6 +142,15 @@ export default function StudentRecords() {
                         <td className="name-cell">
                           {student.firstName} {student.lastName}
                         </td>
+                        <td className="sy-cell">
+                          {student.school_year ? (
+                            <span className="school-year-badge">
+                              {student.school_year}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td>{student.gradeLevel}</td>
                         <td>{student.section?.name || "N/A"}</td>
                         <td>
@@ -131,10 +163,10 @@ export default function StudentRecords() {
                             <button className="edit-btn" title="Edit Record">
                               <FaUserEdit />
                             </button>
-                            <button 
-                              className="billing-btn" 
+                            <button
+                              className="billing-btn"
                               title="View Billing"
-                              onClick={() => navigate('/admin/billing')}
+                              onClick={() => navigate("/admin/billing")}
                             >
                               <FaMoneyBillWave />
                             </button>
