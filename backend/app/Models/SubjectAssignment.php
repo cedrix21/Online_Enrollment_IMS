@@ -15,4 +15,8 @@ class SubjectAssignment extends Model
     public function subject() {
         return $this->belongsTo(Subject::class);
     }
+     public function students()
+    {
+        return Student::where('gradeLevel', $this->gradeLevel)->get();
+    }
 }

@@ -9,6 +9,7 @@ import {
   FaUserPlus,
   FaClipboardList,
   FaBook,
+  FaBookOpen,
 } from "react-icons/fa";
 import "./SideBar.css";
 
@@ -48,10 +49,17 @@ export default function Sidebar({ user }) {
         <FaLayerGroup /> <span>Sections</span>
       </Link>
 
+        <Link to="/subject-management" className={location.pathname.includes('/subject-management') ? 'active' : ''}>
+          <FaBookOpen /> Subject Management
+        </Link>
+
+
         <Link to="/load-slips" className={location.pathname.includes('/load-slips') ? 'active' : ''}>
-        <FaFileInvoice className="icon" />
+        <FaFileInvoice  />
         <span>Load Slips</span>
         </Link>
+
+        
 
       {(user?.role === "admin" || user?.role === "registrar") && (
         <Link to="/admin/evaluation" className={location.pathname.includes('/admin/evaluation') ? 'active' : ''}>

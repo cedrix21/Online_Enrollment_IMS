@@ -23,6 +23,8 @@ import EvaluationManagement from "./pages/EvaluationManagement";
 import { useState, useEffect } from "react"; 
 import API from "./api/api";
 import LoadingScreen from "./components/LoadingScreen";
+import SubjectManagement from "./pages/SubjectManagement";
+
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -63,7 +65,6 @@ if (authLoading) {
             </ProtectedRoute>
           }
         />
-
         <Route path="/enroll" element={<Enrollment />} />
 
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
@@ -92,7 +93,14 @@ if (authLoading) {
           </ProtectedRoute>
         }
          />
-
+        <Route
+          path="/subject-management"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <SubjectManagement />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/teachers" 
         element={

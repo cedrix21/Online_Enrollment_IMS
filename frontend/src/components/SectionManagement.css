@@ -1,245 +1,423 @@
+/* --- LAYOUT & CONTAINERS --- */
 .management-container {
-    padding: 2rem;
+  padding: 2rem;
 }
 
 .management-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
 }
 
 .title-group {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .title-icon {
-    font-size: 2.5rem;
-    color: #b8860b;
+  font-size: 2.5rem;
+  color: #b8860b;
 }
 
+/* --- BUTTONS --- */
 .add-btn {
-    background: #b8860b;
-    color: white;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: bold;
+  background: #b8860b;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  transition: opacity 0.2s;
 }
 
+.add-btn:hover {
+  opacity: 0.9;
+}
+
+/* --- SECTION CARDS --- */
 .section-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
 }
 
 .section-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    position: relative;
-    border: 1px solid #eee;
-    transition: transform 0.2s;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
+  border: 1px solid #eee;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .section-card:hover {
-    transform: translateY(-5px);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
 .section-badge {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: #fdf5e6;
-    color: #b8860b;
-    padding: 0.2rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: bold;
-}
-
-.section-card-body {
-    margin: 1.5rem 0;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #fdf5e6;
+  color: #b8860b;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
 }
 
 .info-item {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin-bottom: 0.8rem;
-    font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.95rem;
 }
 
+/* --- PROGRESS BAR --- */
 .capacity-bar {
-    height: 8px;
-    background: #eee;
-    border-radius: 10px;
-    margin-top: 1rem;
-    overflow: hidden;
+  height: 8px;
+  background: #eee;
+  border-radius: 10px;
+  margin-top: 1rem;
+  overflow: hidden;
 }
 
 .capacity-bar .fill {
-    height: 100%;
-    background: #b8860b;
-    border-radius: 10px;
+  height: 100%;
+  background: #b8860b;
+  border-radius: 10px;
 }
 
 .section-card-actions {
-    display: flex;
-    gap: 0.5rem;
-    border-top: 1px solid #eee;
-    padding-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid #eee;
+  padding-top: 1rem;
+  margin-top: 1rem;
 }
 
 .section-card-actions button {
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid #b8860b;
-    background: transparent;
-    color: #b8860b;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #b8860b;
+  background: transparent;
+  color: #b8860b;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: 0.2s;
 }
 
 .section-card-actions button:hover {
-    background: #b8860b;
-    color: white;
+  background: #b8860b;
+  color: white;
+}
+
+/* --- MODAL BASE STYLES (Crucial for Functionality) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px; /* Default for forms */
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
 .student-list-modal {
-    max-width: 800px;
-    width: 90%;
+  max-width: 900px; /* Wider for tables */
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
-.student-table-container {
-    margin-top: 20px;
-    max-height: 400px;
-    overflow-y: auto;
+/* --- TABLES (Students & Schedule) --- */
+.student-list-table, .schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  margin-top: 1rem;
 }
 
-.student-list-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
+.student-list-table th, .schedule-table th {
+  background: #f8f9fa;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #666;
+  border-bottom: 2px solid #eee;
 }
 
-.student-list-table th {
-    background: #f8f9fa;
-    padding: 12px;
-    font-size: 0.9rem;
-    color: #666;
-    border-bottom: 2px solid #eee;
+/* Unified Golden Header for Schedule */
+.schedule-table th {
+  background: #b8860b;
+  color: white;
 }
 
-.student-list-table td {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-    font-size: 0.9rem;
+.student-list-table td, .schedule-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
 }
 
+/* --- STATUS & BADGES --- */
 .status-pill {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    text-transform: capitalize;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
 }
-
 .status-pill.active { background: #e6f4ea; color: #1e7e34; }
 
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: #888;
-}
-
-.modal-body-tabs h4 {
-    margin: 20px 0 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #2c3e50;
-    font-size: 1.1rem;
-}
-
-.schedule-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-    background: #fdfdfd;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.schedule-table th {
-    background: #4a90e2;
-    color: white;
-    padding: 10px;
-    font-size: 0.85rem;
-}
-
-.time-cell {
-    font-weight: 600;
-    color: #4a90e2;
-}
-
 .day-badge {
-    background: #e1f0ff;
-    color: #007bff;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: bold;
+  background: #fdf5e6;
+  color: #b8860b;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+/* --- DETAILS & ICONS --- */
+.time-cell {
+  font-weight: 600;
+  color: #b8860b;
 }
 
 .sub-code {
-    font-size: 0.7rem;
-    color: #888;
-}
-
-.divider {
-    border: 0;
-    border-top: 1px dashed #ddd;
-    margin: 25px 0;
+  font-size: 0.75rem;
+  color: #b8860b;
+  font-weight: bold;
+  display: block;
 }
 
 .sched-teacher {
-    font-size: 0.75rem;
-    color: #555;
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    font-style: italic;
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  font-style: italic;
 }
 
-.sub-code {
-    font-size: 0.7rem;
-    color: #4a90e2; /* Making the code stand out slightly */
-    font-weight: bold;
-}
 .delete-icon-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 5px;
-    transition: transform 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.2s;
 }
 
 .delete-icon-btn:hover {
-    transform: scale(1.2);
+  transform: scale(1.3);
 }
 
-.delete-icon-btn svg {
-    font-size: 1.1rem;
+.divider {
+  border: 0;
+  border-top: 1px dashed #ddd;
+  margin: 25px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+/* ========================================================================
+   ADD THESE STYLES TO SectionManagement.css
+   ======================================================================== */
+
+/* ── Tab Navigation ── */
+.tab-navigation {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: #b8860b;
+  background: #fafafa;
+}
+
+.tab-btn.active {
+  color: #b8860b;
+  border-bottom-color: #b8860b;
+  background: #fff;
+}
+
+/* ── Tab Content ── */
+.tab-content {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Students Section ── */
+.students-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.students-grid {
+  overflow-x: auto;
+}
+
+.students-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.students-table thead {
+  background: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.students-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.students-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.students-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.students-table td {
+  padding: 12px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.student-id-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.middle-name {
+  color: #888;
+  font-weight: normal;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.inactive {
+  background: #fbe9e7;
+  color: #d84315;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.no-students-enrolled {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.no-students-enrolled p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .tab-navigation {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .tab-btn {
+    white-space: nowrap;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .students-table {
+    font-size: 0.85rem;
+  }
+
+  .students-table th,
+  .students-table td {
+    padding: 8px;
+  }
 }

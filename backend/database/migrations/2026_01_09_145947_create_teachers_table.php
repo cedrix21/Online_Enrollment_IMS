@@ -18,6 +18,7 @@ return new class extends Migration
         $table->string('lastName');
         $table->string('email')->unique();
         $table->string('specialization');
+        $table->string('phone')->nullable();
         $table->string('status')->default('active');
         $table->timestamps();
     });

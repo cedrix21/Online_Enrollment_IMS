@@ -638,15 +638,6 @@
     padding: 0.5rem;
   }
 }
-/* Refresh Button Styles */
-.evaluation-header,
-.advisory-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 30px;
-    gap: 20px;
-}
 
 .refresh-btn {
     display: flex;

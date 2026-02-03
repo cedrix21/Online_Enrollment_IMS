@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import API from "../api/api";
 import { FaSyncAlt, FaChevronUp, FaChevronDown, FaSave } from 'react-icons/fa';
 import "./TeacherAdvisory.css";
+
 export default function TeacherAdvisory() {
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -13,6 +14,9 @@ export default function TeacherAdvisory() {
   const [selectedQuarter, setSelectedQuarter] = useState("Q1");
   const [teacherInfo, setTeacherInfo] = useState(null);
   const [expandedStudentId, setExpandedStudentId] = useState(null);
+  
+  // Grade Level Filter
+  const [filterGradeLevel, setFilterGradeLevel] = useState("all");
 
   useEffect(() => {
     fetchData();
@@ -30,7 +34,7 @@ export default function TeacherAdvisory() {
 
       setTeacherInfo(teacherRes.data);
       setStudents(studentsRes.data);
-      setSubjects(subjectsRes.data);
+      setSubjects(subjectsRes.data); // These are ALL subjects teacher handles
 
       // Build grades object from existing data
       const gradesObj = {};
@@ -123,7 +127,7 @@ export default function TeacherAdvisory() {
         quarter: selectedQuarter,
       });
 
-      setSuccess(`Grade saved successfully for student`);
+      setSuccess(`Grade saved successfully!`);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error saving grade:", err);
@@ -133,21 +137,26 @@ export default function TeacherAdvisory() {
 
   const handleSubmitAllGrades = async () => {
     try {
-      const gradesToSubmit = Object.entries(grades).map(([key, data]) => {
-        const [studentId, subjectId, quarter] = key.split("-");
-        return {
-          student_id: parseInt(studentId),
-          subject_id: parseInt(subjectId),
-          score: data.score,
-          remarks: data.remarks || "",
-          quarter: quarter,
-        };
-      });
+      const gradesToSubmit = Object.entries(grades)
+        .filter(([key, data]) => data.score) // Only submit grades with scores
+        .map(([key, data]) => {
+          const [studentId, subjectId, quarter] = key.split("-");
+          return {
+            student_id: parseInt(studentId),
+            subject_id: parseInt(subjectId),
+            score: data.score,
+            remarks: data.remarks || "",
+            quarter: quarter,
+          };
+        });
+
+      if (gradesToSubmit.length === 0) {
+        alert("No grades to save");
+        return;
+      }
 
       for (const gradeData of gradesToSubmit) {
-        if (gradeData.score) {
-          await API.post("/teacher/grades", gradeData);
-        }
+        await API.post("/teacher/grades", gradeData);
       }
 
       setSuccess("All grades saved successfully!");
@@ -158,6 +167,19 @@ export default function TeacherAdvisory() {
       setError(err.response?.data?.message || "Failed to save grades");
     }
   };
+
+  // Filter students by selected grade level
+  const filteredStudents = filterGradeLevel === "all" 
+    ? students 
+    : students.filter(s => s.gradeLevel === filterGradeLevel);
+
+  // Get subjects for a specific student (based on their grade level)
+  const getSubjectsForStudent = (student) => {
+    return subjects.filter(sub => sub.gradeLevel === student.gradeLevel);
+  };
+
+  // Get unique grade levels from teacher's assignments
+  const gradeLevels = teacherInfo?.gradeLevels || [];
 
   if (loading) {
     return (
@@ -174,8 +196,11 @@ export default function TeacherAdvisory() {
       <div className="sticky-header-wrapper">
         <div className="advisory-header">
           <div>
-            <h1>Teacher {teacherInfo?.firstName} {teacherInfo?.lastName} - {teacherInfo?.advisory_grade} Evaluation</h1>
-            <p><strong>Input grades for Section {teacherInfo?.section} students</strong></p>
+            <h1>Teacher {teacherInfo?.firstName} {teacherInfo?.lastName} - Grade Evaluation</h1>
+            <p>
+              <strong>Advisory:</strong> {teacherInfo?.advisory_grade || "N/A"} | 
+              <strong> Teaching:</strong> {gradeLevels.join(", ")}
+            </p>
           </div>
           <button 
             onClick={handleRefresh} 
@@ -191,86 +216,110 @@ export default function TeacherAdvisory() {
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
-        <div className="quarter-selector">
-          <label>Select Quarter:</label>
-          <select
-            value={selectedQuarter}
-            onChange={(e) => setSelectedQuarter(e.target.value)}
-            className="quarter-select"
-          >
-            <option value="Q1">Quarter 1</option>
-            <option value="Q2">Quarter 2</option>
-            <option value="Q3">Quarter 3</option>
-            <option value="Q4">Quarter 4</option>
-          </select>
+        <div className="controls-row">
+          <div className="quarter-selector">
+            <label>Select Quarter:</label>
+            <select
+              value={selectedQuarter}
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="quarter-select"
+            >
+              <option value="Q1">Quarter 1</option>
+              <option value="Q2">Quarter 2</option>
+              <option value="Q3">Quarter 3</option>
+              <option value="Q4">Quarter 4</option>
+            </select>
+          </div>
+
+          <div className="grade-filter">
+            <label>Filter Grade Level:</label>
+            <select
+              value={filterGradeLevel}
+              onChange={(e) => setFilterGradeLevel(e.target.value)}
+              className="grade-select"
+            >
+              <option value="all">All Grades</option>
+              {gradeLevels.map(grade => (
+                <option key={grade} value={grade}>{grade}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Scrollable Content: Accordion Style */}
       <div className="scrollable-content">
-        {students.length === 0 ? (
+        {filteredStudents.length === 0 ? (
           <div className="no-students">
-            <p>No students assigned to your advisory class</p>
+            <p>No students found for the selected filter</p>
           </div>
         ) : (
           <div className="student-accordion-list">
-            {students.map((student) => (
-              <div 
-                key={student.id} 
-                className={`student-card ${expandedStudentId === student.id ? 'active' : ''}`}
-              >
-                {/* Clickable Header for each Student */}
-                <div className="student-card-header" onClick={() => toggleStudent(student.id)}>
-                  <div className="student-info-main">
-                    <span className="sid">{student.studentId}</span>
-                    <span className="sname">{student.lastName}, {student.firstName}</span>
-                    <span className="ssection">({student.section?.name || "N/A"})</span>
+            {filteredStudents.map((student) => {
+              const studentSubjects = getSubjectsForStudent(student);
+              
+              return (
+                <div 
+                  key={student.id} 
+                  className={`student-card ${expandedStudentId === student.id ? 'active' : ''}`}
+                >
+                  {/* Clickable Header for each Student */}
+                  <div className="student-card-header" onClick={() => toggleStudent(student.id)}>
+                    <div className="student-info-main">
+                      <span className="sid">{student.studentId}</span>
+                      <span className="sname">{student.lastName}, {student.firstName}</span>
+                      <span className="sgrade">{student.gradeLevel}</span>
+                      <span className="ssection">({student.section?.name || "N/A"})</span>
+                    </div>
+                    <div className="chevron">
+                      {expandedStudentId === student.id ? <FaChevronUp /> : <FaChevronDown />}
+                    </div>
                   </div>
-                  <div className="chevron">
-                    {expandedStudentId === student.id ? <FaChevronUp /> : <FaChevronDown />}
-                  </div>
-                </div>
 
-                {/* Expanded Subject List */}
-                {expandedStudentId === student.id && (
-                  <div className="student-card-body">
-                    {subjects.length > 0 ? (
-                      subjects.map((subject) => {
-                        const key = `${student.id}-${subject.id}-${selectedQuarter}`;
-                        const gradeData = grades[key] || { score: "", remarks: "" };
-                        return (
-                          <div key={subject.id} className="subject-row">
-                            <span className="subject-name">{subject.subjectName}</span>
-                            <div className="grade-inputs">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                placeholder="Score"
-                                value={gradeData.score}
-                                onChange={(e) =>
-                                  handleGradeChange(student.id, subject.id, "score", e.target.value)
-                                }
-                                className="grade-input"
-                              />
-                              <button
-                                onClick={() => handleSubmitGrade(student.id, subject.id)}
-                                className="save-grade-btn"
-                                title="Save this grade"
-                              >
-                                <FaSave />
-                              </button>
+                  {/* Expanded Subject List */}
+                  {expandedStudentId === student.id && (
+                    <div className="student-card-body">
+                      {studentSubjects.length > 0 ? (
+                        studentSubjects.map((subject) => {
+                          const key = `${student.id}-${subject.id}-${selectedQuarter}`;
+                          const gradeData = grades[key] || { score: "", remarks: "" };
+                          return (
+                            <div key={subject.id} className="subject-row">
+                              <div className="subject-info">
+                                <span className="subject-name">{subject.subjectName}</span>
+                                <span className="subject-code">({subject.subjectCode})</span>
+                              </div>
+                              <div className="grade-inputs">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="Score"
+                                  value={gradeData.score}
+                                  onChange={(e) =>
+                                    handleGradeChange(student.id, subject.id, "score", e.target.value)
+                                  }
+                                  className="grade-input"
+                                />
+                                <button
+                                  onClick={() => handleSubmitGrade(student.id, subject.id)}
+                                  className="save-grade-btn"
+                                  title="Save this grade"
+                                >
+                                  <FaSave />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="no-subjects">No subjects assigned</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                          );
+                        })
+                      ) : (
+                        <p className="no-subjects">No subjects assigned for this grade level</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -278,13 +327,12 @@ export default function TeacherAdvisory() {
           <button
             onClick={handleSubmitAllGrades}
             className="submit-all-btn"
-            disabled={students.length === 0}
+            disabled={filteredStudents.length === 0}
           >
-            Save All Grades
+            Save All Grades for {selectedQuarter}
           </button>
         </div>
       </div>
     </div>
   );
-  
 }

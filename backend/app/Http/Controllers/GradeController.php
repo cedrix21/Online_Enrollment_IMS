@@ -5,12 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Grade;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\SubjectAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class GradeController extends Controller
 {
-    // Get teacher information and advisory section
+    // ═══════════════════════════════════════════════════════════════════
+    // TEACHER PORTAL METHODS
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Get teacher information and advisory section
+     */
     public function getTeacherInfo(Request $request)
     {
         $teacher = Auth::user()->teacher;
@@ -22,35 +29,56 @@ class GradeController extends Controller
         // Get the section for this teacher's advisory grade
         $section = \App\Models\Section::where('gradeLevel', $teacher->advisory_grade)->first();
 
+        // Get unique grade levels this teacher handles (from subject assignments)
+        $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+            ->pluck('gradeLevel')
+            ->unique()
+            ->values();
+
         return response()->json([
+            'id' => $teacher->id,
             'firstName' => $teacher->firstName,
             'lastName' => $teacher->lastName,
             'advisory_grade' => $teacher->advisory_grade,
             'section' => $section ? $section->name : 'Not Assigned',
             'specialization' => $teacher->specialization,
+            'teacherId' => $teacher->teacherId,
+            'gradeLevels' => $gradeLevels, // All grade levels teacher teaches
         ]);
     }
 
-    // Get all students assigned to the logged-in teacher
+    /**
+     * Get ALL students this teacher handles (across ALL assigned grade levels)
+     * NOT just advisory students
+     */
     public function getTeacherStudents(Request $request)
     {
-        $teacher = Auth::user()->teacher; // Assuming User model has relationship to Teacher
+        $teacher = Auth::user()->teacher;
         
         if (!$teacher) {
             return response()->json(['message' => 'Teacher record not found'], 404);
         }
 
-        // Get all students in the teacher's advisory grade level (only active approved students)
-        $students = Student::where('gradeLevel', $teacher->advisory_grade)
+        // Get unique grade levels from teacher's subject assignments
+        $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+            ->pluck('gradeLevel')
+            ->unique();
+
+        // Get all students from those grade levels
+        $students = Student::whereIn('gradeLevel', $gradeLevels)
             ->where('status', 'active')
             ->with(['section'])
-            ->orderBy('firstName', 'asc')
+            ->orderBy('gradeLevel')
+            ->orderBy('lastName')
+            ->orderBy('firstName')
             ->get();
 
         return response()->json($students);
     }
 
-    // Get subjects assigned to the logged-in teacher
+    /**
+     * Get ALL subjects assigned to the logged-in teacher (with grade level context)
+     */
     public function getTeacherSubjects(Request $request)
     {
         $teacher = Auth::user()->teacher;
@@ -59,12 +87,31 @@ class GradeController extends Controller
             return response()->json(['message' => 'Teacher record not found'], 404);
         }
 
-        $subjects = Subject::where('teacher_id', $teacher->id)->get();
+        // Get subject assignments with subject details
+        $assignments = SubjectAssignment::with('subject')
+            ->where('teacher_id', $teacher->id)
+            ->orderBy('gradeLevel')
+            ->get();
+
+        // Map to include grade level context
+        $subjects = $assignments->map(function($assignment) {
+            return [
+                'id' => $assignment->subject->id,
+                'subjectName' => $assignment->subject->subjectName,
+                'subjectCode' => $assignment->subject->subjectCode,
+                'description' => $assignment->subject->description ?? '',
+                'gradeLevel' => $assignment->gradeLevel,
+                'assignment_id' => $assignment->id,
+                'schedule' => $assignment->schedule
+            ];
+        });
 
         return response()->json($subjects);
     }
 
-    // Get grades for a specific teacher's students
+    /**
+     * Get grades for this teacher's subjects
+     */
     public function getGrades(Request $request)
     {
         $teacher = Auth::user()->teacher;
@@ -73,14 +120,30 @@ class GradeController extends Controller
             return response()->json(['message' => 'Teacher record not found'], 404);
         }
 
-        $grades = Grade::where('teacher_id', $teacher->id)
-            ->with(['student', 'subject'])
+        // Get subject IDs this teacher handles
+        $subjectIds = SubjectAssignment::where('teacher_id', $teacher->id)
+            ->pluck('subject_id')
+            ->unique();
+
+        // Get grade levels this teacher handles
+        $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+            ->pluck('gradeLevel')
+            ->unique();
+
+        // Get grades for these subjects and grade levels
+        $grades = Grade::with(['student', 'subject'])
+            ->whereIn('subject_id', $subjectIds)
+            ->whereHas('student', function($query) use ($gradeLevels) {
+                $query->whereIn('gradeLevel', $gradeLevels);
+            })
             ->get();
 
         return response()->json($grades);
     }
 
-    // Store or update a grade
+    /**
+     * Store or update a grade
+     */
     public function submitGrade(Request $request)
     {
         $request->validate([
@@ -88,7 +151,7 @@ class GradeController extends Controller
             'subject_id' => 'required|exists:subjects,id',
             'score' => 'required|numeric|min:0|max:100',
             'remarks' => 'nullable|string',
-            'quarter' => 'nullable|string|in:Q1,Q2,Q3,Q4',
+            'quarter' => 'required|string|in:Q1,Q2,Q3,Q4',
         ]);
 
         $teacher = Auth::user()->teacher;
@@ -97,11 +160,33 @@ class GradeController extends Controller
             return response()->json(['message' => 'Teacher record not found'], 404);
         }
 
-        // Check if grade already exists
-        $grade = Grade::where('teacher_id', $teacher->id)
-            ->where('student_id', $request->student_id)
+        // Verify teacher is assigned to teach this subject
+        $hasAssignment = SubjectAssignment::where([
+            'teacher_id' => $teacher->id,
+            'subject_id' => $request->subject_id
+        ])->exists();
+
+        if (!$hasAssignment) {
+            return response()->json([
+                'message' => 'You are not assigned to teach this subject'
+            ], 403);
+        }
+
+        // Verify student is in a grade level this teacher handles
+        $student = Student::findOrFail($request->student_id);
+        $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+            ->pluck('gradeLevel');
+
+        if (!$teacherGradeLevels->contains($student->gradeLevel)) {
+            return response()->json([
+                'message' => 'This student is not in any grade level you teach'
+            ], 403);
+        }
+
+        // Check if grade already exists (using teacher_id is optional here)
+        $grade = Grade::where('student_id', $request->student_id)
             ->where('subject_id', $request->subject_id)
-            ->where('quarter', $request->quarter ?? 'Q1')
+            ->where('quarter', $request->quarter)
             ->first();
 
         if ($grade) {
@@ -109,6 +194,7 @@ class GradeController extends Controller
             $grade->update([
                 'score' => $request->score,
                 'remarks' => $request->remarks,
+                'teacher_id' => $teacher->id // Update teacher_id if needed
             ]);
         } else {
             // Create new grade
@@ -118,7 +204,7 @@ class GradeController extends Controller
                 'subject_id' => $request->subject_id,
                 'score' => $request->score,
                 'remarks' => $request->remarks,
-                'quarter' => $request->quarter ?? 'Q1',
+                'quarter' => $request->quarter,
             ]);
         }
 
@@ -128,7 +214,9 @@ class GradeController extends Controller
         ]);
     }
 
-    // Get grades for all students in a specific subject
+    /**
+     * Get grades for all students in a specific subject
+     */
     public function getSubjectGrades(Request $request, $subjectId)
     {
         $teacher = Auth::user()->teacher;
@@ -137,24 +225,35 @@ class GradeController extends Controller
             return response()->json(['message' => 'Teacher record not found'], 404);
         }
 
-        // Verify the subject belongs to this teacher
-        $subject = Subject::where('id', $subjectId)
-            ->where('teacher_id', $teacher->id)
-            ->first();
+        // Verify the teacher is assigned to teach this subject
+        $hasAssignment = SubjectAssignment::where([
+            'teacher_id' => $teacher->id,
+            'subject_id' => $subjectId
+        ])->exists();
 
-        if (!$subject) {
-            return response()->json(['message' => 'Subject not found or not assigned to you'], 404);
+        if (!$hasAssignment) {
+            return response()->json(['message' => 'Subject not assigned to you'], 404);
         }
 
-        $grades = Grade::where('teacher_id', $teacher->id)
-            ->where('subject_id', $subjectId)
+        $grades = Grade::where('subject_id', $subjectId)
+            ->whereHas('student', function($query) use ($teacher) {
+                $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+                    ->pluck('gradeLevel');
+                $query->whereIn('gradeLevel', $teacherGradeLevels);
+            })
             ->with(['student', 'subject'])
             ->get();
 
         return response()->json($grades);
     }
 
-    // Admin/Registrar - Get all grades with filters
+    // ═══════════════════════════════════════════════════════════════════
+    // ADMIN/REGISTRAR METHODS
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Admin/Registrar - Get all grades with filters
+     */
     public function getAllGrades(Request $request)
     {
         $query = Grade::query();
@@ -189,14 +288,16 @@ class GradeController extends Controller
         // Only show grades for active (approved) students
         $grades = $query->whereHas('student', function ($q) {
             $q->where('status', 'active');
-        })->with(['student', 'subject', 'student.section', 'subject.teacher'])
+        })->with(['student', 'subject', 'student.section'])
             ->orderBy('created_at', 'desc')
             ->paginate(50);
 
         return response()->json($grades);
     }
 
-    // Admin/Registrar - Update a grade
+    /**
+     * Admin/Registrar - Update a grade
+     */
     public function updateGrade(Request $request, $gradeId)
     {
         $request->validate([
@@ -217,11 +318,13 @@ class GradeController extends Controller
 
         return response()->json([
             'message' => 'Grade updated successfully',
-            'grade' => $grade->load(['student', 'subject', 'subject.teacher'])
+            'grade' => $grade->load(['student', 'subject'])
         ]);
     }
 
-    // Admin/Registrar - Get statistics
+    /**
+     * Admin/Registrar - Get statistics
+     */
     public function getGradeStatistics(Request $request)
     {
         $stats = [];
@@ -237,7 +340,6 @@ class GradeController extends Controller
 
         // By teacher
         $stats['by_teacher'] = Grade::selectRaw('teacher_id, COUNT(*) as count, AVG(score) as average')
-            ->with('subject.teacher')
             ->groupBy('teacher_id')
             ->get();
 

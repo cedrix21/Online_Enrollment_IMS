@@ -10,7 +10,6 @@ class Subject extends Model
     'subjectCode', 
     'subjectName', 
     'gradeLevel', // The "Class" this subject belongs to
-    'teacher_id'  // The teacher assigned to teach this subject
 ];
 
     /**

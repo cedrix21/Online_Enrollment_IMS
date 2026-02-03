@@ -34,6 +34,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 /* THE CARD: Standardized to match SummaryCards */
@@ -45,8 +46,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  
-  /* IMPORTANT: This makes the hover look smooth */
+  height: fit-content;
   transition: all 0.3s ease-in-out; 
   cursor: default;
 }
@@ -163,6 +163,15 @@
   background-color: #b8860b;
   color: #fff;
 }
+.edit-link {
+  border-color: #b8860b;
+  color: #b8860b;
+}
+
+.edit-link:hover {
+  background-color: #b8860b;
+  color: #fff;
+}
 
 /* Modal Styles */
 .modal-overlay {
@@ -261,4 +270,98 @@
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+/* ========================================================================
+   ADD THESE STYLES TO TeacherDirectory.css
+   ======================================================================== */
+
+/* Assignment List Styles */
+.assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid #b8860b;
+}
+
+.assignment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-text {
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+}
+
+.remove-assignment-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.remove-assignment-btn:hover {
+  background: #c0392b;
+}
+
+.mini-add-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.2s;
+}
+
+.mini-add-btn:hover {
+  background: #229954;
+}
+
+/* Form group for modal */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-group select,
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #b8860b;
 }

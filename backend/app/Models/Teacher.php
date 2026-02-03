@@ -28,6 +28,7 @@ class Teacher extends Model
         'advisory_grade');
     }
 
+    
     // The subjects this teacher is assigned to teach
     public function assignments()
     {
@@ -35,7 +36,20 @@ class Teacher extends Model
     }
         public function subjects()
     {
-        // A teacher is linked to subjects via the teacher_id column in the subjects table
-        return $this->hasMany(Subject::class, 'teacher_id');
+        return $this->hasManyThrough(
+            Subject::class,
+            SubjectAssignment::class,
+            'teacher_id',    // Foreign key on subject_assignments
+            'id',            // Foreign key on subjects
+            'id',            // Local key on teachers
+            'subject_id'     // Local key on subject_assignments
+        );
+    }
+     public function allStudents()
+    {
+        // Get unique grade levels this teacher handles
+        $gradeLevels = $this->assignments()->pluck('gradeLevel')->unique();
+        
+        return Student::whereIn('gradeLevel', $gradeLevels)->get();
     }
 }
