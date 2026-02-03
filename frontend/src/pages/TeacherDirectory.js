@@ -677,18 +677,6 @@ export default function TeacherDirectory() {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Schedule (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., M-W-F 8:00-9:00 AM"
-                    value={assignmentForm.schedule}
-                    onChange={(e) =>
-                      setAssignmentForm({ ...assignmentForm, schedule: e.target.value })
-                    }
-                  />
-                </div>
-
                 <button
                   type="submit"
                   className="submit-btn"
