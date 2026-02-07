@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Teacher;
+use App\Models\User;
 use App\Models\SubjectAssignment;
 use App\Models\Subject; 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class TeacherController extends Controller
 {
@@ -22,33 +25,61 @@ class TeacherController extends Controller
         return response()->json($teachers);
     }
 
-    // Create new teacher
+    // Create new teacher AND automatically create User account
     public function store(Request $request)
     {
         $validated = $request->validate([
             'firstName' => 'required|string',
             'lastName' => 'required|string',
-            'email' => 'required|email|unique:teachers',
+            'email' => 'required|email|unique:teachers|unique:users',
             'specialization' => 'required|string',
             'advisory_grade' => 'nullable|string',
             'phone' => 'nullable|string',
             'status' => 'required|in:active,on_leave,resigned'
         ]);
 
-        // Generate teacherId: TCH-2026-0001
-        $year = date('Y');
-        $count = Teacher::where('teacherId', 'like', "TCH-$year-%")->count() + 1;
-        $validated['teacherId'] = 'TCH-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
-
-        $teacher = Teacher::create($validated);
+        DB::beginTransaction();
         
-        return response()->json([
-            'message' => 'Teacher created successfully',
-            'teacher' => $teacher
-        ], 201);
+        try {
+            // Generate teacherId: TCH-2026-0001
+            $year = date('Y');
+            $count = Teacher::where('teacherId', 'like', "TCH-$year-%")->count() + 1;
+            $validated['teacherId'] = 'TCH-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+            // 1. Create teacher record
+            $teacher = Teacher::create($validated);
+            
+            // 2. Automatically create User account for login
+            $user = User::create([
+                'name' => $validated['firstName'] . ' ' . $validated['lastName'],
+                'email' => $validated['email'], // Same email links them
+                'password' => Hash::make('teacher123'), // Default password
+                'role' => 'teacher'
+            ]);
+
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Teacher created successfully! Login credentials created.',
+                'teacher' => $teacher,
+                'credentials' => [
+                    'email' => $user->email,
+                    'default_password' => 'teacher123',
+                    'note' => 'Teacher can now login to Teacher Advisory Portal'
+                ]
+            ], 201);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to create teacher',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // Update teacher info
+    // Update teacher info AND sync User account
     public function update(Request $request, $id)
     {
         $teacher = Teacher::findOrFail($id);
@@ -63,12 +94,60 @@ class TeacherController extends Controller
             'status' => 'sometimes|in:active,on_leave,resigned'
         ]);
 
-        $teacher->update($validated);
+        DB::beginTransaction();
         
-        return response()->json([
-            'message' => 'Teacher updated successfully',
-            'teacher' => $teacher
-        ]);
+        try {
+            // Get old email before update
+            $oldEmail = $teacher->email;
+
+            // Update teacher
+            $teacher->update($validated);
+            
+            // Update corresponding User account (linked by email)
+            $user = User::where('email', $oldEmail)->where('role', 'teacher')->first();
+            
+            if ($user) {
+                $userUpdate = [];
+                
+                // Update name if firstName or lastName changed
+                if (isset($validated['firstName']) || isset($validated['lastName'])) {
+                    $userUpdate['name'] = ($validated['firstName'] ?? $teacher->firstName) . ' ' . 
+                                         ($validated['lastName'] ?? $teacher->lastName);
+                }
+                
+                // Update email if changed
+                if (isset($validated['email'])) {
+                    $userUpdate['email'] = $validated['email'];
+                }
+                
+                if (!empty($userUpdate)) {
+                    $user->update($userUpdate);
+                }
+            } else {
+                // Create User if doesn't exist (for legacy teachers)
+                User::create([
+                    'name' => $teacher->firstName . ' ' . $teacher->lastName,
+                    'email' => $teacher->email,
+                    'password' => Hash::make('teacher123'),
+                    'role' => 'teacher'
+                ]);
+            }
+
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Teacher updated successfully',
+                'teacher' => $teacher->load('assignments.subject')
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to update teacher',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Assign subject to teacher
@@ -129,22 +208,23 @@ class TeacherController extends Controller
     }
 
     public function getAvailableSubjects()
-{
-    try {
-        // Fetch all subjects so the admin can choose from them
-        $subjects = Subject::orderBy('gradeLevel')
-            ->orderBy('subjectName')
-            ->get();
+    {
+        try {
+            // Fetch all subjects so the admin can choose from them
+            $subjects = Subject::orderBy('gradeLevel')
+                ->orderBy('subjectName')
+                ->get();
 
-        return response()->json($subjects);
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Error fetching subjects'], 500);
+            return response()->json($subjects);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error fetching subjects'], 500);
+        }
     }
-}
-public function getAllAssignments()
-{
-    // This matches the teacherLoad state in your React code
-    $assignments = SubjectAssignment::with(['teacher', 'subject'])->get();
-    return response()->json($assignments);
-}
+
+    public function getAllAssignments()
+    {
+        // This matches the teacherLoad state in your React code
+        $assignments = SubjectAssignment::with(['teacher', 'subject'])->get();
+        return response()->json($assignments);
+    }
 }

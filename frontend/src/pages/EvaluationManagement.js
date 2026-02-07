@@ -321,7 +321,7 @@ const EvaluationManagement = () => {
       {/* Grade Modal */}
       {modalOpen && selectedStudent && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="grade-management-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Grade Management: {selectedStudent.firstName || selectedStudent.firstname || ''} {selectedStudent.lastName || selectedStudent.lastname || ''}</h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
