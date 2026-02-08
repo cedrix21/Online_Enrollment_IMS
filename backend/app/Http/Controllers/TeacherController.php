@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Teacher;
 use App\Models\User;
+use App\Models\Section;
 use App\Models\SubjectAssignment;
 use App\Models\Subject; 
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class TeacherController extends Controller
         return response()->json($teachers);
     }
 
-    // Create new teacher AND automatically create User account
+    // Create new teacher, User account, AND Section (if advisory_grade is set)
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -52,16 +53,32 @@ class TeacherController extends Controller
             // 2. Automatically create User account for login
             $user = User::create([
                 'name' => $validated['firstName'] . ' ' . $validated['lastName'],
-                'email' => $validated['email'], // Same email links them
-                'password' => Hash::make('teacher123'), // Default password
+                'email' => $validated['email'],
+                'password' => Hash::make('teacher123'),
                 'role' => 'teacher'
             ]);
+
+            // 3. Automatically create Section if advisory_grade is set
+            $section = null;
+            if (!empty($validated['advisory_grade'])) {
+                // Generate section name from teacher's last name
+                $sectionName = $teacher->lastName . ' Section';
+                
+                $section = Section::create([
+                    'name' => $sectionName,
+                    'gradeLevel' => $validated['advisory_grade'],
+                    'teacher_id' => $teacher->id,
+                    'capacity' => 40, // Default capacity
+                ]);
+            }
 
             DB::commit();
             
             return response()->json([
-                'message' => 'Teacher created successfully! Login credentials created.',
+                'message' => 'Teacher created successfully! ' . 
+                             ($section ? 'Section created automatically.' : ''),
                 'teacher' => $teacher,
+                'section' => $section,
                 'credentials' => [
                     'email' => $user->email,
                     'default_password' => 'teacher123',
@@ -79,7 +96,7 @@ class TeacherController extends Controller
         }
     }
 
-    // Update teacher info AND sync User account
+    // Update teacher info, sync User account, AND manage Section
     public function update(Request $request, $id)
     {
         $teacher = Teacher::findOrFail($id);
@@ -97,25 +114,23 @@ class TeacherController extends Controller
         DB::beginTransaction();
         
         try {
-            // Get old email before update
             $oldEmail = $teacher->email;
+            $oldAdvisoryGrade = $teacher->advisory_grade;
 
             // Update teacher
             $teacher->update($validated);
             
-            // Update corresponding User account (linked by email)
+            // Update corresponding User account
             $user = User::where('email', $oldEmail)->where('role', 'teacher')->first();
             
             if ($user) {
                 $userUpdate = [];
                 
-                // Update name if firstName or lastName changed
                 if (isset($validated['firstName']) || isset($validated['lastName'])) {
                     $userUpdate['name'] = ($validated['firstName'] ?? $teacher->firstName) . ' ' . 
                                          ($validated['lastName'] ?? $teacher->lastName);
                 }
                 
-                // Update email if changed
                 if (isset($validated['email'])) {
                     $userUpdate['email'] = $validated['email'];
                 }
@@ -124,13 +139,49 @@ class TeacherController extends Controller
                     $user->update($userUpdate);
                 }
             } else {
-                // Create User if doesn't exist (for legacy teachers)
                 User::create([
                     'name' => $teacher->firstName . ' ' . $teacher->lastName,
                     'email' => $teacher->email,
                     'password' => Hash::make('teacher123'),
                     'role' => 'teacher'
                 ]);
+            }
+
+            // Handle Section creation/update if advisory_grade changed
+            if (isset($validated['advisory_grade'])) {
+                // Find existing section for this teacher
+                $existingSection = Section::where('teacher_id', $teacher->id)->first();
+
+                if ($validated['advisory_grade'] && empty($oldAdvisoryGrade)) {
+                    // Teacher got advisory grade assigned - create section
+                    if (!$existingSection) {
+                        Section::create([
+                            'name' => $teacher->lastName . ' Section',
+                            'gradeLevel' => $validated['advisory_grade'],
+                            'teacher_id' => $teacher->id,
+                            'capacity' => 40,
+                        ]);
+                    }
+                } elseif ($validated['advisory_grade'] && $oldAdvisoryGrade !== $validated['advisory_grade']) {
+                    // Advisory grade changed - update section
+                    if ($existingSection) {
+                        $existingSection->update([
+                            'gradeLevel' => $validated['advisory_grade']
+                        ]);
+                    } else {
+                        Section::create([
+                            'name' => $teacher->lastName . ' Section',
+                            'gradeLevel' => $validated['advisory_grade'],
+                            'teacher_id' => $teacher->id,
+                            'capacity' => 40,
+                        ]);
+                    }
+                } elseif (empty($validated['advisory_grade']) && $oldAdvisoryGrade) {
+                    // Advisory grade removed - optionally delete section or unassign teacher
+                    if ($existingSection) {
+                        $existingSection->update(['teacher_id' => null]);
+                    }
+                }
             }
 
             DB::commit();
@@ -159,7 +210,6 @@ class TeacherController extends Controller
             'schedule' => 'nullable|string'
         ]);
 
-        // Check if assignment already exists
         $exists = SubjectAssignment::where([
             'teacher_id' => $teacherId,
             'subject_id' => $validated['subject_id'],
@@ -185,7 +235,6 @@ class TeacherController extends Controller
         ], 201);
     }
 
-    // Get teacher's assignments
     public function getAssignments($teacherId)
     {
         $assignments = SubjectAssignment::with('subject')
@@ -196,7 +245,6 @@ class TeacherController extends Controller
         return response()->json($assignments);
     }
 
-    // Remove subject assignment
     public function removeAssignment($assignmentId)
     {
         $assignment = SubjectAssignment::findOrFail($assignmentId);
@@ -210,7 +258,6 @@ class TeacherController extends Controller
     public function getAvailableSubjects()
     {
         try {
-            // Fetch all subjects so the admin can choose from them
             $subjects = Subject::orderBy('gradeLevel')
                 ->orderBy('subjectName')
                 ->get();
@@ -223,7 +270,6 @@ class TeacherController extends Controller
 
     public function getAllAssignments()
     {
-        // This matches the teacherLoad state in your React code
         $assignments = SubjectAssignment::with(['teacher', 'subject'])->get();
         return response()->json($assignments);
     }

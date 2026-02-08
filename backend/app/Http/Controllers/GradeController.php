@@ -318,7 +318,7 @@ class GradeController extends Controller
 
         return response()->json([
             'message' => 'Grade updated successfully',
-            'grade' => $grade->load(['student', 'subject'])
+            'grade' => $grade->load(['student', 'subject','teacher'])
         ]);
     }
 

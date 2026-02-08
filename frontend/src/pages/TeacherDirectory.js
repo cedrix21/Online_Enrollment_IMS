@@ -266,6 +266,11 @@ export default function TeacherDirectory() {
     return teacherLoad.find((a) => Number(a.subject_id) === Number(subjectId));
   };
 
+  // ── HELPER: Check if advisory grade is already assigned ──
+  const getTeacherWithAdvisory = (gradeLevel) => {
+    return teachers.find((t) => t.advisory_grade === gradeLevel);
+  };
+
   return (
     <div className="dashboard-layout">
       <SideBar user={user} />
@@ -469,11 +474,19 @@ export default function TeacherDirectory() {
                     }
                   >
                     <option value="">No Advisory (N/A)</option>
-                    {GRADE_LEVELS.map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade}
-                      </option>
-                    ))}
+                    {GRADE_LEVELS.map((grade) => {
+                      const assignedTeacher = getTeacherWithAdvisory(grade);
+                      return (
+                        <option 
+                          key={grade} 
+                          value={grade}
+                          disabled={!!assignedTeacher}
+                        >
+                          {grade}
+                          {assignedTeacher ? ` (Assigned to ${assignedTeacher.firstName} ${assignedTeacher.lastName})` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
 
                   <select
@@ -585,11 +598,21 @@ export default function TeacherDirectory() {
                     }
                   >
                     <option value="">No Advisory (N/A)</option>
-                    {GRADE_LEVELS.map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade}
-                      </option>
-                    ))}
+                    {GRADE_LEVELS.map((grade) => {
+                      const assignedTeacher = getTeacherWithAdvisory(grade);
+                      const isCurrentTeacher = assignedTeacher?.id === selectedTeacherForEdit?.id;
+                      
+                      return (
+                        <option 
+                          key={grade} 
+                          value={grade}
+                          disabled={!!assignedTeacher && !isCurrentTeacher}
+                        >
+                          {grade}
+                          {assignedTeacher && !isCurrentTeacher ? ` (Assigned to ${assignedTeacher.firstName} ${assignedTeacher.lastName})` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
 
                   <select
@@ -674,6 +697,18 @@ export default function TeacherDirectory() {
                       backgroundColor: "#f0f0f0",
                       cursor: "not-allowed",
                     }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Schedule (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., M-W-F 8:00-9:00 AM"
+                    value={assignmentForm.schedule}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, schedule: e.target.value })
+                    }
                   />
                 </div>
 
