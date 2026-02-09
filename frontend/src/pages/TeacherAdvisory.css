@@ -49,13 +49,13 @@
 /* ═══════════════════════════════════════════════════════════
    3. STICKY HEADER WRAPPER
    ═══════════════════════════════════════════════════════════ */
-.sticky-header-wrapper {
+/* .sticky-header-wrapper {
   position: sticky;
   top: 0;
   z-index: 100;
   background: transparent;
   padding-bottom: 20px;
-}
+} */
 
 /* ═══════════════════════════════════════════════════════════
    4. ADVISORY HEADER

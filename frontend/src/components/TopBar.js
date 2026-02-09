@@ -6,7 +6,7 @@ export default function TopBar({ user }) {
     <header className="topbar">
       <div className="topbar-left">
         <img src={logo} alt="SICS Logo" className="topbar-logo" />
-        <h1>Online Enrollment & Information Management System</h1>
+        <h1>SICS Management System</h1>
       </div>
 
       <div className="topbar-user">

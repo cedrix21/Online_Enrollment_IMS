@@ -99,7 +99,7 @@
 
 .section-card-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   border-top: 1px solid #eee;
   padding-top: 1rem;
   margin-top: 1rem;
@@ -110,7 +110,7 @@
   padding: 0.5rem;
   border: 1px solid #b8860b;
   background: transparent;
-  color: #b8860b;
+  color: rgb(184, 134, 11);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -420,4 +420,203 @@
   .students-table td {
     padding: 8px;
   }
+  .schedule-modal-wide {
+    max-width: 95% !important;
+  }
+
+  .day-selector-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .section-card-actions {
+    flex-direction: column;
+  }
+
+  .section-card-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .day-selector-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Delete Section Button */
+.delete-section-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.delete-section-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+.delete-section-btn:active {
+  transform: translateY(0);
+}
+
+/* Wider modal for schedule */
+.schedule-modal-wide {
+  max-width: 700px !important;
+  width: 90%;
+}
+
+/* Day Selector Grid */
+.day-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+/* Day Button */
+.day-btn {
+  position: relative;
+  padding: 6px 8px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 45px;
+}
+
+.day-btn:hover:not(:disabled) {
+  border-color: #eacb66;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(234, 192, 102, 0.2);
+}
+
+/* Selected Day */
+.day-btn.selected {
+  background: linear-gradient(135deg, #eaac66 0%, #ffa550 100%);
+  color: white;
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(234, 172, 102, 0.3);
+}
+
+.day-btn.selected:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(234, 199, 102, 0.5);
+}
+
+/* Check Icon */
+.check-icon {
+  font-size: 0.9rem;
+  animation: checkPop 0.3s ease-out;
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Conflict Warning */
+.day-btn.conflict {
+  background: rgb(255, 0, 0);
+  border-color: rgb(255, 0, 0);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.conflict-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.65rem;
+  color: #ff1900;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.conflict-warning span {
+  background: #f8d7da;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Help Text */
+.help-text {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 8px;
+  font-style: italic;
+}
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+.submit-btn {
+  background: linear-gradient(135deg, #eac066 0%, #a2924b 100%);
+  color: white;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(234, 203, 102, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.done-btn {
+  background: #95a5a6;
+  color: white;
+}
+
+.done-btn:hover {
+  background: #7f8c8d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(141, 139, 127, 0.3);
 }

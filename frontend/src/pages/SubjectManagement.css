@@ -71,7 +71,7 @@
   flex-wrap: wrap;
 }
 
-.search-box {
+.subject-management-search-box {
   position: relative;
   flex: 1;
   min-width: 250px;
@@ -86,8 +86,8 @@
   font-size: 0.9rem;
 }
 
-.search-box input {
-  width: 100%;
+.subject-management-search-box input {
+  width: 90%;
   padding: 10px 10px 10px 40px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
@@ -95,7 +95,7 @@
   transition: border-color 0.2s;
 }
 
-.search-box input:focus {
+.subject-management-search-box input:focus {
   outline: none;
   border-color: #b8860b;
 }

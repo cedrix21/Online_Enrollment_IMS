@@ -89,12 +89,22 @@ export default function SubjectManagement() {
       if (isEditing) {
         await API.put(`/subjects/${currentSubject.id}`, formData);
         alert("Subject updated successfully!");
+        setShowModal(false); // Close modal only when editing
       } else {
         await API.post("/subjects", formData);
         alert("Subject created successfully!");
+        
+        // Reset form for the next entry instead of closing
+        setFormData({
+          subjectName: "",
+          subjectCode: "",
+          gradeLevel: formData.gradeLevel, // Keep the grade level to make bulk entry faster
+          description: "",
+        });
+        
+        // Modal stays open because setShowModal(false) is NOT called here
       }
 
-      setShowModal(false);
       fetchSubjects();
     } catch (err) {
       console.error("Error:", err.response?.data);
@@ -155,7 +165,7 @@ export default function SubjectManagement() {
             </div>
 
             <div className="filters-bar">
-              <div className="search-box">
+              <div className="subject-management-search-box">
                 <FaSearch className="search-icon" />
                 <input
                   type="text"
@@ -290,8 +300,7 @@ export default function SubjectManagement() {
                     </select>
                   </div>
                 </div>
-
-                      
+       
 
                 <div className="modal-actions">
                   <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>

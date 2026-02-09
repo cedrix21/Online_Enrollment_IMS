@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sections', [SectionController::class, 'index']);
     Route::post('/sections', [SectionController::class, 'store']);
     Route::get('/sections/{id}', [SectionController::class, 'show']);
+    Route::delete('/sections/{id}', [SectionController::class, 'destroy']);
     
     Route::get('/rooms', [SectionController::class, 'getRooms']); 
     Route::get('/time-slots', [SectionController::class, 'getTimeSlots']);

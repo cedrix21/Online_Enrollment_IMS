@@ -62,7 +62,7 @@ class TeacherController extends Controller
             $section = null;
             if (!empty($validated['advisory_grade'])) {
                 // Generate section name from teacher's last name
-                $sectionName = $teacher->lastName . ' Section';
+                $sectionName = $teacher->lastName;
                 
                 $section = Section::create([
                     'name' => $sectionName,
@@ -156,7 +156,7 @@ class TeacherController extends Controller
                     // Teacher got advisory grade assigned - create section
                     if (!$existingSection) {
                         Section::create([
-                            'name' => $teacher->lastName . ' Section',
+                            'name' => $teacher->lastName ,
                             'gradeLevel' => $validated['advisory_grade'],
                             'teacher_id' => $teacher->id,
                             'capacity' => 40,
@@ -170,7 +170,7 @@ class TeacherController extends Controller
                         ]);
                     } else {
                         Section::create([
-                            'name' => $teacher->lastName . ' Section',
+                            'name' => $teacher->lastName,
                             'gradeLevel' => $validated['advisory_grade'],
                             'teacher_id' => $teacher->id,
                             'capacity' => 40,

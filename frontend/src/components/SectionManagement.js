@@ -9,6 +9,8 @@ import {
   FaUserTie,
   FaUsers,
   FaTimes,
+  FaTrash,
+  FaCheck,
 } from "react-icons/fa";
 import "./SectionManagement.css";
 
@@ -20,23 +22,24 @@ export default function SectionManagement() {
   const [timeSlots, setTimeSlots] = useState([]);
   const [occupiedSchedules, setOccupiedSchedules] = useState([]);
   const [teacherLoad, setTeacherLoad] = useState([]);
-  
+
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  
+
   // Selected data
   const [selectedSection, setSelectedSection] = useState(null);
   const [sectionStudents, setSectionStudents] = useState([]);
-  
+
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDays, setSelectedDays] = useState([]); // NEW: Array of selected days
+
   const [newSchedule, setNewSchedule] = useState({
     subject_id: "",
     teacher_id: "",
     subject_assignment_id: "",
-    day: "Monday",
     time_slot_id: "",
     room_id: "",
   });
@@ -99,36 +102,53 @@ export default function SectionManagement() {
     }
   };
 
+  // ── TOGGLE DAY SELECTION ──
+  const toggleDay = (day) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter((d) => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
+
   // ── HANDLERS ──
   const handleAddSchedule = async (e) => {
     e.preventDefault();
+
+    if (selectedDays.length === 0) {
+      alert("Please select at least one day for this schedule");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const payload = {
+      const response = await API.post("/schedules", {
         section_id: selectedSection.id,
         subject_id: newSchedule.subject_id,
         teacher_id: newSchedule.teacher_id,
-        day: newSchedule.day,
+        days: selectedDays,
         time_slot_id: newSchedule.time_slot_id,
         room_id: newSchedule.room_id,
-      };
+      });
 
-      const res = await API.post("/schedules", payload);
-      
-      // Optimistic update - add new schedule to local state
-      const newScheduleData = res.data;
-      
+      const newSchedules = response.data.data;
+
+      // Update local state so the UI reflects the new schedules immediately
       setSelectedSection({
         ...selectedSection,
-        schedules: [...(selectedSection.schedules || []), newScheduleData]
+        schedules: [...(selectedSection.schedules || []), ...newSchedules],
       });
-      
-      // Add to occupied schedules for conflict detection
-      setOccupiedSchedules([...occupiedSchedules, newScheduleData]);
-      
-      alert("Schedule added successfully!");
-      closeScheduleModal();
+
+      setOccupiedSchedules([...occupiedSchedules, ...newSchedules]);
+
+      alert(`Schedule added successfully!`);
+
+      // FIX: Instead of closing the modal, just reset the form fields
+      // so the user can add another schedule.
+      resetScheduleForm();
+
+      // closeScheduleModal(); // <--- REMOVE OR COMMENT THIS LINE
     } catch (err) {
       const msg = err.response?.data?.message || "Conflict or Error occurred.";
       alert("Error: " + msg);
@@ -137,16 +157,21 @@ export default function SectionManagement() {
     }
   };
 
-  const closeScheduleModal = () => {
-    setShowScheduleModal(false);
+  const resetScheduleForm = () => {
+    // Reset only form fields, keep modal open
     setNewSchedule({
       subject_id: "",
       teacher_id: "",
       subject_assignment_id: "",
-      day: "Monday",
       time_slot_id: "",
       room_id: "",
     });
+    setSelectedDays([]);
+  };
+
+  const closeScheduleModal = () => {
+    setShowScheduleModal(false);
+    resetScheduleForm();
   };
 
   const handleViewStudents = async (section) => {
@@ -164,20 +189,21 @@ export default function SectionManagement() {
   const handleOpenScheduleModal = async (section) => {
     setSelectedSection(section);
     try {
-      // Fetch fresh data: teacher load, section details, and all schedules
       const [loadRes, sectionRes, schedRes] = await Promise.all([
         API.get("/teacher-load"),
         API.get(`/sections/${section.id}`),
-        API.get("/schedules")
+        API.get("/schedules"),
       ]);
-      
+
       setTeacherLoad(loadRes.data);
-      setSelectedSection(sectionRes.data); // Update with latest schedules
-      setOccupiedSchedules(schedRes.data); // Update for conflict detection
+      setSelectedSection(sectionRes.data);
+      setOccupiedSchedules(schedRes.data);
       setShowScheduleModal(true);
     } catch (err) {
-      console.error("Error loading data:", err);
-      alert("Error loading teacher assignments.");
+      console.error("DETAILED ERROR:", err.response || err);
+      alert(
+        "Error loading data: " + (err.response?.data?.message || err.message),
+      );
     }
   };
 
@@ -185,84 +211,195 @@ export default function SectionManagement() {
     e.preventDefault();
     try {
       const res = await API.post("/sections", newSection);
-      
-      // Optimistic update - add new section to state immediately
-      setSections([...sections, res.data]);
-      
+
+      setSections([...sections, res.data.section]);
+
       setShowModal(false);
       setNewSection({ name: "", gradeLevel: "", teacher_id: "", capacity: 40 });
       alert("Section created successfully!");
     } catch (err) {
       console.error("Create error:", err);
-      alert("Failed to create section.");
+      const errorMsg =
+        err.response?.data?.message || "Failed to create section.";
+      alert(errorMsg);
     }
   };
 
-  const handleDeleteSchedule = async (scheduleId) => {
-    if (!window.confirm("Remove this subject from the schedule?")) return;
-    
+  const handleDeleteSection = async (section) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete section "${section.name}"?`,
+      )
+    ) {
+      return;
+    }
+
     try {
-      await API.delete(`/schedules/${scheduleId}`);
-      
-      // Optimistic update - remove from local state
-      const updatedSchedules = selectedSection.schedules.filter(s => s.id !== scheduleId);
+      await API.delete(`/sections/${section.id}`);
+      setSections(sections.filter((s) => s.id !== section.id));
+      alert(`Section "${section.name}" deleted successfully!`);
+    } catch (err) {
+      console.error("Delete error:", err);
+      const errorMsg =
+        err.response?.data?.message || "Failed to delete section.";
+      alert(errorMsg);
+    }
+  };
+
+  // ── UPDATED DELETE HANDLER ──
+  const handleDeleteSchedule = async (scheduleIds) => {
+    const idsToDelete = Array.isArray(scheduleIds)
+      ? scheduleIds
+      : [scheduleIds];
+
+    if (
+      !window.confirm(
+        `Are you sure you want to remove this subject for all selected days?`,
+      )
+    )
+      return;
+
+    try {
+      // We pass the IDs in the 'data' property for DELETE requests in Axios
+      await API.delete(`/schedules/${idsToDelete[0]}`, {
+        data: { ids: idsToDelete },
+      });
+
+      // Update UI state
+      const updatedSchedules = selectedSection.schedules.filter(
+        (s) => !idsToDelete.includes(s.id),
+      );
+
       setSelectedSection({
         ...selectedSection,
-        schedules: updatedSchedules
+        schedules: updatedSchedules,
       });
-      
-      // Update occupied schedules
-      setOccupiedSchedules(occupiedSchedules.filter(s => s.id !== scheduleId));
-      
+
+      setOccupiedSchedules(
+        occupiedSchedules.filter((s) => !idsToDelete.includes(s.id)),
+      );
+
       alert("Schedule removed successfully!");
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete schedule.");
+      alert(
+        "Failed to delete schedule: " +
+          (err.response?.data?.message || "Server Error"),
+      );
     }
   };
-
   // ── HELPER: Check if subject is already scheduled ──
   const getScheduledTeacher = (subjectId) => {
     const scheduleRecord = selectedSection?.schedules?.find(
-      (sched) => Number(sched.subject_id) === Number(subjectId)
+      (sched) => Number(sched.subject_id) === Number(subjectId),
     );
 
     if (scheduleRecord) {
       const teacherObj = teachers.find(
-        (t) => Number(t.id) === Number(scheduleRecord.teacher_id)
+        (t) => Number(t.id) === Number(scheduleRecord.teacher_id),
       );
       return teacherObj ? teacherObj.lastName : "Assigned";
     }
     return null;
   };
 
-  // ── HELPER: Check time slot availability ──
-  const isTimeSlotAvailable = (slot) => {
+  // ── HELPER: Check time slot availability for a specific day ──
+  const isTimeSlotAvailable = (slot, day) => {
     const isSectionBusy = occupiedSchedules.some(
       (occ) =>
-        occ.day === newSchedule.day &&
+        occ.day === day &&
         Number(occ.time_slot_id) === Number(slot.id) &&
-        Number(occ.section_id) === Number(selectedSection.id)
+        Number(occ.section_id) === Number(selectedSection.id),
     );
 
     const isTeacherBusy = occupiedSchedules.some(
       (occ) =>
-        occ.day === newSchedule.day &&
+        occ.day === day &&
         Number(occ.time_slot_id) === Number(slot.id) &&
-        Number(occ.teacher_id) === Number(newSchedule.teacher_id)
+        Number(occ.teacher_id) === Number(newSchedule.teacher_id),
     );
 
     return { isSectionBusy, isTeacherBusy };
   };
 
-  // ── HELPER: Check room availability ──
-  const isRoomTaken = (room) => {
+  // ── HELPER: Check room availability for a specific day ──
+  const isRoomTaken = (room, day) => {
     return occupiedSchedules.some(
       (occ) =>
-        occ.day === newSchedule.day &&
+        occ.day === day &&
         Number(occ.time_slot_id) === Number(newSchedule.time_slot_id) &&
-        Number(occ.room_id) === Number(room.id)
+        Number(occ.room_id) === Number(room.id),
     );
+  };
+
+  
+  const getGroupedConflictMessages = () => {
+    if (!newSchedule.time_slot_id || !newSchedule.teacher_id || !newSchedule.room_id) {
+    return {}; 
+  }
+
+    const dayConflicts = DAYS.map((day) => {
+      if (
+        !newSchedule.time_slot_id ||
+        !newSchedule.teacher_id ||
+        !newSchedule.room_id
+      ) {
+        return { day, reasons: [] };
+      }
+
+      const { isSectionBusy, isTeacherBusy } = isTimeSlotAvailable(
+        { id: newSchedule.time_slot_id },
+        day,
+      );
+      const roomBusy = isRoomTaken({ id: newSchedule.room_id }, day);
+
+      const reasons = [];
+      if (isSectionBusy) reasons.push("Section is busy");
+      if (isTeacherBusy) reasons.push("Teacher is busy");
+      if (roomBusy) reasons.push("Room is occupied");
+
+      return { day, reasons };
+    });
+
+    // 2. Group days by their shared reasons
+    const groups = dayConflicts.reduce((acc, item) => {
+      if (item.reasons.length === 0) return acc;
+
+      const key = item.reasons.join(" & ");
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item.day);
+      return acc;
+    }, {});
+
+    return groups; // Returns something like: {"Teacher is busy": ["Monday", "Wednesday"]}
+  };
+
+  // Helper to group schedules by Subject + Time + Room
+  const getGroupedSchedules = (schedules) => {
+    if (!schedules) return [];
+
+    const grouped = schedules.reduce((acc, current) => {
+      // Create a unique key to identify "the same class"
+      const key = `${current.subject_id}-${current.time_slot_id}-${current.room_id}`;
+
+      if (!acc[key]) {
+        // If this is the first time we see this class, create the entry
+        acc[key] = {
+          ...current,
+          days: [current.day], // Start an array of days
+          ids: [current.id], // Store all IDs so we can delete them later if needed
+        };
+      } else {
+        // If it exists, just push the new day to the array
+        acc[key].days.push(current.day);
+        acc[key].ids.push(current.id);
+      }
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
   };
 
   return (
@@ -271,7 +408,10 @@ export default function SectionManagement() {
       <div className="main-content">
         <TopBar user={user} />
 
-        <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+        <div
+          className="content-scroll-area"
+          style={{ padding: "20px", overflowY: "auto", flex: 1 }}
+        >
           <div className="management-container">
             <div className="management-header">
               <div className="title-group">
@@ -291,14 +431,17 @@ export default function SectionManagement() {
                 <div key={section.id} className="section-card">
                   <div className="section-badge">{section.gradeLevel}</div>
                   <div className="section-card-header">
-                    <h3>{section.name}</h3>
+                    <h3>Section {section.name}</h3>
                   </div>
 
                   <div className="section-card-body">
                     <div className="info-item">
                       <FaUserTie className="icon" />
                       <span>
-                        Adviser: <strong>{section.advisor?.lastName || "Unassigned"}</strong>
+                        Adviser:{" "}
+                        <strong>
+                          {section.advisor?.lastName || "Unassigned"}
+                        </strong>
                       </span>
                     </div>
                     <div className="info-item">
@@ -327,6 +470,13 @@ export default function SectionManagement() {
                     <button onClick={() => handleViewStudents(section)}>
                       Students
                     </button>
+                    <button
+                      onClick={() => handleDeleteSection(section)}
+                      className="delete-section-btn"
+                      title="Delete Section"
+                    >
+                      <FaTrash />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -334,9 +484,7 @@ export default function SectionManagement() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════════
-            STUDENT DASHBOARD MODAL 
-            ══════════════════════════════════════════════════════════════ */}
+        {/* STUDENT DASHBOARD MODAL */}
         {showStudentModal && (
           <div className="modal-overlay">
             <div className="modal-content student-list-modal">
@@ -344,41 +492,57 @@ export default function SectionManagement() {
                 <div>
                   <h3>{selectedSection?.name} - Dashboard</h3>
                   <p>
-                    {selectedSection?.gradeLevel} | {sectionStudents.length} Students
+                    {selectedSection?.gradeLevel} | {sectionStudents.length}{" "}
+                    Students
                   </p>
                 </div>
-                <FaTimes onClick={() => setShowStudentModal(false)} className="close-icon" />
+                <FaTimes
+                  onClick={() => setShowStudentModal(false)}
+                  className="close-icon"
+                />
               </div>
 
               <div className="modal-body-tabs">
-                {/* Tab Navigation */}
                 <div className="tab-navigation">
-                  <button 
+                  <button
                     className="tab-btn active"
                     onClick={(e) => {
-                      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-                      e.target.classList.add('active');
-                      document.getElementById('schedule-tab').style.display = 'block';
+                      document
+                        .querySelectorAll(".tab-btn")
+                        .forEach((b) => b.classList.remove("active"));
+                      document
+                        .querySelectorAll(".tab-content")
+                        .forEach((c) => (c.style.display = "none"));
+                      e.target.classList.add("active");
+                      document.getElementById("schedule-tab").style.display =
+                        "block";
                     }}
                   >
                     📅 Schedule
                   </button>
-                  <button 
+                  <button
                     className="tab-btn"
                     onClick={(e) => {
-                      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-                      e.target.classList.add('active');
-                      document.getElementById('students-tab').style.display = 'block';
+                      document
+                        .querySelectorAll(".tab-btn")
+                        .forEach((b) => b.classList.remove("active"));
+                      document
+                        .querySelectorAll(".tab-content")
+                        .forEach((c) => (c.style.display = "none"));
+                      e.target.classList.add("active");
+                      document.getElementById("students-tab").style.display =
+                        "block";
                     }}
                   >
                     👥 Students ({sectionStudents.length})
                   </button>
                 </div>
 
-                {/* Schedule Tab */}
-                <div id="schedule-tab" className="tab-content" style={{ display: 'block' }}>
+                <div
+                  id="schedule-tab"
+                  className="tab-content"
+                  style={{ display: "block" }}
+                >
                   <div className="schedule-section">
                     <h4>
                       <FaCalendarAlt /> Weekly Class Schedule
@@ -396,31 +560,65 @@ export default function SectionManagement() {
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedSection.schedules.map((sched) => (
-                              <tr key={sched.id}>
-                                <td>{sched.time_slot?.display_label || "N/A"}</td>
-                                <td>
-                                  <strong>{sched.subject?.subjectName}</strong>
-                                  <div className="sched-teacher">
-                                    {sched.teacher
-                                      ? `${sched.teacher.firstName} ${sched.teacher.lastName}`
-                                      : "No Teacher"}
-                                  </div>
-                                </td>
-                                <td>
-                                  <span className="day-badge">{sched.day}</span>
-                                </td>
-                                <td>{sched.room?.room_name || "TBA"}</td>
-                                <td>
-                                  <button
-                                    className="delete-icon-btn"
-                                    onClick={() => handleDeleteSchedule(sched.id)}
-                                  >
-                                    <FaTimes style={{ color: "#e74c3c" }} />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                            {getGroupedSchedules(selectedSection.schedules).map(
+                              (group) => (
+                                <tr
+                                  key={`${group.subject_id}-${group.time_slot_id}`}
+                                >
+                                  <td>
+                                    {group.time_slot?.display_label || "N/A"}
+                                  </td>
+                                  <td>
+                                    <strong>
+                                      {group.subject?.subjectName}
+                                    </strong>
+                                    <div className="sched-teacher">
+                                      {group.teacher
+                                        ? `${group.teacher.firstName} ${group.teacher.lastName}`
+                                        : "No Teacher"}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "4px",
+                                        flexWrap: "wrap",
+                                      }}
+                                    >
+                                      {/* We sort days to ensure they appear in order (Mon, Tue, etc) */}
+                                      {group.days
+                                        .sort(
+                                          (a, b) =>
+                                            DAYS.indexOf(a) - DAYS.indexOf(b),
+                                        )
+                                        .map((day) => (
+                                          <span
+                                            key={day}
+                                            className="day-badge"
+                                            style={{ fontSize: "0.75rem" }}
+                                          >
+                                            {day.substring(0, 3)}{" "}
+                                            {/* Show 'Mon' instead of 'Monday' to save space */}
+                                          </span>
+                                        ))}
+                                    </div>
+                                  </td>
+                                  <td>{group.room?.room_name || "TBA"}</td>
+                                  <td>
+                                    <button
+                                      className="delete-icon-btn"
+                                      title="Delete all days for this subject"
+                                      onClick={() =>
+                                        handleDeleteSchedule(group.ids)
+                                      } // Pass the whole array!
+                                    >
+                                      <FaTimes style={{ color: "#e74c3c" }} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ),
+                            )}
                           </tbody>
                         </table>
                       ) : (
@@ -430,8 +628,11 @@ export default function SectionManagement() {
                   </div>
                 </div>
 
-                {/* Students Tab */}
-                <div id="students-tab" className="tab-content" style={{ display: 'none' }}>
+                <div
+                  id="students-tab"
+                  className="tab-content"
+                  style={{ display: "none" }}
+                >
                   <div className="students-section">
                     <h4>
                       <FaUsers /> Enrolled Students
@@ -462,12 +663,17 @@ export default function SectionManagement() {
                                     {student.lastName}, {student.firstName}
                                   </strong>
                                   {student.middleName && (
-                                    <span className="middle-name"> {student.middleName[0]}.</span>
+                                    <span className="middle-name">
+                                      {" "}
+                                      {student.middleName[0]}.
+                                    </span>
                                   )}
                                 </td>
                                 <td>{student.email || "N/A"}</td>
                                 <td>
-                                  <span className={`status-badge ${student.status}`}>
+                                  <span
+                                    className={`status-badge ${student.status}`}
+                                  >
                                     {student.status}
                                   </span>
                                 </td>
@@ -478,7 +684,13 @@ export default function SectionManagement() {
                       </div>
                     ) : (
                       <div className="no-students-enrolled">
-                        <FaUsers style={{ fontSize: '3rem', color: '#ddd', marginBottom: '10px' }} />
+                        <FaUsers
+                          style={{
+                            fontSize: "3rem",
+                            color: "#ddd",
+                            marginBottom: "10px",
+                          }}
+                        />
                         <p>No students enrolled in this section yet</p>
                       </div>
                     )}
@@ -489,17 +701,17 @@ export default function SectionManagement() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════
-            ADD SCHEDULE MODAL 
-            ══════════════════════════════════════════════════════════════ */}
+        {/* ADD SCHEDULE MODAL */}
         {showScheduleModal && (
           <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="modal-content schedule-modal-wide">
               <div className="modal-header">
-                <h3>Add Subject to {selectedSection?.name}</h3>
+                <h3>
+                  Add Subject Schedule to Section: {selectedSection?.name}
+                </h3>
                 <FaTimes onClick={closeScheduleModal} className="close-icon" />
               </div>
-              
+
               <form onSubmit={handleAddSchedule}>
                 <div className="input-group">
                   <label>Select Subject & Assigned Teacher</label>
@@ -508,7 +720,9 @@ export default function SectionManagement() {
                     value={newSchedule.subject_assignment_id || ""}
                     onChange={(e) => {
                       const val = e.target.value;
-                      const load = teacherLoad.find((a) => a.id === parseInt(val));
+                      const load = teacherLoad.find(
+                        (a) => a.id === parseInt(val),
+                      );
                       if (load) {
                         setNewSchedule({
                           ...newSchedule,
@@ -521,9 +735,13 @@ export default function SectionManagement() {
                   >
                     <option value="">-- Select Teacher Load --</option>
                     {teacherLoad
-                      .filter((a) => a.gradeLevel === selectedSection?.gradeLevel)
+                      .filter(
+                        (a) => a.gradeLevel === selectedSection?.gradeLevel,
+                      )
                       .map((a) => {
-                        const assignedTeacher = getScheduledTeacher(a.subject_id);
+                        const assignedTeacher = getScheduledTeacher(
+                          a.subject_id,
+                        );
                         return (
                           <option
                             key={a.id}
@@ -531,31 +749,67 @@ export default function SectionManagement() {
                             disabled={!!assignedTeacher}
                           >
                             {a.subject?.subjectName} — {a.teacher?.lastName}
-                            {assignedTeacher ? ` (Already assigned to ${assignedTeacher})` : ""}
+                            {assignedTeacher
+                              ? ` (Already assigned to ${assignedTeacher})`
+                              : ""}
                           </option>
                         );
                       })}
                   </select>
                 </div>
 
-                <div className="form-grid">
-                  <div className="input-group">
-                    <label>Day</label>
-                    <select
-                      required
-                      value={newSchedule.day}
-                      onChange={(e) =>
-                        setNewSchedule({ ...newSchedule, day: e.target.value })
-                      }
-                    >
-                      {DAYS.map((day) => (
-                        <option key={day} value={day}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* MULTI-DAY SELECTOR */}
+                <div className="input-group">
+                  <label>Select Days (Click to toggle)</label>
+                  <div className="day-selector-grid">
+                    {DAYS.map((day) => {
+                      const isSelected = selectedDays.includes(day);
 
+                      const allConflicts = getGroupedConflictMessages();
+                      const hasConflict = Object.values(allConflicts).some(daysArray => 
+                        daysArray.includes(day)
+                      );
+
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`day-btn ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
+                          onClick={() => toggleDay(day)}
+                          disabled={hasConflict}
+                        >
+                          {isSelected && <FaCheck className="check-icon" />}
+                          <span>{day}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div
+                    className="conflict-details-container"
+                    style={{ marginTop: "10px" }}
+                  >
+                    {Object.entries(getGroupedConflictMessages()).map(
+                      ([reason, days]) => (
+                        <p
+                          key={reason}
+                          style={{
+                            color: "#e74c3c",
+                            fontSize: "0.85rem",
+                            margin: "4px 0",
+                          }}
+                        >
+                          <strong>⚠ {days.join(", ")}:</strong> {reason}
+                        </p>
+                      ),
+                    )}
+                  </div>
+                  <p className="help-text">
+                    Selected:{" "}
+                    {selectedDays.length > 0 ? selectedDays.join(", ") : "None"}
+                  </p>
+                </div>
+
+                <div className="form-grid">
                   <div className="input-group">
                     <label>Time Slot</label>
                     <select
@@ -571,76 +825,74 @@ export default function SectionManagement() {
                       }
                     >
                       <option value="">-- Select Time --</option>
-                      {timeSlots.map((slot) => {
-                        const { isSectionBusy, isTeacherBusy } = isTimeSlotAvailable(slot);
-                        return (
-                          <option
-                            key={slot.id}
-                            value={slot.id}
-                            disabled={isSectionBusy || isTeacherBusy}
-                          >
-                            {slot.display_label}
-                            {isSectionBusy ? " (Sect. Busy)" : ""}
-                            {isTeacherBusy ? " (Teach. Busy)" : ""}
-                          </option>
-                        );
-                      })}
+                      {timeSlots.map((slot) => (
+                        <option key={slot.id} value={slot.id}>
+                          {slot.display_label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Room</label>
+                    <select
+                      required
+                      value={newSchedule.room_id}
+                      disabled={!newSchedule.time_slot_id}
+                      onChange={(e) =>
+                        setNewSchedule({
+                          ...newSchedule,
+                          room_id: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">-- Select Room --</option>
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.room_name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
-                <div className="input-group">
-                  <label>Room</label>
-                  <select
-                    required
-                    value={newSchedule.room_id}
-                    disabled={!newSchedule.time_slot_id}
-                    onChange={(e) =>
-                      setNewSchedule({
-                        ...newSchedule,
-                        room_id: e.target.value,
-                      })
-                    }
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="cancel-btn"
+                    onClick={closeScheduleModal}
                   >
-                    <option value="">-- Select Room --</option>
-                    {rooms.map((room) => {
-                      const isTaken = isRoomTaken(room);
-                      return (
-                        <option key={room.id} value={room.id} disabled={isTaken}>
-                          {room.room_name} {isTaken ? "⚠️" : "✅"}
-                        </option>
-                      );
-                    })}
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="submit-btn"
+                    disabled={isSubmitting || selectedDays.length === 0}
+                    style={{
+                      opacity:
+                        isSubmitting || selectedDays.length === 0 ? 0.5 : 1,
+                    }}
+                  >
+                    {isSubmitting ? "Saving..." : "Save Schedule"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  className="submit-btn"
-                  disabled={isSubmitting || !newSchedule.room_id}
-                  style={{
-                    opacity: isSubmitting ? 0.7 : 1,
-                    cursor: isSubmitting ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {isSubmitting ? "Saving..." : "Save Schedule"}
-                </button>
               </form>
             </div>
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════
-            CREATE SECTION MODAL 
-            ══════════════════════════════════════════════════════════════ */}
+        {/* CREATE SECTION MODAL */}
         {showModal && (
           <div className="modal-overlay">
             <div className="modal-content">
               <div className="modal-header">
                 <h3>Create New Section</h3>
-                <FaTimes onClick={() => setShowModal(false)} className="close-icon" />
+                <FaTimes
+                  onClick={() => setShowModal(false)}
+                  className="close-icon"
+                />
               </div>
-              
+
               <form onSubmit={handleCreate}>
                 <div className="input-group">
                   <label>Section Name</label>
@@ -652,7 +904,7 @@ export default function SectionManagement() {
                     }
                   />
                 </div>
-                
+
                 <div className="form-grid">
                   <div className="input-group">
                     <label>Grade Level</label>
@@ -674,7 +926,7 @@ export default function SectionManagement() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="input-group">
                     <label>Max Capacity</label>
                     <input
@@ -689,7 +941,7 @@ export default function SectionManagement() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="input-group">
                   <label>Advisory Teacher</label>
                   <select
@@ -709,7 +961,7 @@ export default function SectionManagement() {
                     ))}
                   </select>
                 </div>
-                
+
                 <button type="submit" className="submit-btn">
                   Create Section
                 </button>
