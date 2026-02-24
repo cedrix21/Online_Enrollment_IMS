@@ -29,7 +29,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Fetch the logged-in user so 'user' isn't undefined
   useEffect(() => {
     const fetchUser = async () => {
       try {

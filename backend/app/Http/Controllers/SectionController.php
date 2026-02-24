@@ -17,6 +17,7 @@ class SectionController extends Controller
             'students',
             'schedules.subject', 
             'schedules.room', 
+            'schedules.teacher',
             'schedules.time_slot'
         ])->withCount('students')->get();
         
