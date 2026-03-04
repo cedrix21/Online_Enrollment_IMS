@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -33,5 +36,44 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
         return response()->json(['message' => 'Logged out']);
+    }
+
+    // Update user credentials
+    public function updateCredentials(Request $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'email'            => 'required|email|unique:users,email,' . $user->id,
+            'new_password'     => 'nullable|string|min:6',
+        ]);
+
+        // Verify current password
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        // Update email
+        $user->email = $validated['email'];
+
+        // Update password if provided
+        if (! empty($validated['new_password'])) {
+            $user->password = Hash::make($validated['new_password']);
+        }
+
+        $user->save(); // now recognised
+
+        return response()->json([
+            'message' => 'Credentials updated successfully!',
+            'user'    => $user,
+        ]);
     }
 }

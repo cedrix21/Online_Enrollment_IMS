@@ -6,6 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import logo from "../assets/sics-logo.png";
+import { API_BASE_URL } from "../config"; 
 
 
 
@@ -454,12 +455,14 @@ const exportToExcel = () => {
                                   <label><strong>Proof of Payment:</strong></label>
                                   <div style={{ marginTop: '10px' }}>
                                       <a 
-                                          href={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                          //href={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                          href={`${API_BASE_URL}/${selectedEnrollment.payments[0].receipt_path}`}
                                           target="_blank" 
                                           rel="noreferrer"
                                       >
                                           <img 
-                                              src={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                              //src={selectedEnrollment.payments?.[0]?.receipt_path} 
+                                              src={`${API_BASE_URL}/${selectedEnrollment.payments[0].receipt_path}`}
                                               alt="Receipt" 
                                               style={{ 
                                                   width: '150px', 

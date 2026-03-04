@@ -131,13 +131,18 @@ class EnrollmentController extends Controller
 
         return DB::transaction(function () use ($request, $validated) {
             // UPDATED: Handle file upload with Supabase
+            // $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
             $receiptPath = null;
+            
             if ($request->hasFile('receipt_image')) {
-               // $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
-               $file = $request->file('receipt_image');
-               $fileName = time() . '_' . $file->getClientOriginalName();
-               $path = $file->storeAs('receipts', $fileName, 'public');
-               $receiptPath = 'storage/' . $path;
+                $file = $request->file('receipt_image');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                
+                // This stores it in: storage/app/public/receipts
+                $path = $file->storeAs('receipts', $fileName, 'public'); 
+                
+                // Save ONLY the path in the DB, not the 'storage/' prefix
+                $receiptPath = $path; 
             }
 
             $enrollment = Enrollment::create([

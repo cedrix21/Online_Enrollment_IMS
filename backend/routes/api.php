@@ -28,6 +28,7 @@ Route::post('/login', [AuthController::class, 'login']);
 */
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::put('/user/update-credentials', [AuthController::class, 'updateCredentials']);
     Route::get('/user', function (Request $request) {
         return response()->json($request->user());
     });

@@ -28,22 +28,20 @@ export default function Login() {
 
       console.log("Login successful:", response.data);
 
-      // Redirect based on user role
       if (user.role === "teacher") {
         window.location.href = "/teacher-advisory";
       } else {
         window.location.href = "/dashboard";
       }
     } catch (err) {
-      // Handle network errors vs API errors
+
       if (err.response) {
-        // Server responded with a status outside 2xx
+
         setError(err.response.data?.message || "Login failed");
       } else if (err.request) {
-        // No response received (CORS, network error)
+
         setError("Network error: Could not reach server");
       } else {
-        // Other errors
         setError("Login failed");
       }
 
