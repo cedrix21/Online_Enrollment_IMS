@@ -11,6 +11,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\GradeController;
+use App\Http\Controllers\TeacherPortalController;
 
 
 /*
@@ -107,4 +108,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/grades/{gradeId}', [GradeController::class, 'updateGrade']);
         Route::get('/admin/grades/statistics', [GradeController::class, 'getGradeStatistics']);
     });
+
+    //Combined dashboard endpoint (replaces 4 calls with 1)
+    Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
+    
+    // Bulk grade save
+    Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
 });

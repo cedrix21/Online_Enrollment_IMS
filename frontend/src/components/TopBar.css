@@ -5,6 +5,8 @@
   background: white;
   padding: 15px 25px;
   border-bottom: 2px solid #fff8dc;
+  height: 70px; 
+   flex-shrink: 0;
 }
 
 .topbar-user {

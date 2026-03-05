@@ -1,8 +1,9 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaClock, FaCheckCircle, FaTimesCircle, FaDollarSign, FaMoneyBillWave } from "react-icons/fa";
 import "./SummaryCards.css";
 
-export default function SummaryCards({ summary }) {
+const SummaryCards = memo(({ summary }) => {
   const navigate = useNavigate();
 
   const stats = [
@@ -59,7 +60,7 @@ export default function SummaryCards({ summary }) {
           <div className="summary-content">
             <div className="summary-info">
               <span className="summary-label">{item.label}</span>
-              <h2 className="summary-count">{item.count.toLocaleString()}</h2>
+              <h2 className="summary-count">{(item.count ?? 0).toLocaleString()}</h2>
             </div>
             <div className="summary-icon-wrapper">
               {item.icon}
@@ -72,4 +73,6 @@ export default function SummaryCards({ summary }) {
       ))}
     </div>
   );
-}
+});
+
+export default SummaryCards;

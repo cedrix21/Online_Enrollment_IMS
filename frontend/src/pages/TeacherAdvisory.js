@@ -1,8 +1,24 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import API from "../api/api";
 import { FaSyncAlt, FaSave, FaSignOutAlt, FaCog, FaTimes } from 'react-icons/fa';
 import "./TeacherAdvisory.css";
 import { useNavigate } from "react-router-dom";
+
+// Cache keys & duration
+const CACHE_KEY = 'teacher_dashboard_cache';
+const CACHE_TIME_KEY = 'teacher_dashboard_cache_time';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// score range
+const MIN_SCORE = 70;
+const MAX_SCORE = 100;
+const SCORE_OPTIONS = Array.from(
+  { length: MAX_SCORE - MIN_SCORE + 1 },
+  (_, i) => MAX_SCORE - i
+).map(String); // <-- ensure option values are strings
+
+// utils/gradeKey.js
+export const gradeKey = (sId, subId, q) => `${sId}-${subId}-${q || 'Q1'}`;
 
 export default function TeacherAdvisory() {
   const navigate = useNavigate();
@@ -16,8 +32,6 @@ export default function TeacherAdvisory() {
   const [selectedQuarter, setSelectedQuarter] = useState("Q1");
   const [teacherInfo, setTeacherInfo] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  
-  // Grade Level Filter
   const [filterGradeLevel, setFilterGradeLevel] = useState("all");
 
   // Settings Modal State
@@ -30,9 +44,76 @@ export default function TeacherAdvisory() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsSuccess, setSettingsSuccess] = useState("");
 
+  // ===== OPTIMIZED: Single API call with caching =====
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    try {
+      setLoading(true);
+
+      // Check cache first
+      if (!forceRefresh) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
+
+        if (cached && cacheTime) {
+          const age = Date.now() - parseInt(cacheTime);
+          if (age < CACHE_DURATION) {
+            const data = JSON.parse(cached);
+            processData(data);
+            setLoading(false);
+            return; // Use cached data
+          }
+        }
+      }
+
+      // Fetch fresh data from combined endpoint
+      const response = await API.get("/teacher/dashboard");
+      const data = response.data;
+
+      // Cache the response
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+
+      processData(data);
+      setError("");
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(
+        err.response?.data?.message || "Failed to load dashboard"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Process fetched data
+ const processData = useCallback((data) => {
+    setTeacherInfo(data.teacher);
+    setStudents(data.students);
+    setSubjects(data.subjects);
+
+    const gradesObj = {};
+    if (data.grades && Array.isArray(data.grades)) {
+      data.grades.forEach((grade) => {
+        // Use the same utility function to ensure key consistency
+        const key = gradeKey(
+          grade.student_id,
+          grade.subject_id,
+          grade.quarter
+        );
+
+        gradesObj[key] = {
+          score: grade.score !== null && grade.score !== undefined ? String(grade.score) : "",
+          remarks: grade.remarks || "",
+        };
+      });
+    }
+    setGrades(gradesObj);
+  }, []);
+
+  // Initial load
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -41,43 +122,31 @@ export default function TeacherAdvisory() {
     }
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [teacherRes, studentsRes, subjectsRes, gradesRes] = await Promise.all([
-        API.get("/teacher/info"),
-        API.get("/teacher/students"),
-        API.get("/teacher/subjects"),
-        API.get("/teacher/grades"),
-      ]);
+  // ===== Optimized: Memoized filtered students =====
+  const filteredStudents = useMemo(() => {
+    if (filterGradeLevel === "all") return students;
+    return students.filter(s => s.gradeLevel === filterGradeLevel);
+  }, [students, filterGradeLevel]);
 
-      setTeacherInfo(teacherRes.data);
-      setStudents(studentsRes.data);
-      setSubjects(subjectsRes.data);
+  // ===== Optimized: Memoized grade levels =====
+  const gradeLevels = useMemo(() => {
+    return teacherInfo?.gradeLevels || [];
+  }, [teacherInfo]);
 
-      const gradesObj = {};
-      gradesRes.data.forEach((grade) => {
-        const key = `${grade.student_id}-${grade.subject_id}-${grade.quarter || 'Q1'}`;
-        gradesObj[key] = {
-          score: grade.score,
-          remarks: grade.remarks,
-        };
-      });
-      setGrades(gradesObj);
-      setError("");
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError(
-        err.response?.data?.message || "Failed to load students and grades"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ===== Optimized: Memoized subjects for student =====
+  const getSubjectsForStudent = useCallback((student) => {
+    if (!student) return [];
+    return subjects.filter(sub => sub.gradeLevel === student.gradeLevel);
+  }, [subjects]);
+
+  // ===== Optimized: Memoized grades object =====
+  const gradesObjMemo = useMemo(() => grades, [grades]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); 
-    navigate("/login"); 
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_TIME_KEY);
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   const handleOpenSettings = () => {
@@ -132,7 +201,7 @@ export default function TeacherAdvisory() {
 
       const res = await API.put("/user/update-credentials", payload);
       setSettingsSuccess(res.data.message || "Credentials updated successfully!");
-      
+
       const user = JSON.parse(localStorage.getItem("user"));
       user.email = settingsEmail;
       localStorage.setItem("user", JSON.stringify(user));
@@ -152,31 +221,9 @@ export default function TeacherAdvisory() {
     try {
       setRefreshing(true);
       setSuccess("Refreshing data...");
-      
-      const [teacherRes, studentsRes, subjectsRes, gradesRes] = await Promise.all([
-        API.get("/teacher/info"),
-        API.get("/teacher/students"),
-        API.get("/teacher/subjects"),
-        API.get("/teacher/grades"),
-      ]);
-
-      setTeacherInfo(teacherRes.data);
-      setStudents(studentsRes.data);
-      setSubjects(subjectsRes.data);
-
-      const gradesObj = {};
-      gradesRes.data.forEach((grade) => {
-        const key = `${grade.student_id}-${grade.subject_id}-${grade.quarter || 'Q1'}`;
-        gradesObj[key] = {
-          score: grade.score,
-          remarks: grade.remarks,
-        };
-      });
-      setGrades(gradesObj);
-
+      await fetchData(true); // Force refresh
       setSuccess("Data refreshed successfully!");
       setTimeout(() => setSuccess(""), 2000);
-      setError("");
     } catch (err) {
       console.error("Error refreshing data:", err);
       setError(err.response?.data?.message || "Failed to refresh data");
@@ -185,19 +232,13 @@ export default function TeacherAdvisory() {
     }
   };
 
-  const handleGradeChange = (studentId, subjectId, field, value) => {
-    const key = `${studentId}-${subjectId}-${selectedQuarter}`;
-    setGrades((prev) => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        [field]: value,
-      },
-    }));
-  };
+  const handleGradeChange = useCallback((studentId, subjectId, field, value) => {
+    const key = gradeKey(studentId, subjectId, selectedQuarter);
+    setGrades(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  }, [selectedQuarter]);
 
-  const handleSubmitGrade = async (studentId, subjectId) => {
-    const key = `${studentId}-${subjectId}-${selectedQuarter}`;
+ const handleSubmitGrade = useCallback(async (studentId, subjectId) => {
+    const key = gradeKey(studentId, subjectId, selectedQuarter);
     const gradeData = grades[key];
 
     if (!gradeData || !gradeData.score) {
@@ -215,14 +256,20 @@ export default function TeacherAdvisory() {
       });
 
       setSuccess(`Grade saved successfully!`);
+
+      // Clear cache and refresh so the score "stays put"
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(CACHE_TIME_KEY);
+      await fetchData(true);
+
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error saving grade:", err);
       setError(err.response?.data?.message || "Failed to save grade");
     }
-  };
+  }, [selectedQuarter, grades, fetchData]);
 
-  const handleSubmitAllGrades = async () => {
+  const handleSubmitAllGrades = useCallback(async () => {
     if (!selectedStudent) {
       alert("Please select a student first");
       return;
@@ -231,10 +278,14 @@ export default function TeacherAdvisory() {
     try {
       const studentSubjects = getSubjectsForStudent(selectedStudent);
       const gradesToSubmit = studentSubjects
-        .map(subject => {
-          const key = `${selectedStudent.id}-${subject.id}-${selectedQuarter}`;
+        .map((subject) => {
+          const key = gradeKey(
+            selectedStudent.id,
+            subject.id,
+            selectedQuarter
+          );
           const gradeData = grades[key];
-          if (gradeData?.score) {
+          if (hasScore(gradeData)) {
             return {
               student_id: selectedStudent.id,
               subject_id: subject.id,
@@ -252,28 +303,45 @@ export default function TeacherAdvisory() {
         return;
       }
 
-      for (const gradeData of gradesToSubmit) {
-        await API.post("/teacher/grades", gradeData);
-      }
+      // 1. Send the data to the server
+      const response = await API.post("/teacher/grades/bulk", {
+        grades: gradesToSubmit,
+      });
 
-      setSuccess("All grades saved successfully!");
+      setSuccess(response.data.message || "All grades saved successfully!");
+
+      // 2. CRITICAL: Clear the local cache so the "old" grades are deleted
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(CACHE_TIME_KEY);
+
+      // 3. Re-fetch fresh data from the Database to update the UI
+      await fetchData(true); 
+
       setTimeout(() => setSuccess(""), 3000);
-      fetchData();
     } catch (err) {
       console.error("Error saving grades:", err);
       setError(err.response?.data?.message || "Failed to save grades");
     }
-  };
+  }, [selectedStudent, grades, selectedQuarter, fetchData, getSubjectsForStudent]);
 
-  const filteredStudents = filterGradeLevel === "all" 
-    ? students 
-    : students.filter(s => s.gradeLevel === filterGradeLevel);
 
-  const getSubjectsForStudent = (student) => {
-    return subjects.filter(sub => sub.gradeLevel === student.gradeLevel);
-  };
+  const hasScore = (gradeData) =>
+    gradeData && gradeData.score !== "" && gradeData.score !== null;
 
-  const gradeLevels = teacherInfo?.gradeLevels || [];
+  // Loading skeleton
+  if (loading) {
+    return (
+      <div className="teacher-advisory-container">
+        <div className="loading-skeleton">
+          <div className="skeleton-header"></div>
+          <div className="skeleton-content">
+            <div className="skeleton-sidebar"></div>
+            <div className="skeleton-main"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="teacher-advisory-container">
@@ -282,14 +350,14 @@ export default function TeacherAdvisory() {
         <div>
           <h1>Grade Evaluation Portal</h1>
           <p className="teacher-subtitle">
-            <strong>{teacherInfo?.firstName} {teacherInfo?.lastName}</strong> | 
-            Advisory: <span className="advisory-badge">{teacherInfo?.advisory_grade || "N/A"}</span> | 
+            <strong>{teacherInfo?.firstName} {teacherInfo?.lastName}</strong> |
+            Advisory: <span className="advisory-badge">{teacherInfo?.advisory_grade || "N/A"}</span> |
             Teaching: <span className="teaching-badge">{gradeLevels.join(", ")}</span>
           </p>
         </div>
         <div className="header-actions">
-          <button 
-            onClick={handleRefresh} 
+          <button
+            onClick={handleRefresh}
             disabled={refreshing}
             className="refresh-btn"
             title="Refresh student data"
@@ -297,15 +365,15 @@ export default function TeacherAdvisory() {
             <FaSyncAlt className={refreshing ? 'spinning' : ''} />
             {refreshing ? ' Refreshing...' : ' Refresh'}
           </button>
-          <button 
-            onClick={handleOpenSettings} 
+          <button
+            onClick={handleOpenSettings}
             className="settings-btn"
             title="Change credentials"
           >
             <FaCog /> Settings
           </button>
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             className="logout-btn"
             title="Logout"
           >
@@ -319,10 +387,10 @@ export default function TeacherAdvisory() {
 
       {/* Two-Column Layout */}
       <div className="advisory-content">
-        {/* LEFT SIDE: Student List with Controls */}
+        {/* LEFT SIDE: Student List */}
         <div className="student-list-panel">
           <div className="panel-header">Students</div>
-          
+
           {/* Controls inside left panel */}
           <div className="controls-row-compact">
             <div className="control-group-compact">
@@ -357,28 +425,18 @@ export default function TeacherAdvisory() {
               {filteredStudents.length} Students
             </div>
           </div>
-          
+
           <div className="student-list">
             {filteredStudents.length === 0 ? (
               <div className="no-students">No students found</div>
             ) : (
               filteredStudents.map((student) => (
-                <div
+                <StudentItem
                   key={student.id}
-                  className={`student-item ${selectedStudent?.id === student.id ? 'active' : ''}`}
+                  student={student}
+                  active={selectedStudent?.id === student.id}
                   onClick={() => setSelectedStudent(student)}
-                >
-                  <div className="student-item-row">
-                    <div className="student-id">{student.studentId}</div>
-                    <div className="student-details">
-                      <div className="student-name">{student.lastName}, {student.firstName}</div>
-                      <div className="student-meta">
-                        <span className="grade-level">{student.gradeLevel}</span>
-                        <span className="section">{student.section?.name || "N/A"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                />
               ))
             )}
           </div>
@@ -401,44 +459,17 @@ export default function TeacherAdvisory() {
                       <div className="subject-col subject-action">Action</div>
                     </div>
                     <div className="subjects-table-body">
-                      {getSubjectsForStudent(selectedStudent).map((subject) => {
-                        const key = `${selectedStudent.id}-${subject.id}-${selectedQuarter}`;
-                        const gradeData = grades[key] || { score: "", remarks: "" };
-
-                        return (
-                          <div key={subject.id} className="subject-row">
-                            <div className="subject-col subject-name">
-                              {subject.subjectName}
-                            </div>
-                            <div className="subject-col subject-code">
-                              <span className="code-badge">{subject.subjectCode}</span>
-                            </div>
-                            <div className="subject-col subject-score">
-                              <select
-                                value={gradeData.score}
-                                onChange={(e) =>
-                                  handleGradeChange(selectedStudent.id, subject.id, "score", e.target.value)
-                                }
-                                className="score-input"
-                              >
-                                <option value="">-- Select Grade --</option>
-                                {Array.from({ length: 31 }, (_, i) => 100 - i).map(score => (
-                                  <option key={score} value={score}>{score}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="subject-col subject-action">
-                              <button
-                                onClick={() => handleSubmitGrade(selectedStudent.id, subject.id)}
-                                className="save-btn"
-                                title="Save this grade"
-                              >
-                                <FaSave /> Save
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {getSubjectsForStudent(selectedStudent).map((subject) => (
+                        <SubjectRow
+                          key={subject.id}
+                          studentId={selectedStudent.id}
+                          subject={subject}
+                          gradeData={gradesObjMemo[gradeKey(selectedStudent.id, subject.id, selectedQuarter)] || { score: "", remarks: "" }}
+                          onGradeChange={handleGradeChange}
+                          onSubmit={handleSubmitGrade}
+                          selectedQuarter={selectedQuarter}
+                        />
+                      ))}
                     </div>
                     <div className="grades-panel-footer">
                       <button
@@ -470,8 +501,8 @@ export default function TeacherAdvisory() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Change Credentials</h2>
-              <button 
-                className="modal-close-btn" 
+              <button
+                className="modal-close-btn"
                 onClick={handleCloseSettings}
                 title="Close"
               >
@@ -559,3 +590,99 @@ export default function TeacherAdvisory() {
     </div>
   );
 }
+
+// ===== MEMOIZED: StudentItem Component =====
+const StudentItem = React.memo(({ student, active, onClick }) => (
+  <div
+    className={`student-item ${active ? 'active' : ''}`}
+    onClick={onClick}
+  >
+    <div className="student-item-row">
+      <div className="student-id">{student.studentId}</div>
+      <div className="student-details">
+        <div className="student-name">{student.lastName}, {student.firstName}</div>
+        <div className="student-meta">
+          <span className="grade-level">{student.gradeLevel}</span>
+          <span className="section">{student.section?.name || "N/A"}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+));
+
+StudentItem.displayName = 'StudentItem';
+
+
+// ===== MEMOIZED: SubjectRow Component =====
+const SubjectRow = React.memo(
+  ({
+    studentId,
+    subject,
+    gradeData = { score: "", remarks: "" },
+    onGradeChange,
+    onSubmit,
+    selectedQuarter,
+  }) => {
+    // 1. Ensure we are comparing strings
+    const currentScore = gradeData.score !== null && gradeData.score !== undefined 
+      ? String(gradeData.score) 
+      : "";
+
+    const numericScore = Number(currentScore);
+    
+    // 2. Determine if we need a custom option because the saved score isn't
+    //    among our standard options (covers decimals or out-of-range values)
+    const needsCustomOption =
+      currentScore !== "" &&
+      !SCORE_OPTIONS.includes(currentScore);
+
+    return (
+      <div className="subject-row">
+        <div className="subject-col subject-name">
+          {subject.subjectName}
+        </div>
+        <div className="subject-col subject-code">
+          <span className="code-badge">{subject.subjectCode}</span>
+        </div>
+        <div className="subject-col subject-score">
+          <select
+            value={currentScore}
+            onChange={(e) =>
+              onGradeChange(studentId, subject.id, "score", e.target.value)
+            }
+            className="score-input"
+          >
+            {/* 3. ONLY show placeholder if score is empty */}
+            {currentScore === "" && (
+              <option value="">-- Select Grade --</option>
+            )}
+
+            {SCORE_OPTIONS.map((score) => (
+              <option key={score} value={score}>
+                {score}
+              </option>
+            ))}
+
+            {/* 4. Show the saved score when it isn't one of the standard options */}
+            {needsCustomOption && (
+              <option key="current" value={currentScore}>
+                {currentScore}
+              </option>
+            )}
+          </select>
+        </div>
+        <div className="subject-col subject-action">
+          <button
+            onClick={() => onSubmit(studentId, subject.id)}
+            className="save-btn"
+            title="Save this grade"
+          >
+            <FaSave /> Save
+          </button>
+        </div>
+      </div>
+    );
+  }
+);
+
+SubjectRow.displayName = "SubjectRow";
