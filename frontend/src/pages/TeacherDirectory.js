@@ -452,35 +452,6 @@ export default function TeacherDirectory() {
     setExpandedTeacher(prev => prev === teacherId ? null : teacherId);
   }, []);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // LOADING STATE
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  if (loading) {
-    return (
-      <div className="dashboard-layout">
-        <SideBar user={user} />
-        <div className="main-content">
-          <TopBar user={user} />
-          <div className="content-scroll-area" style={{ 
-            padding: "20px", 
-            display: "flex", 
-            justifyContent: "center", 
-            alignItems: "center", 
-            height: "100%" 
-          }}>
-            <div style={{ 
-              fontSize: "1.2rem", 
-              color: "#b8860b", 
-              fontWeight: 600 
-            }}>
-              Loading faculty directory...
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="dashboard-layout">
       <SideBar user={user} />
@@ -505,19 +476,52 @@ export default function TeacherDirectory() {
               </button>
             </div>
 
-            <div className="teacher-grid">
-              {teachers.map((teacher) => (
-                <TeacherCard
-                  key={teacher.id}
-                  teacher={teacher}
-                  isExpanded={expandedTeacher === teacher.id}
-                  onToggleExpand={toggleExpandTeacher}
-                  onAssign={openAssignModal}
-                  onEdit={openEditModal}
-                  onRemoveAssignment={handleRemoveAssignment}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center",
+                minHeight: "400px",
+                textAlign: "center"
+              }}>
+                <div>
+                  <div style={{
+                    fontSize: "3rem",
+                    marginBottom: "20px",
+                    color: "#b8860b"
+                  }}>
+                    ⏳
+                  </div>
+                  <h3 style={{ 
+                    color: "#333", 
+                    fontWeight: 600,
+                    marginBottom: "10px"
+                  }}>
+                    Loading Faculty
+                  </h3>
+                  <p style={{ 
+                    color: "#666", 
+                    fontSize: "0.95rem" 
+                  }}>
+                    Fetching faculty directory...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="teacher-grid">
+                {teachers.map((teacher) => (
+                  <TeacherCard
+                    key={teacher.id}
+                    teacher={teacher}
+                    isExpanded={expandedTeacher === teacher.id}
+                    onToggleExpand={toggleExpandTeacher}
+                    onAssign={openAssignModal}
+                    onEdit={openEditModal}
+                    onRemoveAssignment={handleRemoveAssignment}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

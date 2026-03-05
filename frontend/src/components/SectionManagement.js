@@ -554,6 +554,7 @@ export default function SectionManagement() {
   const [teacherLoad, setTeacherLoad] = useState([]);
 
   // UI State
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -613,6 +614,7 @@ export default function SectionManagement() {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
       const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
         API.get("/sections"),
         API.get("/teachers"),
@@ -628,6 +630,8 @@ export default function SectionManagement() {
       setOccupiedSchedules(schedRes.data);
     } catch (err) {
       console.error("Error fetching data", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -910,17 +914,50 @@ export default function SectionManagement() {
               </button>
             </div>
 
-            <div className="section-grid">
-              {sections.map((section) => (
-                <SectionCard
-                  key={section.id}
-                  section={section}
-                  onSchedule={handleOpenScheduleModal}
-                  onViewStudents={handleViewStudents}
-                  onDelete={handleDeleteSection}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center",
+                minHeight: "400px",
+                textAlign: "center"
+              }}>
+                <div>
+                  <div style={{
+                    fontSize: "3rem",
+                    marginBottom: "20px",
+                    color: "#b8860b"
+                  }}>
+                    ⏳
+                  </div>
+                  <h3 style={{ 
+                    color: "#333", 
+                    fontWeight: 600,
+                    marginBottom: "10px"
+                  }}>
+                    Loading Sections
+                  </h3>
+                  <p style={{ 
+                    color: "#666", 
+                    fontSize: "0.95rem" 
+                  }}>
+                    Fetching classroom data...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="section-grid">
+                {sections.map((section) => (
+                  <SectionCard
+                    key={section.id}
+                    section={section}
+                    onSchedule={handleOpenScheduleModal}
+                    onViewStudents={handleViewStudents}
+                    onDelete={handleDeleteSection}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
