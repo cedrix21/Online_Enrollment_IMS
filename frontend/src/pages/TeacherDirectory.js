@@ -48,6 +48,32 @@ const INITIAL_ASSIGNMENT_FORM = {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HELPER: Sort teachers by advisory grade (K1 → G6)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const sortTeachersByAdvisory = (teachers) => {
+  const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
+    acc[grade] = index;
+    return acc;
+  }, {});
+
+  return [...teachers].sort((a, b) => {
+    const aGrade = a.advisory_grade;
+    const bGrade = b.advisory_grade;
+    
+    // Both have advisory grades → sort by order defined in GRADE_LEVELS
+    if (aGrade && bGrade) {
+      return (gradeOrder[aGrade] ?? Infinity) - (gradeOrder[bGrade] ?? Infinity);
+    }
+    // Only a has advisory → a comes first
+    if (aGrade && !bGrade) return -1;
+    // Only b has advisory → b comes first
+    if (!aGrade && bGrade) return 1;
+    // Neither has advisory → sort by last name (or ID)
+    return (a.lastName || '').localeCompare(b.lastName || '');
+  });
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MEMOIZED COMPONENTS - Prevent unnecessary re-renders
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const TeacherCard = memo(({ 
@@ -211,7 +237,8 @@ export default function TeacherDirectory() {
           const age = Date.now() - parseInt(cacheTime);
           if (age < CACHE_DURATION) {
             const data = JSON.parse(cached);
-            setTeachers(data.teachers);
+            // Apply sorting to cached data as well
+            setTeachers(sortTeachersByAdvisory(data.teachers));
             setAvailableSubjects(data.subjects);
             setTeacherLoad(data.load);
             setLoading(false);
@@ -227,8 +254,11 @@ export default function TeacherDirectory() {
         API.get("/teacher-load"),
       ]);
 
+      // Sort teachers by advisory grade
+      const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
+
       const data = {
-        teachers: teacherRes.data,
+        teachers: sortedTeachers,
         subjects: subjectRes.data,
         load: loadRes.data,
       };
@@ -237,7 +267,7 @@ export default function TeacherDirectory() {
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
 
-      setTeachers(data.teachers);
+      setTeachers(sortedTeachers);
       setAvailableSubjects(data.subjects);
       setTeacherLoad(data.load);
     } catch (err) {
@@ -299,8 +329,8 @@ export default function TeacherDirectory() {
     try {
       const res = await API.post("/teachers", newTeacher);
       
-      // Optimistic update
-      setTeachers(prev => [...prev, res.data.teacher]);
+      // Optimistic update – add new teacher and resort
+      setTeachers(prev => sortTeachersByAdvisory([...prev, res.data.teacher]));
       
       // Invalidate cache
       invalidateCache();
@@ -339,7 +369,7 @@ export default function TeacherDirectory() {
         assignmentForm
       );
       
-      // Optimistic updates
+      // Optimistic updates – update teacher's assignments (no need to resort as advisory unchanged)
       setTeachers(prev => prev.map(teacher => {
         if (teacher.id === selectedTeacherForAssign.id) {
           return {
@@ -371,7 +401,7 @@ export default function TeacherDirectory() {
     try {
       await API.delete(`/subject-assignments/${assignmentId}`);
       
-      // Optimistic updates
+      // Optimistic updates – remove assignment from teacher (no need to resort)
       setTeachers(prev => prev.map(teacher => {
         if (teacher.assignments) {
           return {
@@ -428,12 +458,15 @@ export default function TeacherDirectory() {
         editTeacherForm
       );
 
-      // Optimistic update
-      setTeachers(prev => prev.map((teacher) => 
-        teacher.id === selectedTeacherForEdit.id 
-          ? { ...teacher, ...res.data.teacher }
-          : teacher
-      ));
+      // Optimistic update – update teacher and resort (advisory may have changed)
+      setTeachers(prev => {
+        const updated = prev.map((teacher) => 
+          teacher.id === selectedTeacherForEdit.id 
+            ? { ...teacher, ...res.data.teacher }
+            : teacher
+        );
+        return sortTeachersByAdvisory(updated);
+      });
       
       // Invalidate cache
       invalidateCache();

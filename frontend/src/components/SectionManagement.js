@@ -45,6 +45,35 @@ const INITIAL_SECTION_FORM = {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HELPER: Sort sections by grade level (K1 → G6)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const sortSectionsByGrade = (sections) => {
+  const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
+    acc[grade] = index;
+    return acc;
+  }, {});
+
+  return [...sections].sort((a, b) => {
+    const aGrade = a.gradeLevel;
+    const bGrade = b.gradeLevel;
+    
+    // Both have valid grades
+    if (aGrade && bGrade) {
+      const aOrder = gradeOrder[aGrade] ?? Infinity;
+      const bOrder = gradeOrder[bGrade] ?? Infinity;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      // If same grade, sort by name
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    // One missing grade
+    if (aGrade && !bGrade) return -1;
+    if (!aGrade && bGrade) return 1;
+    // Both missing grade, sort by name
+    return (a.name || '').localeCompare(b.name || '');
+  });
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MEMOIZED COMPONENTS - Prevent unnecessary re-renders
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const SectionCard = memo(({ section, onSchedule, onViewStudents, onDelete }) => (
@@ -623,7 +652,9 @@ export default function SectionManagement() {
         API.get("/schedules"),
       ]);
 
-      setSections(secRes.data);
+      // Sort sections by grade level
+      const sortedSections = sortSectionsByGrade(secRes.data);
+      setSections(sortedSections);
       setTeachers(teachRes.data);
       setRooms(roomRes.data);
       setTimeSlots(slotRes.data);
@@ -717,7 +748,8 @@ export default function SectionManagement() {
     e.preventDefault();
     try {
       const res = await API.post("/sections", newSection);
-      setSections(prev => [...prev, res.data.section]);
+      // Sort sections after adding new one
+      setSections(prev => sortSectionsByGrade([...prev, res.data.section]));
       setShowModal(false);
       setNewSection(INITIAL_SECTION_FORM);
       alert("Section created successfully!");

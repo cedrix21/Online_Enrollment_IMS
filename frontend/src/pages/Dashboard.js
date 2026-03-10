@@ -190,14 +190,14 @@ export default function Dashboard() {
             <DashboardCards role={user.role} />
           </Suspense>
           
-          <div className="bottom-section">
+          {/* <div className="bottom-section">
             <Suspense fallback={<div className="loading-placeholder">Loading announcements...</div>}>
               <Announcements />
             </Suspense>
             <Suspense fallback={<div className="loading-placeholder">Loading events...</div>}>
               <Events />
             </Suspense>
-          </div>
+          </div> */}
 
           <button className="logout-button" onClick={handleLogout}>
             Logout
