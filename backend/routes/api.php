@@ -12,6 +12,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\TeacherPortalController;
+use App\Http\Controllers\PaymentController;
 
 
 /*
@@ -21,6 +22,15 @@ use App\Http\Controllers\TeacherPortalController;
 */
 Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']); 
 Route::post('/login', [AuthController::class, 'login']);
+
+// PAYMONGO PUBLIC ROUTES
+// This is the new combined endpoint we created for your Capstone
+Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);
+
+// Webhooks must be public because PayMongo's servers call this
+Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -79,7 +89,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin/billing')->group(function () {
         Route::get('/student/{studentId}', [BillingController::class, 'getStudentLedger']);
         Route::post('/student/{studentId}/pay', [BillingController::class, 'addPayment']);
+        Route::put('/payment/{id}', [BillingController::class, 'updatePayment']);
+       
     });
+
+    // Payment Verification (For Admin/Registrar to check status)
+    Route::get('/payment/verify', [PaymentController::class, 'verifyPayment']);
 
     // ══════════════════════════════════════════════════════════════════
     // TEACHER PORTAL - Grade Advisory
@@ -101,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/enrollments/summary', [EnrollmentController::class, 'summary']);
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
         Route::put('/enrollment/{id}/status', [EnrollmentController::class, 'updateStatus']);
+        Route::put('/enrollment/{id}/requirement', [EnrollmentController::class, 'updateRequirement']);
         Route::post('/admin/enroll-student', [EnrollmentController::class, 'storeAndApprove']);
 
         // Grade Management
@@ -113,5 +129,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
     
     // Bulk grade save
-    Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
+    Route::post('/teacher/grade`s/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
 });

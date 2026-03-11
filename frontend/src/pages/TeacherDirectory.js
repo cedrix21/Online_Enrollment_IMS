@@ -18,6 +18,7 @@ import "./TeacherDirectory.css";
 // CONSTANTS - Outside component (prevents recreation on every render)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const GRADE_LEVELS = [
+  "Nursery",
   "Kindergarten 1",
   "Kindergarten 2",
   "Grade 1",

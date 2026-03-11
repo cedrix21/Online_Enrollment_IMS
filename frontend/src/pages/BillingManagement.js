@@ -5,6 +5,7 @@ import StudentBilling from '../components/StudentBilling';
 import API from '../api/api';
 import './BillingManagement.css';
 import { useLocation } from 'react-router-dom';
+import { FaTimes } from 'react-icons/fa';
 
 const BillingManagement = ({ user }) => {
     const [students, setStudents] = useState([]);
@@ -12,13 +13,14 @@ const BillingManagement = ({ user }) => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [ledgerLoading, setLedgerLoading] = useState(false);  // <-- new state
     const [totalTuition, setTotalTuition] = useState(25000);
     const location = useLocation();
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
 
-    // Define tuition rates (Keep this outside or useMemo for performance)
+    // Define tuition rates (same as before)
     const rates = {
         'Kindergarten 1': 20000,
         'Kindergarten 2': 20000,
@@ -51,13 +53,24 @@ const BillingManagement = ({ user }) => {
     };
 
     const handleSelectStudent = async (student) => {
+        // If clicking the same student, deselect
+        if (selectedStudent?.id === student.id) {
+            setSelectedStudent(null);
+            setPayments([]);
+            setTotalTuition(25000);
+            return;
+        }
+
         setSelectedStudent(student);
+        setLedgerLoading(true);  // start loading
         try {
             const res = await API.get(`/admin/billing/student/${student.id}`);
             setPayments(res.data.ledger || []);
             setTotalTuition(res.data.summary.total_tuition);
         } catch (err) {
             console.error("Error fetching ledger", err);
+        } finally {
+            setLedgerLoading(false);  // stop loading
         }
     };
 
@@ -69,13 +82,10 @@ const BillingManagement = ({ user }) => {
 
         const matchesSearch = fName.includes(search) || lName.includes(search) || idNum.includes(search);
 
-        // STRICTOR UNPAID FILTER LOGIC
         if (filterPaymentStatus === 'unpaid') {
             const tuitionAmount = rates[s.gradeLevel] || 25000;
             const totalPaid = s.payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0) || 0;
             const hasBalance = (tuitionAmount - totalPaid) > 0;
-            
-            // If it matches search BUT has no balance, we return false to hide them
             return matchesSearch && hasBalance;
         }
 
@@ -95,11 +105,14 @@ const BillingManagement = ({ user }) => {
                         <div className="student-list-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                 <h3>Enrolled Students</h3>
-                                {filterPaymentStatus === 'unpaid' && (
-                                    <span style={{ padding: '4px 8px', backgroundColor: '#ff9800', color: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                        Unpaid Only
-                                    </span>
-                                )}
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    {filterPaymentStatus === 'unpaid' && (
+                                        <span style={{ padding: '4px 8px', backgroundColor: '#ff9800', color: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                            Unpaid Only
+                                        </span>
+                                    )}
+                                    
+                                </div>
                             </div>
                             
                             <div className="student-search-wrapper">
@@ -148,7 +161,6 @@ const BillingManagement = ({ user }) => {
                         <div className="ledger-display">
                             {selectedStudent ? (
                                 <>
-                                    {/* ADDED STUDENT NAME HEADER HERE */}
                                     <div className="ledger-header" style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #eee' }}>
                                         <h2 style={{ margin: 0, color: '#2c3e50' }}>
                                             {selectedStudent.firstName} {selectedStudent.lastName}
@@ -163,6 +175,7 @@ const BillingManagement = ({ user }) => {
                                         payments={payments}
                                         onPaymentAdded={(newPayment) => setPayments([...payments, newPayment])}
                                         totalTuition={totalTuition}
+                                        loading={ledgerLoading}  // <-- pass loading state
                                     />
                                 </>
                             ) : (

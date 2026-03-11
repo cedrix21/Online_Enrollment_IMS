@@ -4,7 +4,6 @@ import "./Enrollment.css";
 import "./LoadingSpinner.css";
 
 export default function Enrollment() {
-  // 1. Added isSubmitted state
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(true); 
@@ -12,6 +11,10 @@ export default function Enrollment() {
   const [receiptFile, setReceiptFile] = useState(null);
   const [amountPaid, setAmountPaid] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  
+  // PayMongo GCash states
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [gcashRedirectUrl, setGcashRedirectUrl] = useState("");
 
   const [formData, setFormData] = useState({
     registrationType: "", 
@@ -37,105 +40,175 @@ export default function Enrollment() {
     motherAddress: "", 
     emergencyContact: "",
     medicalConditions: "",
-
-
     paymentMethod: "",    
     reference_number: "",      
     amount_paid: "",           
     receipt_image: null,
     payment_status: "",
-   
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // NEW: PayMongo GCash Payment Handler
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const handleGCashPayment = async () => {
+  // Use the standalone amountPaid state
+  if (!amountPaid || parseFloat(amountPaid) < 500) {
+    alert("Please enter a valid payment amount (Minimum ₱500)");
+    return;
+  }
+
+  setProcessingPayment(true);
+
+  try {
+    const dataToSend = new FormData();
+    
+    // 1. Append basic info from formData
+    Object.keys(formData).forEach(key => {
+      // Avoid sending empty payment fields from formData; 
+      // we will append the correct ones manually below.
+      if (!['siblings', 'receipt_image', 'amount_paid', 'paymentMethod'].includes(key)) {
+        dataToSend.append(key, formData[key]);
+      }
+    });
+
+    // 2. Append Siblings
+    formData.siblings.forEach((sib, index) => {
+      if (sib.name) {
+        dataToSend.append(`siblings[${index}][name]`, sib.name);
+        dataToSend.append(`siblings[${index}][birthDate]`, sib.birthDate);
+      }
+    });
+
+    // 3. FORCE correct names and types for Laravel validation
+    // Use 'GCash' (case sensitive) and convert amountPaid to a Number
+    dataToSend.append('paymentMethod', 'GCash'); 
+    dataToSend.append('amount_paid', parseFloat(amountPaid)); 
+    dataToSend.append('payment_status', 'pending');
+
+    const response = await API.post('/payment/initialize-gcash-enrollment', dataToSend);
+
+    const { checkout_url } = response.data;
+
+    if (checkout_url) {
+      window.location.href = checkout_url;
+    } else {
+      throw new Error("Checkout URL not received");
+    }
+
+  } catch (err) {
+    console.error("GCash Initialization Error:", err.response?.data);
+    // This will now show the actual Laravel error message if validation fails again
+    alert(err.response?.data?.message || "Failed to initiate payment.");
+    setProcessingPayment(false);
+  }
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
     
-    // 1. Validation Logic
+    // Validation Logic
     if (!paymentMethod) {
-        alert("Please select a payment method.");
+      alert("Please select a payment method.");
+      return;
+    }
+
+    // For GCash - process payment first
+    if (paymentMethod === "GCash") {
+      if (!amountPaid) {
+        alert("Please enter the payment amount");
         return;
+      }
+      
+      // Trigger GCash payment flow
+      handleGCashPayment();
+      return; // Stop here - will submit after payment success
     }
 
-    // Only require Ref and File if it's NOT Cash
-    if (paymentMethod !== "Cash") {
-        if (!paymentRef || !receiptFile || !amountPaid) {
-            alert("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
-            return;
-        }
+    // For Bank Transfer - require receipt
+    if (paymentMethod === "Bank Transfer") {
+      if (!paymentRef || !receiptFile || !amountPaid) {
+        alert("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
+        return;
+      }
 
-        if (receiptFile.size > 2048 * 1024) { // 2MB
-            alert("Receipt image must be less than 2MB");
-            return;
-        }
+      if (receiptFile.size > 2048 * 1024) { // 2MB
+        alert("Receipt image must be less than 2MB");
+        return;
+      }
     }
 
+    // Submit enrollment
+    await submitEnrollment();
+  };
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // SEPARATED: Enrollment Submission Function
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const submitEnrollment = async () => {
     setLoading(true);
     const dataToSend = new FormData();
 
-    // 2. Append Standard Form Fields
+    // Append Standard Form Fields
     Object.keys(formData).forEach(key => {
-        if (key !== 'siblings' && key !== 'receipt_image') {
-            dataToSend.append(key, formData[key]);
-        }
+      if (key !== 'siblings' && key !== 'receipt_image') {
+        dataToSend.append(key, formData[key]);
+      }
     });
 
-    // 3. Append Siblings Array
+    // Append Siblings Array
     if (formData.siblings && formData.siblings.length > 0) {
-        formData.siblings.forEach((sib, index) => {
-            if (sib.name) {
-                dataToSend.append(`siblings[${index}][name]`, sib.name);
-            }
-            if (sib.birthDate) {
-                dataToSend.append(`siblings[${index}][birthDate]`, sib.birthDate);
-            }
-        });
+      formData.siblings.forEach((sib, index) => {
+        if (sib.name) {
+          dataToSend.append(`siblings[${index}][name]`, sib.name);
+        }
+        if (sib.birthDate) {
+          dataToSend.append(`siblings[${index}][birthDate]`, sib.birthDate);
+        }
+      });
     }
 
-    
-
-    // 4. --- UPDATED BILLING FIELDS LOGIC ---
+    // Append Payment Fields
     dataToSend.append('paymentMethod', paymentMethod);
 
     if (paymentMethod === "Cash") {
-        dataToSend.append('amount_paid', 0);
-        dataToSend.append('reference_number', 'WALK-IN-PENDING');
-        // We don't append receipt_image for Cash
-    } else {
-        dataToSend.append('amount_paid', amountPaid);
-        dataToSend.append('reference_number', paymentRef);
-        if (receiptFile) {
-            dataToSend.append('receipt_image', receiptFile);
-        }
+      dataToSend.append('amount_paid', 0);
+      dataToSend.append('reference_number', 'WALK-IN-PENDING');
+    } else if (paymentMethod === "GCash") {
+      dataToSend.append('amount_paid', amountPaid);
+      dataToSend.append('reference_number', paymentRef); // PayMongo Payment Intent ID
+      dataToSend.append('payment_status', 'paid'); // GCash payment already verified
+    } else if (paymentMethod === "Bank Transfer") {
+      dataToSend.append('amount_paid', amountPaid);
+      dataToSend.append('reference_number', paymentRef);
+      if (receiptFile) {
+        dataToSend.append('receipt_image', receiptFile);
+      }
     }
 
     try {
-        // 5. API Submission
-        await API.post('/enrollment/submit', dataToSend, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                console.log(`Upload Progress: ${percentCompleted}%`);
-                // Optional: You can update a progress bar here
-            }
-        });
-        
-        setIsSubmitted(true);
-        window.scrollTo(0, 0); 
+      await API.post('/enrollment/submit', dataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Upload Progress: ${percentCompleted}%`);
+        }
+      });
+      
+      setIsSubmitted(true);
+      window.scrollTo(0, 0); 
     } catch (err) {
-        console.error("Submission Error:", err.response?.data);
-        const errorMsg = err.response?.data?.message || "Error submitting form.";
-        alert(errorMsg);
+      console.error("Submission Error:", err.response?.data);
+      const errorMsg = err.response?.data?.message || "Error submitting form.";
+      alert(errorMsg);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
-
-
+  };
 
   const addSibling = () => {
     setFormData({
@@ -206,7 +279,7 @@ export default function Enrollment() {
                 I Agree and Proceed
               </button>
               <button 
-                onClick={() => window.location.href = '/*'} // Redirect away if they disagree
+                onClick={() => window.location.href = '/*'}
                 style={{
                   padding: '12px',
                   backgroundColor: '#eee',
@@ -222,8 +295,8 @@ export default function Enrollment() {
           </div>
         </div>
       )}
+
       <div className="enrollment-card">
-        
         {isSubmitted ? (
           /* --- SUCCESS OVERLAY SECTION --- */
           <div className="success-overlay" style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -260,14 +333,6 @@ export default function Enrollment() {
             </button>
           </div>
         ) : (
-
-
-
-
-
-
-
-
           /* --- ORIGINAL FORM SECTION --- */
           <>
             <div className="form-header">
@@ -290,6 +355,7 @@ export default function Enrollment() {
                     </select>
                     <select name="gradeLevel" value={formData.gradeLevel} onChange={handleChange} required>
                       <option value="">Enrolling For...</option>
+                      <option value="Nursery">Nursery</option>
                       <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
                       <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
                       {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
@@ -331,38 +397,38 @@ export default function Enrollment() {
               <div className="form-section">
                 <h3>Child's Information</h3>
                 <div className="input-group">
-                <div className="input-grid-3">
-                  <input name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required />
-                  <input name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required />
-                  <input name="middleName" placeholder="Middle Name" value={formData.middleName} onChange={handleChange} />
-                </div>
-                <div className="input-grid-3" style={{ marginTop: '15px' }}>
-                  <div className="input-group">
-                    <label>Nickname</label>
-                    <input name="nickname" placeholder="Nickname" value={formData.nickname} onChange={handleChange} />
+                  <div className="input-grid-3">
+                    <input name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required />
+                    <input name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required />
+                    <input name="middleName" placeholder="Middle Name" value={formData.middleName} onChange={handleChange} />
                   </div>
-                  <div className="input-group">
-                    <label>Date of Birth</label>
-                    <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
+                  <div className="input-grid-3" style={{ marginTop: '15px' }}>
+                    <div className="input-group">
+                      <label>Nickname</label>
+                      <input name="nickname" placeholder="Nickname" value={formData.nickname} onChange={handleChange} />
+                    </div>
+                    <div className="input-group">
+                      <label>Date of Birth</label>
+                      <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
+                    </div>
+                    <div className="input-group">
+                      <label>Gender</label>
+                      <select name="gender" value={formData.gender} onChange={handleChange} required>
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="input-group">
-                    <label>Gender</label>
-                    <select name="gender" value={formData.gender} onChange={handleChange} required>
-                      <option value="">Select</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
+                  <div className="input-group" style={{ marginTop: '15px' }}>
+                    <label>Handedness</label>
+                    <select name="handedness" value={formData.handedness} onChange={handleChange}>
+                      <option value="">Select Handedness</option>
+                      <option value="Right-handed">Right-handed</option>
+                      <option value="Left-handed">Left-handed</option>
                     </select>
                   </div>
                 </div>
-                <div className="input-group" style={{ marginTop: '15px' }}>
-                  <label>Handedness</label>
-                  <select name="handedness" value={formData.handedness} onChange={handleChange}>
-                    <option value="">Select Handedness</option>
-                    <option value="Right-handed">Right-handed</option>
-                    <option value="Left-handed">Left-handed</option>
-                  </select>
-                </div>
-              </div>
               </div>
 
               {/* Contact Information */}
@@ -379,47 +445,47 @@ export default function Enrollment() {
               <div className="form-section">
                 <h3>Father's Information</h3>
                 <div className="input-group">
-                <div className="input-grid-2">
-                  <input name="fatherName" placeholder="Full Name" value={formData.fatherName} onChange={handleChange} required />
-                  <input name="fatherContact" placeholder="Contact #" value={formData.fatherContact} onChange={handleChange} required />
-                  <input name="fatherOccupation" placeholder="Occupation" value={formData.fatherOccupation} onChange={handleChange} />
-                  <input name="fatherEmail" placeholder="Email Address" value={formData.fatherEmail} onChange={handleChange} />
+                  <div className="input-grid-2">
+                    <input name="fatherName" placeholder="Full Name" value={formData.fatherName} onChange={handleChange} required />
+                    <input name="fatherContact" placeholder="Contact #" value={formData.fatherContact} onChange={handleChange} required />
+                    <input name="fatherOccupation" placeholder="Occupation" value={formData.fatherOccupation} onChange={handleChange} />
+                    <input name="fatherEmail" placeholder="Email Address" value={formData.fatherEmail} onChange={handleChange} />
+                  </div>
+                  <input name="fatherAddress" placeholder="Address" value={formData.fatherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
                 </div>
-                <input name="fatherAddress" placeholder="Address" value={formData.fatherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
-              </div>
               </div>
 
               <div className="form-section">
                 <h3>Mother's Information</h3>
                 <div className="input-group">
-                <div className="input-grid-2">
-                  <input name="motherName" placeholder="Full Name" value={formData.motherName} onChange={handleChange} required/>
-                  <input name="motherContact" placeholder="Contact #" value={formData.motherContact} onChange={handleChange} required/>
-                  <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation} onChange={handleChange} />
-                  <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail} onChange={handleChange} />
+                  <div className="input-grid-2">
+                    <input name="motherName" placeholder="Full Name" value={formData.motherName} onChange={handleChange} required/>
+                    <input name="motherContact" placeholder="Contact #" value={formData.motherContact} onChange={handleChange} required/>
+                    <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation} onChange={handleChange} />
+                    <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail} onChange={handleChange} />
+                  </div>
+                  <input name="motherAddress" placeholder="Address" value={formData.motherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
                 </div>
-                <input name="motherAddress" placeholder="Address" value={formData.motherAddress} onChange={handleChange} style={{ width: '100%', marginTop: '10px' }} />
-              </div>
               </div>  
 
               {/* Siblings */}
               <div className="form-section">
                 <h3>List of Enrolled Siblings at SICS</h3>
                 <div className="input-group">
-                {formData.siblings.map((sibling, index) => (
-                  <div key={index} className="input-grid-2" style={{ marginBottom: '10px' }}>
-                    <div className="input-group">
-                      <label>Name</label>
-                      <input name="name" placeholder="Sibling Full Name" value={sibling.name} onChange={(e) => handleSiblingChange(index, e)} />
-                    </div>
-                    <div className="input-group">
-                      <label>Birth Date</label>
-                      <input type="date" name="birthDate" value={sibling.birthDate} onChange={(e) => handleSiblingChange(index, e)} />
-                    </div>
-                  </div>          
-                ))}
-                <button type="button" className="add-sibling-btn" onClick={addSibling}>+ Add Another Sibling</button>
-              </div>
+                  {formData.siblings.map((sibling, index) => (
+                    <div key={index} className="input-grid-2" style={{ marginBottom: '10px' }}>
+                      <div className="input-group">
+                        <label>Name</label>
+                        <input name="name" placeholder="Sibling Full Name" value={sibling.name} onChange={(e) => handleSiblingChange(index, e)} />
+                      </div>
+                      <div className="input-group">
+                        <label>Birth Date</label>
+                        <input type="date" name="birthDate" value={sibling.birthDate} onChange={(e) => handleSiblingChange(index, e)} />
+                      </div>
+                    </div>          
+                  ))}
+                  <button type="button" className="add-sibling-btn" onClick={addSibling}>+ Add Another Sibling</button>
+                </div>
               </div>
 
               {/* Emergency & Medical */}
@@ -435,78 +501,117 @@ export default function Enrollment() {
                 </div>
               </div>  
 
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                  UPDATED PAYMENT SECTION WITH PAYMONGO GCASH
+                  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              <div className="payment-section">
+                <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
+                <p style={{ fontSize: '0.8rem', marginBottom: '15px' }}>This payment will be recorded in the student's billing ledger.</p>
+                
+                <div className="input-group" style={{ marginBottom: '15px' }}>
+                  <label>Payment Method</label>
+                  <select 
+                    value={paymentMethod} 
+                    onChange={(e) => setPaymentMethod(e.target.value)} 
+                    required
+                  >
+                    <option value="">Select Method</option>
+                    <option value="Cash">💵 Cash (Walk-in)</option>
+                    <option value="GCash">📱 GCash (via PayMongo)</option>
+                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                  </select>
+                </div>
 
-                {/* payment section */}
-                <div className="payment-section">
-                      <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
-                      <p style={{ fontSize: '0.8rem', marginBottom: '15px' }}>This payment will be recorded in the student's billing ledger.</p>
-                      
-                      <div className="input-group" style={{ marginBottom: '15px' }}>
-                          <label>Payment Method</label>
-                          <select 
-                              value={paymentMethod} 
-                              onChange={(e) => setPaymentMethod(e.target.value)} 
-                              required
-                          >
-                              <option value="">Select Method</option>
-                              <option value="Cash">💵 Cash (Walk-in)</option>
-                              <option value="GCash">📱 GCash</option>
-                              <option value="Bank Transfer">🏦 Bank Transfer</option>
-                          </select>
-                      </div>
-
-                      {paymentMethod === "Cash" && (
-                          <div style={{ padding: '15px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', color: '#0d47a1' }}>
-                              <strong>📌 Notice:</strong> Please proceed to the <strong>School Registrar Office</strong> to settle your payment. Your enrollment will remain "Pending" until the cash payment is verified.
-                          </div>
-                      )}
-
-                      {(paymentMethod === "GCash" || paymentMethod === "Bank Transfer") && (
-                          <>
-                              <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8', borderRadius: '8px', fontSize: '0.9rem' }}>
-                                  <strong>Account Details:</strong><br />
-                                  GCash: 0912-XXX-XXXX (SICS Official)<br />
-                                  Bank: BDO - 1234567890 (Siloam International Christian School)
-                              </div>
-                              
-                              <div className="input-grid-2">
-                                  <div className="input-group">
-                                      <label>Downpayment Amount(₱)</label>
-                                      <input 
-                                          type="number" 
-                                          value={amountPaid}
-                                          onChange={(e) => setAmountPaid(e.target.value)} 
-                                          placeholder="0.00"
-                                          required
-                                      />
-                                  </div>
-                                  <div className="input-group">
-                                      <label>Reference Number</label>
-                                      <input 
-                                          type="text" 
-                                          value={paymentRef}
-                                          onChange={(e) => setPaymentRef(e.target.value)} 
-                                          placeholder="Ref #"
-                                          required
-                                      />
-                                  </div>
-                              </div>
-                              
-                              <div className="input-group" style={{ marginTop: '15px' }}>
-                                  <label>Upload Receipt Image</label>
-                                  <input 
-                                      type="file" 
-                                      accept="image/*" 
-                                      onChange={(e) => setReceiptFile(e.target.files[0])} 
-                                      required
-                                  />
-                              </div>
-                          </>
-                      )}
+                {paymentMethod === "Cash" && (
+                  <div style={{ padding: '15px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', color: '#0d47a1' }}>
+                    <strong>📌 Notice:</strong> Please proceed to the <strong>School Registrar Office</strong> to settle your payment. Your enrollment will remain "Pending" until the cash payment is verified.
                   </div>
+                )}
 
-              <button type="submit" className="enroll-button" disabled={loading}>
-                {loading ? "Submitting..." : "Submit Application"}
+                {paymentMethod === "GCash" && (
+                  <div style={{ marginTop: '15px' }}>
+                    <div style={{ 
+                      padding: '15px', 
+                      backgroundColor: '#e8f5e9', 
+                      border: '2px solid #4caf50', 
+                      borderRadius: '8px',
+                      marginBottom: '15px'
+                    }}>
+                      <strong style={{ color: '#2e7d32' }}>✅ Secure Payment via PayMongo</strong>
+                      <p style={{ fontSize: '0.85rem', color: '#555', margin: '8px 0 0 0' }}>
+                        You will be redirected to GCash payment page. After successful payment, your enrollment will be automatically confirmed.
+                      </p>
+                    </div>
+                    
+                    <div className="input-group">
+                      <label>Downpayment Amount (₱)</label>
+                      <input 
+                        type="number" 
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(e.target.value)} 
+                        placeholder="Enter amount (minimum ₱500)"
+                        min="500"
+                        step="0.01"
+                        required
+                      />
+                      <small style={{ color: '#666', fontSize: '0.8rem' }}>
+                        Minimum: ₱500.00
+                      </small>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === "Bank Transfer" && (
+                  <>
+                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8', borderRadius: '8px', fontSize: '0.9rem' }}>
+                      <strong>Bank Account Details:</strong><br />
+                      Bank: BDO - 1234567890<br />
+                      Account Name: Siloam International Christian School
+                    </div>
+                    
+                    <div className="input-grid-2">
+                      <div className="input-group">
+                        <label>Downpayment Amount (₱)</label>
+                        <input 
+                          type="number" 
+                          value={amountPaid}
+                          onChange={(e) => setAmountPaid(e.target.value)} 
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Reference Number</label>
+                        <input 
+                          type="text" 
+                          value={paymentRef}
+                          onChange={(e) => setPaymentRef(e.target.value)} 
+                          placeholder="Bank Ref #"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="input-group" style={{ marginTop: '15px' }}>
+                      <label>Upload Receipt Image</label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => setReceiptFile(e.target.files[0])} 
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button 
+                type="submit" 
+                className="enroll-button" 
+                disabled={loading || processingPayment}
+              >
+                {processingPayment ? "Redirecting to GCash..." : loading ? "Submitting..." : 
+                  paymentMethod === "GCash" ? "Proceed to GCash Payment" : "Submit Application"}
               </button>
               
               <div className="form-footer-warning">
@@ -517,21 +622,16 @@ export default function Enrollment() {
         )}
       </div>
 
-
-
-      <div className="enrollment-container">
-
-      {loading && (
+      {/* Loading Overlay */}
+      {(loading || processingPayment) && (
         <div className="loading-overlay">
           <div className="spinner"></div>
-          <p className="loading-text">Submitting Application...</p>
+          <p className="loading-text">
+            {processingPayment ? "Preparing GCash Payment..." : "Submitting Application..."}
+          </p>
           <p className="loading-subtext">Please wait, do not close this window</p>
         </div>
       )}
-
     </div>
-    </div>
-
   );
-  
 }

@@ -13,7 +13,7 @@ import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 
 // Memoized table row component to prevent unnecessary re-renders
-const EnrollmentRow = memo(({ enrollment, onView, onUpdateStatus }) => (
+const EnrollmentRow = memo(({ enrollment, onView, onUpdateStatus, onUpdateRequirement }) => (
   <tr>
     <td data-label="Name">
       {enrollment.firstName} {enrollment.lastName}
@@ -24,27 +24,92 @@ const EnrollmentRow = memo(({ enrollment, onView, onUpdateStatus }) => (
     
     <td data-label="Requirements">
       <div className="req-icons" style={{ display: 'flex', gap: '8px', fontSize: '1.1rem' }}>
-        <span title="1x1 Picture" style={{ color: enrollment.id_picture_received ? '#2e7d32' : '#b71c1c' }}>
+        <button 
+          title="1x1 Picture" 
+          onClick={() => onUpdateRequirement(enrollment.id, 'id_picture_received', !enrollment.id_picture_received)}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            cursor: 'pointer', 
+            fontSize: '1.1rem',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            backgroundColor: enrollment.id_picture_received ? '#e8f5e9' : '#ffebee',
+            transition: 'all 0.2s'
+          }}
+        >
           {enrollment.id_picture_received ? '🖼️' : '⭕'}
-        </span>
-        <span title="Kid's Note App" style={{ color: enrollment.kids_note_installed ? '#2e7d32' : '#b71c1c' }}>
+        </button>
+        <button 
+          title="Kid's Note App" 
+          onClick={() => onUpdateRequirement(enrollment.id, 'kids_note_installed', !enrollment.kids_note_installed)}
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            cursor: 'pointer', 
+            fontSize: '1.1rem',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            backgroundColor: enrollment.kids_note_installed ? '#e8f5e9' : '#ffebee',
+            transition: 'all 0.2s'
+          }}
+        >
           {enrollment.kids_note_installed ? '📱' : '⭕'}
-        </span>
+        </button>
 
         {(enrollment.registrationType === "New Student" || enrollment.registrationType === "Transferee") && (
-          <span title="PSA Birth Certificate" style={{ color: enrollment.psa_received ? '#2e7d32' : '#b71c1c' }}>
+          <button 
+            title="PSA Birth Certificate"
+            onClick={() => onUpdateRequirement(enrollment.id, 'psa_received', !enrollment.psa_received)}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer', 
+              fontSize: '1.1rem',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              backgroundColor: enrollment.psa_received ? '#e8f5e9' : '#ffebee',
+              transition: 'all 0.2s'
+            }}
+          >
             {enrollment.psa_received ? '📜' : '⭕'}
-          </span>
+          </button>
         )}
 
         {enrollment.registrationType === "Transferee" && (
           <>
-            <span title="Good Moral" style={{ color: enrollment.good_moral_received ? '#2e7d32' : '#b71c1c' }}>
+            <button 
+              title="Good Moral"
+              onClick={() => onUpdateRequirement(enrollment.id, 'good_moral_received', !enrollment.good_moral_received)}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '1.1rem',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                backgroundColor: enrollment.good_moral_received ? '#e8f5e9' : '#ffebee',
+                transition: 'all 0.2s'
+              }}
+            >
               {enrollment.good_moral_received ? '⭐' : '⭕'}
-            </span>
-            <span title="Report Card" style={{ color: enrollment.report_card_received ? '#2e7d32' : '#b71c1c' }}>
+            </button>
+            <button 
+              title="Report Card"
+              onClick={() => onUpdateRequirement(enrollment.id, 'report_card_received', !enrollment.report_card_received)}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '1.1rem',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                backgroundColor: enrollment.report_card_received ? '#e8f5e9' : '#ffebee',
+                transition: 'all 0.2s'
+              }}
+            >
               {enrollment.report_card_received ? '📊' : '⭕'}
-            </span>
+            </button>
           </>
         )}
       </div>
@@ -90,6 +155,7 @@ export default function EnrollmentManagement() {
   // Use lazy initialization for filters
   const [filterStatus, setFilterStatus] = useState(() => location.state?.filter || "all");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState(() => location.state?.paymentFilter || "all");
+  const [filterGrade, setFilterGrade] = useState("all");
   
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [linkedStudent, setLinkedStudent] = useState(null);
@@ -179,6 +245,16 @@ export default function EnrollmentManagement() {
     );
     
     try {
+      // Check if this is a cash payment and status is approved
+      const enrollment = enrollments.find(e => e.id === id);
+      if (status === 'approved' && enrollment?.payments?.[0]?.paymentMethod === 'Cash') {
+        // Update payment amount to 5000 for cash payments
+        const payment = enrollment.payments[0];
+        await API.put(`/admin/billing/payment/${payment.id}`, { amount_paid: 5000 }, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       await API.put(`/enrollment/${id}/status`, { status });
       setMessage(`Enrollment ${status} successfully`);
       
@@ -187,6 +263,27 @@ export default function EnrollmentManagement() {
     } catch (err) {
       setMessage("Action failed");
       // Revert optimistic update on error
+      fetchEnrollments();
+    }
+  }, [enrollments]);
+
+  // Add handler to update requirements
+  const handleUpdateRequirement = useCallback(async (enrollmentId, requirementField, value) => {
+    try {
+      // Optimistic update
+      setEnrollments(prev => 
+        prev.map(e => e.id === enrollmentId ? { ...e, [requirementField]: value } : e)
+      );
+
+      await API.put(`/enrollment/${enrollmentId}/requirement`, { 
+        field: requirementField, 
+        value: value 
+      });
+      setMessage(`Requirement updated successfully`);
+    } catch (err) {
+      setMessage("Failed to update requirement");
+      console.error(err);
+      // Revert on error
       fetchEnrollments();
     }
   }, []);
@@ -208,9 +305,11 @@ export default function EnrollmentManagement() {
         filterPaymentMethod === "all" || 
         e.payments?.[0]?.paymentMethod === filterPaymentMethod;
 
-      return matchesSearch && matchesFilter && matchesPaymentMethod;
+      const matchesGrade = filterGrade === "all" || e.gradeLevel === filterGrade;
+
+      return matchesSearch && matchesFilter && matchesPaymentMethod && matchesGrade;
     });
-  }, [enrollments, debouncedSearchTerm, filterStatus, filterPaymentMethod]);
+  }, [enrollments, debouncedSearchTerm, filterStatus, filterPaymentMethod, filterGrade]);
 
   // Memoized view handler
   const handleViewEnrollment = useCallback((enrollment) => {
@@ -326,18 +425,20 @@ if (!user) return null;
             </div>
 
             <div className="admin-actions">
-              <div className="search-filter-group">
+              <div className="search-filter-group" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   placeholder="Search name or email..."
                   className="search-input"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '180px' }}
                 />
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="filter-select"
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '140px' }}
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -348,11 +449,28 @@ if (!user) return null;
                   value={filterPaymentMethod}
                   onChange={(e) => setFilterPaymentMethod(e.target.value)}
                   className="filter-select"
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '150px' }}
                 >
                   <option value="all">All Payment Methods</option>
                   <option value="Cash">Cash (Walk-in)</option>
                   <option value="GCash">GCash</option>
                   <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+                <select
+                  value={filterGrade}
+                  onChange={(e) => setFilterGrade(e.target.value)}
+                  className="filter-select"
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '140px' }}
+                >
+                  <option value="all">All Grades</option>
+                  <option value="Kindergarten 1">Kindergarten 1</option>
+                  <option value="Kindergarten 2">Kindergarten 2</option>
+                  <option value="Grade 1">Grade 1</option>
+                  <option value="Grade 2">Grade 2</option>
+                  <option value="Grade 3">Grade 3</option>
+                  <option value="Grade 4">Grade 4</option>
+                  <option value="Grade 5">Grade 5</option>
+                  <option value="Grade 6">Grade 6</option>
                 </select>
               </div>
               <div className="button-group">
@@ -396,6 +514,7 @@ if (!user) return null;
                           enrollment={e}
                           onView={handleViewEnrollment}
                           onUpdateStatus={updateStatus}
+                          onUpdateRequirement={handleUpdateRequirement}
                         />
                       ))
                     ) : (
@@ -512,12 +631,12 @@ if (!user) return null;
                         <label><strong>Proof of Payment:</strong></label>
                         <div style={{ marginTop: '10px' }}>
                           <a 
-                            href={`${API_BASE_URL}/${selectedEnrollment.payments[0].receipt_path}`}
+                            href={`${API_BASE_URL}/storage/${selectedEnrollment.payments[0].receipt_path}`}
                             target="_blank" 
                             rel="noreferrer"
                           >
                             <img 
-                              src={`${API_BASE_URL}/${selectedEnrollment.payments[0].receipt_path}`}
+                              src={`${API_BASE_URL}/storage/${selectedEnrollment.payments[0].receipt_path}`}
                               alt="Receipt" 
                               style={{ 
                                 width: '150px', 

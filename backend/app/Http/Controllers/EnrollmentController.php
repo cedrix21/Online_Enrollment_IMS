@@ -98,7 +98,7 @@ class EnrollmentController extends Controller
             'lastName' => 'required|string',
             'middleName' => 'nullable|string',
             'nickname' => 'nullable|string',
-            'email' => 'required|email|unique:enrollments,email',
+            'email' => 'required|email',
             'gradeLevel' => 'required|string',
             'gender' => 'required|string',
             'dateOfBirth' => 'required|date',
@@ -270,19 +270,39 @@ class EnrollmentController extends Controller
         });
     }
 
+    public function updateRequirement(Request $request, $id)
+    {
+        $validFields = ['psa_received', 'id_picture_received', 'good_moral_received', 'report_card_received', 'kids_note_installed'];
+        $field = $request->input('field');
+        $value = $request->input('value');
+
+        if (!in_array($field, $validFields)) {
+            return response()->json(['message' => 'Invalid field'], 400);
+        }
+
+        $enrollment = Enrollment::findOrFail($id);
+        $enrollment->update([$field => $value]);
+
+        return response()->json([
+            'message' => 'Requirement updated successfully',
+            'enrollment' => $enrollment
+        ]);
+    }
+
    public function summary()
 {
     // Define tuition rates (same as BillingController)
     $rates = [
-        'Kindergarten 1' => 20000,
-        'Kindergarten 2' => 20000,
-        'Grade 1' => 25000,
-        'Grade 2' => 27500,
-        'Grade 3' => 30000,
-        'Grade 4' => 32000,
-        'Grade 5' => 34000,
-        'Grade 6' => 36000,
-    ];
+    'Nursery'        => 31540, // 26,288 + 5,252 misc
+    'Kindergarten 1' => 32090, // 26,838 + 5,252 misc
+    'Kindergarten 2' => 32490, // 26,988 + 5,502 misc
+    'Grade 1'        => 37234, // 30,582 + 5,152 misc + 1,500 Korean
+    'Grade 2'        => 37234, // same as Grade 1
+    'Grade 3'        => 37234, // same
+    'Grade 4'        => 37772, // 30,582 + 5,690 misc + 1,500 Korean
+    'Grade 5'        => 37772, // same
+    'Grade 6'        => 38272, // 30,582 + 6,190 misc + 1,500 Korean
+];
 
     // Count enrollments where payment method is Cash (walk-in pending)
     $cashEnrollments = Enrollment::whereHas('payments', function($query) {
@@ -291,7 +311,7 @@ class EnrollmentController extends Controller
 
     // Count students with unpaid balance (not fully paid)
     $unpaidStudents = Student::get()->filter(function($student) use ($rates) {
-        $totalTuition = $rates[$student->gradeLevel] ?? 25000;
+        $totalTuition = $rates[$student->gradeLevel] ?? 31540;
         $totalPaid = $student->payments->sum('amount_paid');
         return ($totalTuition - $totalPaid) > 0;
     })->count();
@@ -319,7 +339,7 @@ class EnrollmentController extends Controller
             'lastName' => 'required|string',
             'middleName' => 'nullable|string',
             'nickname' => 'nullable|string',
-            'email' => 'required|email|unique:enrollments,email',
+            'email' => 'required|email',
             'gradeLevel' => 'required|string',
             'gender' => 'required|string',
             'dateOfBirth' => 'required|date',
@@ -438,36 +458,46 @@ class EnrollmentController extends Controller
         }
     }
 
-    private function sendEnrollmentEmail($enrollment, $section, $formattedId)
-    {
+   private function sendEnrollmentEmail($enrollment, $section, $formattedId)
+{
+    try {
+        $logoBase64 = '';
+
+        Log::info('=== EMAIL START === Student: ' . $formattedId);
+        Log::info('Sending to email: ' . $enrollment->email);
+
+        $section->load(['schedules.subject', 'schedules.time_slot', 'schedules.room', 'advisor']);
+
         try {
-            $logoBase64 = ''; 
+            Log::info('Generating PDF...');
+            $pdf = Pdf::loadView('pdf.loadslip', [
+                'enrollment' => $enrollment,
+                'section'    => $section,
+                'studentId'  => $formattedId,
+                'logo'       => $logoBase64
+            ])->setPaper('a4', 'portrait');
 
-            $section->load(['schedules.subject', 'schedules.timeSlot', 'schedules.room', 'advisor']);
+            $pdfOutput = $pdf->output();
+            Log::info('PDF generated OK, size: ' . strlen($pdfOutput) . ' bytes');
 
-            try {
-                $pdf = Pdf::loadView('pdf.loadslip', [
-                    'enrollment' => $enrollment,
-                    'section'    => $section,
-                    'studentId'  => $formattedId,
-                    'logo'       => $logoBase64
-                ])->setPaper('a4', 'portrait');
-                
-                $pdfOutput = $pdf->output();
-            } catch (\Exception $pdfError) {
-                Log::error("PDF Generation failed: " . $pdfError->getMessage());
-                return "but PDF generation failed.";
-            }
-
-            Mail::to($enrollment->email)
-                ->cc('ravelocedrix@gmail.com') 
-                ->send(new EnrollmentApproved($enrollment, $pdfOutput));
-
-            return "and Loadslip sent to parent email.";
-
-        } catch (\Exception $e) {
-            Log::error("Email failed for Student {$formattedId}: " . $e->getMessage());
-            return "but email failed to send (Check SMTP settings).";
+        } catch (\Exception $pdfError) {
+            Log::error('PDF FAILED: ' . $pdfError->getMessage());
+            Log::error($pdfError->getTraceAsString());
+            return "but PDF generation failed.";
         }
+
+        Log::info('Sending mail...');
+        Mail::to($enrollment->email)
+            ->cc('ravelocedrix@gmail.com')
+            ->send(new EnrollmentApproved($enrollment, $pdfOutput));
+
+        Log::info('=== EMAIL SENT SUCCESSFULLY ===');
+        return "and Loadslip sent to parent email.";
+
+    } catch (\Exception $e) {
+        Log::error('=== EMAIL FAILED === ' . $e->getMessage());
+        Log::error($e->getTraceAsString());
+        return "but email failed to send (Check SMTP settings).";
     }
 }
+};

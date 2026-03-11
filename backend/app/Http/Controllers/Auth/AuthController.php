@@ -20,11 +20,18 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($request->only('email', 'password'))) {
-            $token = $request->user()->createToken('auth_token')->plainTextToken;
+            $user = $request->user();
+            $token = $user->createToken('auth_token')->plainTextToken;
             return response()->json([
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'user' => $request->user()
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'password_changed' => (bool) $user->password_changed,
+                ]
             ]);
         }
 
@@ -67,9 +74,10 @@ class AuthController extends Controller
         // Update password if provided
         if (! empty($validated['new_password'])) {
             $user->password = Hash::make($validated['new_password']);
+            $user->password_changed = true;
         }
 
-        $user->save(); // now recognised
+        $user->save();
 
         return response()->json([
             'message' => 'Credentials updated successfully!',

@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import API from "../api/api";
-import { FaSyncAlt, FaSave, FaSignOutAlt, FaCog, FaTimes } from 'react-icons/fa';
+import {
+  FaSyncAlt,
+  FaSave,
+  FaSignOutAlt,
+  FaCog,
+  FaTimes,
+} from "react-icons/fa";
 import "./TeacherAdvisory.css";
 import { useNavigate } from "react-router-dom";
 
 // Cache keys & duration
-const CACHE_KEY = 'teacher_dashboard_cache';
-const CACHE_TIME_KEY = 'teacher_dashboard_cache_time';
+const CACHE_KEY = "teacher_dashboard_cache";
+const CACHE_TIME_KEY = "teacher_dashboard_cache_time";
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // score range
@@ -14,11 +20,11 @@ const MIN_SCORE = 70;
 const MAX_SCORE = 100;
 const SCORE_OPTIONS = Array.from(
   { length: MAX_SCORE - MIN_SCORE + 1 },
-  (_, i) => MAX_SCORE - i
-).map(String); // <-- ensure option values are strings
+  (_, i) => MAX_SCORE - i,
+).map(String);
 
 // utils/gradeKey.js
-export const gradeKey = (sId, subId, q) => `${sId}-${subId}-${q || 'Q1'}`;
+export const gradeKey = (sId, subId, q) => `${sId}-${subId}-${q || "Q1"}`;
 
 export default function TeacherAdvisory() {
   const navigate = useNavigate();
@@ -44,10 +50,19 @@ export default function TeacherAdvisory() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsSuccess, setSettingsSuccess] = useState("");
 
+  // Mandatory password change on first login
+  const [showMandatoryPasswordChange, setShowMandatoryPasswordChange] =
+    useState(false);
+  const [mandatoryCurrentPassword, setMandatoryCurrentPassword] = useState("");
+  const [mandatoryNewPassword, setMandatoryNewPassword] = useState("");
+  const [mandatoryConfirmPassword, setMandatoryConfirmPassword] = useState("");
+  const [mandatoryLoading, setMandatoryLoading] = useState(false);
+  const [mandatoryError, setMandatoryError] = useState("");
+
   // ===== OPTIMIZED: Single API call with caching =====
   const fetchData = useCallback(async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      if (!forceRefresh) setLoading(true);
 
       // Check cache first
       if (!forceRefresh) {
@@ -60,7 +75,7 @@ export default function TeacherAdvisory() {
             const data = JSON.parse(cached);
             processData(data);
             setLoading(false);
-            return; // Use cached data
+            return;
           }
         }
       }
@@ -77,16 +92,14 @@ export default function TeacherAdvisory() {
       setError("");
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(
-        err.response?.data?.message || "Failed to load dashboard"
-      );
+      setError(err.response?.data?.message || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
   }, []);
 
   // Process fetched data
- const processData = useCallback((data) => {
+  const processData = useCallback((data) => {
     setTeacherInfo(data.teacher);
     setStudents(data.students);
     setSubjects(data.subjects);
@@ -94,15 +107,13 @@ export default function TeacherAdvisory() {
     const gradesObj = {};
     if (data.grades && Array.isArray(data.grades)) {
       data.grades.forEach((grade) => {
-        // Use the same utility function to ensure key consistency
-        const key = gradeKey(
-          grade.student_id,
-          grade.subject_id,
-          grade.quarter
-        );
+        const key = gradeKey(grade.student_id, grade.subject_id, grade.quarter);
 
         gradesObj[key] = {
-          score: grade.score !== null && grade.score !== undefined ? String(grade.score) : "",
+          score:
+            grade.score !== null && grade.score !== undefined
+              ? String(grade.score)
+              : "",
           remarks: grade.remarks || "",
         };
       });
@@ -120,12 +131,17 @@ export default function TeacherAdvisory() {
     if (user?.email) {
       setSettingsEmail(user.email);
     }
+
+    // Check if user needs to change password on first login
+    if (user && !user.password_changed) {
+      setShowMandatoryPasswordChange(true);
+    }
   }, []);
 
   // ===== Optimized: Memoized filtered students =====
   const filteredStudents = useMemo(() => {
     if (filterGradeLevel === "all") return students;
-    return students.filter(s => s.gradeLevel === filterGradeLevel);
+    return students.filter((s) => s.gradeLevel === filterGradeLevel);
   }, [students, filterGradeLevel]);
 
   // ===== Optimized: Memoized grade levels =====
@@ -134,13 +150,15 @@ export default function TeacherAdvisory() {
   }, [teacherInfo]);
 
   // ===== Optimized: Memoized subjects for student =====
-  const getSubjectsForStudent = useCallback((student) => {
-    if (!student) return [];
-    return subjects.filter(sub => sub.gradeLevel === student.gradeLevel);
-  }, [subjects]);
+  const getSubjectsForStudent = useCallback(
+    (student) => {
+      if (!student) return [];
+      return subjects.filter((sub) => sub.gradeLevel === student.gradeLevel);
+    },
+    [subjects],
+  );
 
-  // ===== Optimized: Memoized grades object =====
-  const gradesObjMemo = useMemo(() => grades, [grades]);
+
 
   const handleLogout = () => {
     localStorage.removeItem(CACHE_KEY);
@@ -200,7 +218,9 @@ export default function TeacherAdvisory() {
       }
 
       const res = await API.put("/user/update-credentials", payload);
-      setSettingsSuccess(res.data.message || "Credentials updated successfully!");
+      setSettingsSuccess(
+        res.data.message || "Credentials updated successfully!",
+      );
 
       const user = JSON.parse(localStorage.getItem("user"));
       user.email = settingsEmail;
@@ -211,9 +231,62 @@ export default function TeacherAdvisory() {
       }, 2000);
     } catch (err) {
       console.error("Error updating credentials:", err);
-      setSettingsError(err.response?.data?.message || "Failed to update credentials");
+      setSettingsError(
+        err.response?.data?.message || "Failed to update credentials",
+      );
     } finally {
       setSettingsLoading(false);
+    }
+  };
+
+  const handleSaveMandatoryPassword = async (e) => {
+    e.preventDefault();
+    setMandatoryError("");
+
+    if (!mandatoryCurrentPassword) {
+      setMandatoryError("Current password is required");
+      return;
+    }
+
+    if (!mandatoryNewPassword || !mandatoryConfirmPassword) {
+      setMandatoryError("New password fields are required");
+      return;
+    }
+
+    if (mandatoryNewPassword !== mandatoryConfirmPassword) {
+      setMandatoryError("New passwords do not match");
+      return;
+    }
+
+    if (mandatoryNewPassword.length < 6) {
+      setMandatoryError("New password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      setMandatoryLoading(true);
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      const payload = {
+        current_password: mandatoryCurrentPassword,
+        email: user.email,
+        new_password: mandatoryNewPassword,
+      };
+
+      const res = await API.put("/user/update-credentials", payload);
+
+      // Update user in localStorage with password_changed flag
+      user.password_changed = true;
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setShowMandatoryPasswordChange(false);
+    } catch (err) {
+      console.error("Error updating password:", err);
+      setMandatoryError(
+        err.response?.data?.message || "Failed to update password",
+      );
+    } finally {
+      setMandatoryLoading(false);
     }
   };
 
@@ -232,42 +305,45 @@ export default function TeacherAdvisory() {
     }
   };
 
-  const handleGradeChange = useCallback((studentId, subjectId, field, value) => {
-    const key = gradeKey(studentId, subjectId, selectedQuarter);
-    setGrades(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
-  }, [selectedQuarter]);
+  const handleGradeChange = useCallback(
+    (studentId, subjectId, field, value) => {
+      const key = gradeKey(studentId, subjectId, selectedQuarter);
+      setGrades((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], [field]: value },
+      }));
+    },
+    [selectedQuarter],);
+  
+  
+  const handleSubmitGrade = useCallback(
+    async (studentId, subjectId) => {
+      const key = gradeKey(studentId, subjectId, selectedQuarter);
+      const gradeData = grades[key];
 
- const handleSubmitGrade = useCallback(async (studentId, subjectId) => {
-    const key = gradeKey(studentId, subjectId, selectedQuarter);
-    const gradeData = grades[key];
+      if (!gradeData || !gradeData.score) {
+        setError("Please enter a score");
+        return;
+      }
 
-    if (!gradeData || !gradeData.score) {
-      setError("Please enter a score");
-      return;
-    }
+      try {
+        await API.post("/teacher/grades", {
+          student_id: studentId,
+          subject_id: subjectId,
+          score: gradeData.score,
+          remarks: gradeData.remarks || "",
+          quarter: selectedQuarter,
+        });
 
-    try {
-      await API.post("/teacher/grades", {
-        student_id: studentId,
-        subject_id: subjectId,
-        score: gradeData.score,
-        remarks: gradeData.remarks || "",
-        quarter: selectedQuarter,
-      });
-
-      setSuccess(`Grade saved successfully!`);
-
-      // Clear cache and refresh so the score "stays put"
-      localStorage.removeItem(CACHE_KEY);
-      localStorage.removeItem(CACHE_TIME_KEY);
-      await fetchData(true);
-
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      console.error("Error saving grade:", err);
-      setError(err.response?.data?.message || "Failed to save grade");
-    }
-  }, [selectedQuarter, grades, fetchData]);
+        setSuccess(`Grade saved successfully!`);
+        setTimeout(() => setSuccess(""), 3000);
+      } catch (err) {
+        console.error("Error saving grade:", err);
+        setError(err.response?.data?.message || "Failed to save grade");
+      }
+    },
+    [selectedQuarter, grades],   
+  );
 
   const handleSubmitAllGrades = useCallback(async () => {
     if (!selectedStudent) {
@@ -278,55 +354,37 @@ export default function TeacherAdvisory() {
     try {
       const studentSubjects = getSubjectsForStudent(selectedStudent);
       const gradesToSubmit = studentSubjects
-        .map((subject) => {
-          const key = gradeKey(
-            selectedStudent.id,
-            subject.id,
-            selectedQuarter
-          );
-          const gradeData = grades[key];
-          if (hasScore(gradeData)) {
-            return {
-              student_id: selectedStudent.id,
-              subject_id: subject.id,
-              score: gradeData.score,
-              remarks: gradeData.remarks || "",
-              quarter: selectedQuarter,
-            };
-          }
-          return null;
-        })
-        .filter(Boolean);
+    .map((subject) => {
+        const key = gradeKey(selectedStudent.id, subject.id, selectedQuarter);
+        const gradeData = grades[key];
+        if (!gradeData?.score) return null;  // ← only skip if truly no score entered
+        return {
+            student_id: selectedStudent.id,
+            subject_id: subject.id,
+            score: gradeData.score,
+            remarks: gradeData.remarks || "",
+            quarter: selectedQuarter,
+        };
+    })
+    .filter(Boolean);
 
       if (gradesToSubmit.length === 0) {
         alert("No grades to save");
         return;
       }
 
-      // 1. Send the data to the server
       const response = await API.post("/teacher/grades/bulk", {
         grades: gradesToSubmit,
       });
 
       setSuccess(response.data.message || "All grades saved successfully!");
 
-      // 2. CRITICAL: Clear the local cache so the "old" grades are deleted
-      localStorage.removeItem(CACHE_KEY);
-      localStorage.removeItem(CACHE_TIME_KEY);
-
-      // 3. Re-fetch fresh data from the Database to update the UI
-      await fetchData(true); 
-
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error saving grades:", err);
       setError(err.response?.data?.message || "Failed to save grades");
     }
-  }, [selectedStudent, grades, selectedQuarter, fetchData, getSubjectsForStudent]);
-
-
-  const hasScore = (gradeData) =>
-    gradeData && gradeData.score !== "" && gradeData.score !== null;
+  }, [selectedStudent, grades, selectedQuarter, getSubjectsForStudent]);
 
   // Loading skeleton
   if (loading) {
@@ -343,6 +401,132 @@ export default function TeacherAdvisory() {
     );
   }
 
+  // Show mandatory password change if needed - FIXED POSITIONING
+  if (showMandatoryPasswordChange) {
+    return (
+      <div
+        className="teacher-advisory-container"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          backgroundColor: "#f5f5f5",
+        }}
+      >
+        <div
+          className="modal-overlay"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.7)",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: "450px",
+              width: "100%",
+              margin: "0 auto",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <div className="modal-header">
+              <h2 style={{ margin: 0, fontSize: "1.4rem", color: "#b8860b" }}>
+                ⚠️ Change Your Password
+              </h2>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#666",
+                  marginTop: "8px",
+                  marginBottom: 0,
+                }}
+              >
+                This is your first login. You are required to change your
+                password to continue.
+              </p>
+            </div>
+
+            {mandatoryError && (
+              <div
+                className="alert alert-error"
+                style={{ margin: "15px 20px" }}
+              >
+                {mandatoryError}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSaveMandatoryPassword}
+              className="settings-form"
+              style={{ padding: "20px" }}
+            >
+              <div className="form-group">
+                <label htmlFor="current-pwd">Current Password:</label>
+                <input
+                  type="password"
+                  id="current-pwd"
+                  value={mandatoryCurrentPassword}
+                  onChange={(e) => setMandatoryCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  className="form-input"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <hr className="form-divider" />
+
+              <div className="form-group">
+                <label htmlFor="new-pwd">New Password:</label>
+                <input
+                  type="password"
+                  id="new-pwd"
+                  value={mandatoryNewPassword}
+                  onChange={(e) => setMandatoryNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 characters)"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="confirm-pwd">Confirm New Password:</label>
+                <input
+                  type="password"
+                  id="confirm-pwd"
+                  value={mandatoryConfirmPassword}
+                  onChange={(e) => setMandatoryConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-actions" style={{ marginTop: "24px" }}>
+                <button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={mandatoryLoading}
+                  style={{ width: "100%", padding: "12px", fontSize: "16px" }}
+                >
+                  {mandatoryLoading
+                    ? "Changing Password..."
+                    : "Change Password & Continue"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="teacher-advisory-container">
       {/* Header */}
@@ -350,9 +534,17 @@ export default function TeacherAdvisory() {
         <div>
           <h1>Grade Evaluation Portal</h1>
           <p className="teacher-subtitle">
-            <strong>{teacherInfo?.firstName} {teacherInfo?.lastName}</strong> |
-            Advisory: <span className="advisory-badge">{teacherInfo?.advisory_grade || "N/A"}</span> |
-            Teaching: <span className="teaching-badge">{gradeLevels.join(", ")}</span>
+            <strong>
+              {teacherInfo?.firstName} {teacherInfo?.lastName}
+            </strong>{" "}
+            | Advisory:{" "}
+            <span className="advisory-badge">
+              {teacherInfo?.advisory_grade || "N/A"}
+            </span>{" "}
+            | Teaching:{" "}
+            <span className="teaching-badge">
+              {subjects.map((s) => s.subjectCode).join(", ")}
+            </span>
           </p>
         </div>
         <div className="header-actions">
@@ -362,8 +554,8 @@ export default function TeacherAdvisory() {
             className="refresh-btn"
             title="Refresh student data"
           >
-            <FaSyncAlt className={refreshing ? 'spinning' : ''} />
-            {refreshing ? ' Refreshing...' : ' Refresh'}
+            <FaSyncAlt className={refreshing ? "spinning" : ""} />
+            {refreshing ? " Refreshing..." : " Refresh"}
           </button>
           <button
             onClick={handleOpenSettings}
@@ -372,11 +564,7 @@ export default function TeacherAdvisory() {
           >
             <FaCog /> Settings
           </button>
-          <button
-            onClick={handleLogout}
-            className="logout-btn"
-            title="Logout"
-          >
+          <button onClick={handleLogout} className="logout-btn" title="Logout">
             <FaSignOutAlt /> Logout
           </button>
         </div>
@@ -415,8 +603,10 @@ export default function TeacherAdvisory() {
                 className="control-select-compact"
               >
                 <option value="all">All</option>
-                {gradeLevels.map(grade => (
-                  <option key={grade} value={grade}>{grade.replace('Grade ', 'G')}</option>
+                {gradeLevels.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade.replace("Grade ", "G")}
+                  </option>
                 ))}
               </select>
             </div>
@@ -435,7 +625,11 @@ export default function TeacherAdvisory() {
                   key={student.id}
                   student={student}
                   active={selectedStudent?.id === student.id}
-                  onClick={() => setSelectedStudent(student)}
+                  onClick={() =>
+                    setSelectedStudent((prev) =>
+                      prev?.id === student.id ? null : student,
+                    )
+                  }
                 />
               ))
             )}
@@ -455,7 +649,9 @@ export default function TeacherAdvisory() {
                     <div className="subjects-table-header">
                       <div className="subject-col subject-name">Subject</div>
                       <div className="subject-col subject-code">Code</div>
-                      <div className="subject-col subject-score">Score (0-100)</div>
+                      <div className="subject-col subject-score">
+                        Score (0-100)
+                      </div>
                       <div className="subject-col subject-action">Action</div>
                     </div>
                     <div className="subjects-table-body">
@@ -464,10 +660,18 @@ export default function TeacherAdvisory() {
                           key={subject.id}
                           studentId={selectedStudent.id}
                           subject={subject}
-                          gradeData={gradesObjMemo[gradeKey(selectedStudent.id, subject.id, selectedQuarter)] || { score: "", remarks: "" }}
+                          gradeData={
+                            grades[
+                              gradeKey(
+                                selectedStudent.id,
+                                subject.id,
+                                selectedQuarter,
+                              )
+                            ] || { score: "", remarks: "" }
+                          }
                           onGradeChange={handleGradeChange}
                           onSubmit={handleSubmitGrade}
-                          selectedQuarter={selectedQuarter}
+                  
                         />
                       ))}
                     </div>
@@ -510,8 +714,12 @@ export default function TeacherAdvisory() {
               </button>
             </div>
 
-            {settingsError && <div className="alert alert-error">{settingsError}</div>}
-            {settingsSuccess && <div className="alert alert-success">{settingsSuccess}</div>}
+            {settingsError && (
+              <div className="alert alert-error">{settingsError}</div>
+            )}
+            {settingsSuccess && (
+              <div className="alert alert-success">{settingsSuccess}</div>
+            )}
 
             <form onSubmit={handleSaveSettings} className="settings-form">
               <div className="form-group">
@@ -593,14 +801,13 @@ export default function TeacherAdvisory() {
 
 // ===== MEMOIZED: StudentItem Component =====
 const StudentItem = React.memo(({ student, active, onClick }) => (
-  <div
-    className={`student-item ${active ? 'active' : ''}`}
-    onClick={onClick}
-  >
+  <div className={`student-item ${active ? "active" : ""}`} onClick={onClick}>
     <div className="student-item-row">
       <div className="student-id">{student.studentId}</div>
       <div className="student-details">
-        <div className="student-name">{student.lastName}, {student.firstName}</div>
+        <div className="student-name">
+          {student.lastName}, {student.firstName}
+        </div>
         <div className="student-meta">
           <span className="grade-level">{student.gradeLevel}</span>
           <span className="section">{student.section?.name || "N/A"}</span>
@@ -610,8 +817,7 @@ const StudentItem = React.memo(({ student, active, onClick }) => (
   </div>
 ));
 
-StudentItem.displayName = 'StudentItem';
-
+StudentItem.displayName = "StudentItem";
 
 // ===== MEMOIZED: SubjectRow Component =====
 const SubjectRow = React.memo(
@@ -621,26 +827,26 @@ const SubjectRow = React.memo(
     gradeData = { score: "", remarks: "" },
     onGradeChange,
     onSubmit,
-    selectedQuarter,
   }) => {
-    // 1. Ensure we are comparing strings
-    const currentScore = gradeData.score !== null && gradeData.score !== undefined 
-      ? String(gradeData.score) 
-      : "";
+    const [saving, setSaving] = useState(false); // ← add this
 
-    const numericScore = Number(currentScore);
-    
-    // 2. Determine if we need a custom option because the saved score isn't
-    //    among our standard options (covers decimals or out-of-range values)
+    const handleSave = async () => {
+      setSaving(true);
+      await onSubmit(studentId, subject.id);
+      setSaving(false);
+    };
+
+    const currentScore =
+      gradeData.score !== null && gradeData.score !== undefined
+        ? String(gradeData.score)
+        : "";
+
     const needsCustomOption =
-      currentScore !== "" &&
-      !SCORE_OPTIONS.includes(currentScore);
+      currentScore !== "" && !SCORE_OPTIONS.includes(currentScore);
 
     return (
       <div className="subject-row">
-        <div className="subject-col subject-name">
-          {subject.subjectName}
-        </div>
+        <div className="subject-col subject-name">{subject.subjectName}</div>
         <div className="subject-col subject-code">
           <span className="code-badge">{subject.subjectCode}</span>
         </div>
@@ -652,7 +858,6 @@ const SubjectRow = React.memo(
             }
             className="score-input"
           >
-            {/* 3. ONLY show placeholder if score is empty */}
             {currentScore === "" && (
               <option value="">-- Select Grade --</option>
             )}
@@ -663,7 +868,6 @@ const SubjectRow = React.memo(
               </option>
             ))}
 
-            {/* 4. Show the saved score when it isn't one of the standard options */}
             {needsCustomOption && (
               <option key="current" value={currentScore}>
                 {currentScore}
@@ -673,16 +877,17 @@ const SubjectRow = React.memo(
         </div>
         <div className="subject-col subject-action">
           <button
-            onClick={() => onSubmit(studentId, subject.id)}
+            onClick={handleSave}
             className="save-btn"
+            disabled={saving}
             title="Save this grade"
           >
-            <FaSave /> Save
+            <FaSave /> {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
     );
-  }
+  },
 );
 
 SubjectRow.displayName = "SubjectRow";

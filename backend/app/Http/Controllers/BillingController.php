@@ -22,17 +22,18 @@ class BillingController extends Controller
 
             // Define tuition rates
             $rates = [
-                'Kindergarten 1' => 20000,
-                'Kindergarten 2' => 20000,
-                'Grade 1' => 25000,
-                'Grade 2' => 27500,
-                'Grade 3' => 30000,
-                'Grade 4' => 32000,
-                'Grade 5' => 34000,
-                'Grade 6' => 36000,
+                'Nursery'        => 31540, // 26,288 + 5,252 misc
+                'Kindergarten 1' => 32090, // 26,838 + 5,252 misc
+                'Kindergarten 2' => 32490, // 26,988 + 5,502 misc
+                'Grade 1'        => 37234, // 30,582 + 5,152 misc + 1,500 Korean
+                'Grade 2'        => 37234, // same as Grade 1
+                'Grade 3'        => 37234, // same
+                'Grade 4'        => 37772, // 30,582 + 5,690 misc + 1,500 Korean
+                'Grade 5'        => 37772, // same
+                'Grade 6'        => 38272, // 30,582 + 6,190 misc + 1,500 Korean
             ];
             
-            $totalTuition = $rates[$student->gradeLevel] ?? 25000;
+            $totalTuition = $rates[$student->gradeLevel] ?? 31540;
             $totalPaid = $student->payments->sum('amount_paid') + $validated['amount_paid'];
             $balance = $totalTuition - $totalPaid;
 
@@ -70,17 +71,18 @@ class BillingController extends Controller
         
         // Define tuition rates
         $rates = [
-            'Kindergarten 1' => 20000,
-            'Kindergarten 2' => 20000,
-            'Grade 1' => 25000,
-            'Grade 2' => 27500,
-            'Grade 3' => 30000,
-            'Grade 4' => 32000,
-            'Grade 5' => 34000,
-            'Grade 6' => 36000,
-        ];
+        'Nursery'        => 31540, // 26,288 + 5,252 misc
+        'Kindergarten 1' => 32090, // 26,838 + 5,252 misc
+        'Kindergarten 2' => 32490, // 26,988 + 5,502 misc
+        'Grade 1'        => 37234, // 30,582 + 5,152 misc + 1,500 Korean
+        'Grade 2'        => 37234, // same as Grade 1
+        'Grade 3'        => 37234, // same
+        'Grade 4'        => 37772, // 30,582 + 5,690 misc + 1,500 Korean
+        'Grade 5'        => 37772, // same
+        'Grade 6'        => 38272, // 30,582 + 6,190 misc + 1,500 Korean
+    ];
         
-        $totalTuition = $rates[$student->gradeLevel] ?? 25000;
+        $totalTuition = $rates[$student->gradeLevel] ?? 31540;
         $totalPaid = $student->payments->sum('amount_paid');
         $balance = $totalTuition - $totalPaid;
         
@@ -98,5 +100,24 @@ class BillingController extends Controller
                 'status' => $accountStatus
             ]
         ]);
+    }
+
+    public function updatePayment(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'amount_paid' => 'required|numeric|min:1',
+        ]);
+
+        try {
+            $payment = Payment::findOrFail($id);
+            $payment->update(['amount_paid' => $validated['amount_paid']]);
+
+            return response()->json([
+                'message' => 'Payment updated successfully',
+                'payment' => $payment
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error updating payment: ' . $e->getMessage()], 500);
+        }
     }
 }
