@@ -41,7 +41,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
@@ -230,4 +229,76 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
+}
+/* Enrollment Management Button Group */
+.enrollment-btn-group {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.enrollment-btn-add,
+.enrollment-btn-excel,
+.enrollment-btn-qr {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.enrollment-btn-add {
+    background-color: #b8860b;
+    color: white;
+}
+
+.enrollment-btn-add:hover {
+    background-color: #9e7409;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(184, 134, 11, 0.3);
+}
+
+.enrollment-btn-excel {
+    background-color: #1d6f42;
+    color: white;
+}
+
+.enrollment-btn-excel:hover {
+    background-color: #155c36;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(29, 111, 66, 0.3);
+}
+
+.enrollment-btn-qr {
+    background-color: #555;
+    color: white;
+}
+
+.enrollment-btn-qr:hover {
+    background-color: #444;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(85, 85, 85, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .enrollment-btn-group {
+        margin-left: 0;
+        width: 100%;
+        justify-content: stretch;
+    }
+    
+    .enrollment-btn-add,
+    .enrollment-btn-excel,
+    .enrollment-btn-qr {
+        flex: 1;
+        justify-content: center;
+        font-size: 12px;
+        padding: 8px 4px;
+    }
 }

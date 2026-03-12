@@ -58,27 +58,28 @@
 .billing-summary {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom:12px;
     flex-shrink: 0;
 }
 
 .billing-summary-card {
-    padding: 15px;
-    border-radius: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
 }
 
 .billing-summary-card small {
     display: block;
-    font-size: 0.85rem;
-    margin-bottom: 8px;
+    font-size: 0.7rem;
+    margin-bottom: 2px;
     color: #666;
 }
 
 .billing-summary-card h3 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
 }
+
 
 .billing-summary-card.tuition {
     background: #f0f7ff;
@@ -400,4 +401,43 @@
 
 .billing-summary-card.skeleton .skeleton-line {
     margin: 4px 0;
+}
+.billing-summary-card.book-card {
+    background-color: #f0f8ff;  /* light blue */
+    border-left: 3px solid #4682b4; /* steel blue accent */
+}
+.billing-summary.six-col::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 10%;
+    height: 80%;
+    width: 1px;
+    background-color: #ddd;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+/* Six-column grid for combined summary */
+.billing-summary.six-col {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width: 900px) {
+    .billing-summary.six-col {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .billing-summary.six-col::after {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .billing-summary.six-col {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }

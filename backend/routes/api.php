@@ -20,17 +20,12 @@ use App\Http\Controllers\PaymentController;
 | Public Routes
 |--------------------------------------------------------------------------
 */
-Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']); 
+Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // PAYMONGO PUBLIC ROUTES
-// This is the new combined endpoint we created for your Capstone
 Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);
-
-// Webhooks must be public because PayMongo's servers call this
 Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -46,59 +41,49 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Core Data Fetching
     Route::get('/students', [StudentController::class, 'index']);
-    
-    // ══════════════════════════════════════════════════════════════════
-    // SUBJECT MANAGEMENT (Admin - Create/Edit/Delete Subjects)
-    // ══════════════════════════════════════════════════════════════════
-    Route::get('/subjects', [SubjectController::class, 'index']);                    // GET /subjects
-    Route::post('/subjects', [SubjectController::class, 'store']);                   // POST /subjects
-    Route::put('/subjects/{id}', [SubjectController::class, 'update']);              // PUT /subjects/1
-    Route::delete('/subjects/{id}', [SubjectController::class, 'destroy']);          // DELETE /subjects/1
-    Route::get('/subjects/grade/{gradeLevel}', [SubjectController::class, 'getByGrade']); // GET /subjects/grade/Grade 1
+
+    // SUBJECT MANAGEMENT
+    Route::get('/subjects', [SubjectController::class, 'index']);
+    Route::post('/subjects', [SubjectController::class, 'store']);
+    Route::put('/subjects/{id}', [SubjectController::class, 'update']);
+    Route::delete('/subjects/{id}', [SubjectController::class, 'destroy']);
+    Route::get('/subjects/grade/{gradeLevel}', [SubjectController::class, 'getByGrade']);
     Route::get('/teacher-load', [TeacherController::class, 'getAllAssignments']);
-    // ══════════════════════════════════════════════════════════════════
+
     // TEACHER MANAGEMENT & SUBJECT ASSIGNMENTS
-    // ══════════════════════════════════════════════════════════════════
     Route::prefix('teachers')->group(function () {
         Route::get('/', [TeacherController::class, 'index']);
         Route::post('/', [TeacherController::class, 'store']);
         Route::put('/{id}', [TeacherController::class, 'update']);
-        
-        // Subject assignments
+
         Route::post('/{teacherId}/assign-subject', [TeacherController::class, 'assignSubject']);
         Route::get('/{teacherId}/assignments', [TeacherController::class, 'getAssignments']);
         Route::get('/subjects/available', [TeacherController::class, 'getAvailableSubjects']);
+        Route::delete('/subject-assignments/{id}', [TeacherController::class, 'removeAssignment']);
     });
 
-    Route::delete('/subject-assignments/{id}', [TeacherController::class, 'removeAssignment']);
-    
-    // Scheduling & Sections 
+    // SECTIONS & SCHEDULING
     Route::get('/sections', [SectionController::class, 'index']);
     Route::post('/sections', [SectionController::class, 'store']);
     Route::get('/sections/{id}', [SectionController::class, 'show']);
     Route::delete('/sections/{id}', [SectionController::class, 'destroy']);
-    
-    Route::get('/rooms', [SectionController::class, 'getRooms']); 
+    Route::get('/rooms', [SectionController::class, 'getRooms']);
     Route::get('/time-slots', [SectionController::class, 'getTimeSlots']);
-    
     Route::get('/schedules', [ScheduleController::class, 'index']);
     Route::post('/schedules', [ScheduleController::class, 'store']);
     Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
 
-    // Billing Management
+    // BILLING MANAGEMENT
     Route::prefix('admin/billing')->group(function () {
         Route::get('/student/{studentId}', [BillingController::class, 'getStudentLedger']);
         Route::post('/student/{studentId}/pay', [BillingController::class, 'addPayment']);
         Route::put('/payment/{id}', [BillingController::class, 'updatePayment']);
-       
     });
 
-    // Payment Verification (For Admin/Registrar to check status)
+    // PAYMENT VERIFICATION
     Route::get('/payment/verify', [PaymentController::class, 'verifyPayment']);
 
-    // ══════════════════════════════════════════════════════════════════
-    // TEACHER PORTAL - Grade Advisory
-    // ══════════════════════════════════════════════════════════════════
+    // TEACHER PORTAL
     Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':teacher')->group(function () {
         Route::get('/teacher/info', [GradeController::class, 'getTeacherInfo']);
         Route::get('/teacher/students', [GradeController::class, 'getTeacherStudents']);
@@ -108,9 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/teacher/grades', [GradeController::class, 'submitGrade']);
     });
 
-    // ══════════════════════════════════════════════════════════════════
     // ADMIN/REGISTRAR ROUTES
-    // ══════════════════════════════════════════════════════════════════
     Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin,registrar')->group(function () {
         // Enrollment Management
         Route::get('/enrollments/summary', [EnrollmentController::class, 'summary']);
@@ -123,11 +106,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/grades', [GradeController::class, 'getAllGrades']);
         Route::put('/admin/grades/{gradeId}', [GradeController::class, 'updateGrade']);
         Route::get('/admin/grades/statistics', [GradeController::class, 'getGradeStatistics']);
+
+        // Payment Reports
+        Route::get('/admin/payments', [BillingController::class, 'index']);
     });
 
-    //Combined dashboard endpoint (replaces 4 calls with 1)
+    // TEACHER DASHBOARD & BULK GRADE SAVE
     Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
-    
-    // Bulk grade save
-    Route::post('/teacher/grade`s/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
+    Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']); // fixed typo
 });

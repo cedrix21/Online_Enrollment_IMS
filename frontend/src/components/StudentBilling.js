@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import API from '../api/api';
 import './StudentBilling.css';
 
-// --- Skeleton Components ---
+// --- Skeleton Components (same as before) ---
 const SummaryCardSkeleton = () => (
     <div className="billing-summary-card skeleton">
         <div className="skeleton-line" style={{ width: '60%', height: '16px', marginBottom: '8px' }}></div>
@@ -27,39 +27,56 @@ const TableSkeleton = () => (
     </>
 );
 
-// --- Modal Component ---
+// --- Modal Component (unchanged) ---
 const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [baseAmount, setBaseAmount] = useState('');
+    const [bookAmount, setBookAmount] = useState('');
     const [applyPenalty, setApplyPenalty] = useState(false);
     const [paymentData, setPaymentData] = useState({
         paymentMethod: 'Cash',
         reference_number: ''
     });
 
-    const finalAmount = applyPenalty && baseAmount
-        ? (parseFloat(baseAmount) * 1.10).toFixed(2)
-        : baseAmount;
+    const monthly = parseFloat(baseAmount) || 0;
+    const books = parseFloat(bookAmount) || 0;
+    const penalty = applyPenalty ? monthly * 0.10 : 0;
+    const monthlyTotal = monthly + penalty;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!baseAmount || parseFloat(baseAmount) <= 0) {
-            alert("Please enter a valid amount");
+        if (monthly <= 0 && books <= 0) {
+            alert("Please enter at least one amount (monthly or books)");
             return;
         }
 
-        const payload = {
-            ...paymentData,
-            amount_paid: finalAmount,
-            payment_type: applyPenalty ? 'Monthly w/ penalty' : 'Monthly Installment'
-        };
-
         setLoading(true);
+        const promises = [];
+
+        if (monthly > 0) {
+            const monthlyPayload = {
+                ...paymentData,
+                amount_paid: monthlyTotal.toFixed(2),
+                payment_type: applyPenalty ? 'Monthly w/ penalty' : 'Monthly Installment'
+            };
+            promises.push(API.post(`/admin/billing/student/${studentId}/pay`, monthlyPayload));
+        }
+
+        if (books > 0) {
+            const booksPayload = {
+                ...paymentData,
+                amount_paid: books.toFixed(2),
+                payment_type: 'Books'
+            };
+            promises.push(API.post(`/admin/billing/student/${studentId}/pay`, booksPayload));
+        }
+
         try {
-            const response = await API.post(`/admin/billing/student/${studentId}/pay`, payload);
-            alert("Payment recorded successfully!");
-            onPaymentSuccess(response.data.payment);
+            const results = await Promise.all(promises);
+            const newPayments = results.map(r => r.data.payment);
+            alert("Payment(s) recorded successfully!");
+            onPaymentSuccess(newPayments);
             onClose();
         } catch (err) {
             alert("Error: " + (err.response?.data?.message || "Failed to save payment"));
@@ -76,40 +93,58 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                     <button className="billing-modal-close" onClick={onClose}>×</button>
                 </div>
                 <form onSubmit={handleSubmit}>
+                    {/* Base monthly amount - optional now */}
                     <div className="billing-form-group">
                         <label className="billing-form-label">Base Monthly Amount (₱)</label>
                         <input
                             type="number"
                             step="0.01"
                             className="billing-form-input"
-                            required
                             value={baseAmount}
                             onChange={(e) => setBaseAmount(e.target.value)}
-                            placeholder="Enter monthly due"
+                            placeholder="Leave blank if not paying monthly"
                         />
                     </div>
 
+                    {/* Optional book payment */}
+                    <div className="billing-form-group">
+                        <label className="billing-form-label">Book Payment (₱)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            className="billing-form-input"
+                            value={bookAmount}
+                            onChange={(e) => setBookAmount(e.target.value)}
+                            placeholder="Enter book amount if paying books"
+                        />
+                    </div>
+
+                    {/* Penalty checkbox - disabled if no monthly amount */}
                     <div className="billing-form-group">
                         <label className="billing-form-label" style={{ display: 'flex', alignItems: 'center' }}>
                             <input
                                 type="checkbox"
                                 checked={applyPenalty}
                                 onChange={(e) => setApplyPenalty(e.target.checked)}
+                                disabled={!baseAmount || parseFloat(baseAmount) <= 0}
                             />
-                            <span style={{ marginLeft: '8px' }}>Apply 10% late penalty</span>
+                            <span style={{ marginLeft: '8px', opacity: (!baseAmount || parseFloat(baseAmount) <= 0) ? 0.6 : 1 }}>
+                                Apply 10% late penalty
+                            </span>
                         </label>
                     </div>
 
-                    {applyPenalty && baseAmount && (
+                    {/* Show totals breakdown only if there's something to show */}
+                    {(monthly > 0 || books > 0) && (
                         <div className="billing-form-group">
-                            <label className="billing-form-label">Total with Penalty (₱)</label>
-                            <input
-                                type="number"
-                                className="billing-form-input"
-                                value={finalAmount}
-                                readOnly
-                                style={{ backgroundColor: '#f0f0f0' }}
-                            />
+                            <label className="billing-form-label">Payment Breakdown</label>
+                            <div style={{ fontSize: '0.9rem', color: '#555' }}>
+                                {monthly > 0 && <p>Monthly: ₱{monthly.toFixed(2)}</p>}
+                                {applyPenalty && monthly > 0 && <p>Penalty (10%): ₱{penalty.toFixed(2)}</p>}
+                                {books > 0 && <p>Books: ₱{books.toFixed(2)}</p>}
+                                <hr style={{ margin: '8px 0' }} />
+                                <p><strong>Total: ₱{(monthlyTotal + books).toFixed(2)}</strong></p>
+                            </div>
                         </div>
                     )}
 
@@ -141,7 +176,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 
                     <div className="billing-modal-buttons">
                         <button type="submit" disabled={loading} className="billing-btn-submit">
-                            {loading ? "Saving..." : "Record Payment"}
+                            {loading ? "Saving..." : "Record Payment(s)"}
                         </button>
                         <button type="button" onClick={onClose} className="billing-btn-cancel">
                             Cancel
@@ -154,58 +189,80 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 };
 
 // --- MAIN COMPONENT ---
-const StudentBilling = ({ studentId, payments, totalTuition = 25000, onPaymentAdded, loading = false }) => {
+// --- MAIN COMPONENT ---
+const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPaymentAdded, loading = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
-    const balance = totalTuition - totalPaid;
-    const isFullyPaid = payments.some(p => p.payment_status === 'paid') || balance <= 0;
+    const tuitionPaid = payments.filter(p => p.payment_type !== 'Books').reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
+    const tuitionBalance = totalTuition - tuitionPaid;
+    const isTuitionFullyPaid = tuitionBalance <= 0;
+
+    const bookSummary = books || { total: 0, paid: 0, balance: 0, status: 'unpaid' };
+    const isBooksFullyPaid = bookSummary.balance <= 0;
 
     return (
         <div className="billing-container">
             <div className="billing-header">
                 <div>
                     <h2>Student Ledger</h2>
-                    {!loading && isFullyPaid && (
-                        <span className="billing-paid-badge">✓ FULLY PAID</span>
-                    )}
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="billing-add-payment-btn"
-                    disabled={isFullyPaid || loading}
+                    disabled={loading || (isTuitionFullyPaid && isBooksFullyPaid)}
                 >
                     + Add New Payment
                 </button>
             </div>
 
-            <div className="billing-summary">
-                {loading ? (
-                    <>
-                        <SummaryCardSkeleton />
-                        <SummaryCardSkeleton />
-                        <SummaryCardSkeleton />
-                    </>
-                ) : (
-                    <>
-                        <div className="billing-summary-card tuition">
-                            <small>Total Tuition</small>
-                            <h3>₱{totalTuition.toLocaleString()}</h3>
-                        </div>
-                        <div className="billing-summary-card paid">
-                            <small>Total Paid</small>
-                            <h3>₱{totalPaid.toLocaleString()}</h3>
-                        </div>
-                        <div className={`billing-summary-card ${isFullyPaid ? 'paid-full' : 'balance'}`}>
-                            <small>{isFullyPaid ? 'Status' : 'Remaining Balance'}</small>
-                            <h3 style={{ color: isFullyPaid ? '#4caf50' : '#f5222d' }}>
-                                {isFullyPaid ? '✓ PAID' : `₱${balance.toLocaleString()}`}
-                            </h3>
-                        </div>
-                    </>
-                )}
-            </div>
+            {/* Combined Summary Grid (6 columns) */}
+            {loading ? (
+                <div className="billing-summary six-col">
+                    <SummaryCardSkeleton />
+                    <SummaryCardSkeleton />
+                    <SummaryCardSkeleton />
+                    <SummaryCardSkeleton />
+                    <SummaryCardSkeleton />
+                    <SummaryCardSkeleton />
+                </div>
+            ) : (
+                <div className="billing-summary six-col">
+                    {/* Tuition cards - default style */}
+                    <div className="billing-summary-card tuition">
+                        <small>Tuition</small>
+                        <h3>₱{totalTuition.toLocaleString()}</h3>
+                    </div>
+                    <div className="billing-summary-card paid">
+                        <small>Paid</small>
+                        <h3>₱{tuitionPaid.toLocaleString()}</h3>
+                    </div>
+                    <div className={`billing-summary-card ${isTuitionFullyPaid ? 'paid-full' : 'balance'}`}>
+                        <small>Balance</small>
+                        <h3 style={{ color: isTuitionFullyPaid ? '#4caf50' : '#f5222d' }}>
+                            {isTuitionFullyPaid ? '✓' : `₱${tuitionBalance.toLocaleString()}`}
+                        </h3>
+                    </div>
 
+                    {/* Books cards - with additional class "book-card" */}
+                    <div className="billing-summary-card tuition book-card">
+                        <small>Books</small>
+                        <h3>₱{bookSummary.total.toLocaleString()}</h3>
+                    </div>
+                    <div className="billing-summary-card paid book-card">
+                        <small>Paid</small>
+                        <h3>₱{bookSummary.paid.toLocaleString()}</h3>
+                    </div>
+                    <div className={`billing-summary-card ${isBooksFullyPaid ? 'paid-full' : 'balance'} book-card`}>
+                        <small>Balance</small>
+                        <h3 style={{ color: isBooksFullyPaid ? '#4caf50' : '#f5222d' }}>
+                            {isBooksFullyPaid ? '✓' : `₱${bookSummary.balance.toLocaleString()}`}
+                        </h3>
+                    </div>
+                </div>
+            )}
+
+            {/* Payments Table */}
             <div className="billing-table-container">
                 <table className="billing-payment-table">
                     <thead>

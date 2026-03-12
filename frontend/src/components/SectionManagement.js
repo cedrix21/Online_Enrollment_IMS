@@ -19,6 +19,7 @@ import "./SectionManagement.css";
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const GRADE_LEVELS = [
+  "Nursery",
   "Kindergarten 1",
   "Kindergarten 2",
   "Grade 1",

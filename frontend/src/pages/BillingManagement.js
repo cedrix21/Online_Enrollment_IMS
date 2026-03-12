@@ -13,14 +13,15 @@ const BillingManagement = ({ user }) => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [ledgerLoading, setLedgerLoading] = useState(false);  // <-- new state
+    const [ledgerLoading, setLedgerLoading] = useState(false);
     const [totalTuition, setTotalTuition] = useState(25000);
+    const [booksSummary, setBooksSummary] = useState({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
     const location = useLocation();
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
 
-    // Define tuition rates (same as before)
+    // Define tuition rates
     const rates = {
         'Kindergarten 1': 20000,
         'Kindergarten 2': 20000,
@@ -58,19 +59,33 @@ const BillingManagement = ({ user }) => {
             setSelectedStudent(null);
             setPayments([]);
             setTotalTuition(25000);
+            setBooksSummary({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
             return;
         }
 
         setSelectedStudent(student);
-        setLedgerLoading(true);  // start loading
+        setLedgerLoading(true);
         try {
             const res = await API.get(`/admin/billing/student/${student.id}`);
             setPayments(res.data.ledger || []);
             setTotalTuition(res.data.summary.total_tuition);
+            setBooksSummary(res.data.summary.books);
         } catch (err) {
             console.error("Error fetching ledger", err);
         } finally {
-            setLedgerLoading(false);  // stop loading
+            setLedgerLoading(false);
+        }
+    };
+
+    const handlePaymentAdded = async () => {
+        if (!selectedStudent) return;
+        try {
+            const res = await API.get(`/admin/billing/student/${selectedStudent.id}`);
+            setPayments(res.data.ledger || []);
+            setTotalTuition(res.data.summary.total_tuition);
+            setBooksSummary(res.data.summary.books);
+        } catch (err) {
+            console.error("Error refreshing ledger", err);
         }
     };
 
@@ -111,7 +126,6 @@ const BillingManagement = ({ user }) => {
                                             Unpaid Only
                                         </span>
                                     )}
-                                    
                                 </div>
                             </div>
                             
@@ -173,9 +187,10 @@ const BillingManagement = ({ user }) => {
                                     <StudentBilling 
                                         studentId={selectedStudent.id}
                                         payments={payments}
-                                        onPaymentAdded={(newPayment) => setPayments([...payments, newPayment])}
+                                        onPaymentAdded={handlePaymentAdded}
                                         totalTuition={totalTuition}
-                                        loading={ledgerLoading}  // <-- pass loading state
+                                        books={booksSummary}
+                                        loading={ledgerLoading}
                                     />
                                 </>
                             ) : (

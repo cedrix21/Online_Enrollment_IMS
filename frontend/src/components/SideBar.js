@@ -13,10 +13,10 @@ import {
 } from "react-icons/fa";
 import "./SideBar.css";
 
-
-
-export default function Sidebar({ user }) {
+export default function Sidebar() {
   const location = useLocation();
+  const user = JSON.parse(localStorage.getItem("user"));
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -46,35 +46,34 @@ export default function Sidebar({ user }) {
         </Link>
 
         <Link to="/section-management" className={location.pathname.includes('/section-management') ? 'active' : ''}>
-        <FaLayerGroup /> <span>Sections</span>
-      </Link>
+          <FaLayerGroup /> <span>Sections</span>
+        </Link>
 
         <Link to="/subject-management" className={location.pathname.includes('/subject-management') ? 'active' : ''}>
           <FaBookOpen /> Subject Management
         </Link>
 
-
         <Link to="/load-slips" className={location.pathname.includes('/load-slips') ? 'active' : ''}>
-        <FaFileInvoice  />
-        <span>Load Slips</span>
+          <FaFileInvoice  />
+          <span>Load Slips</span>
         </Link>
 
-        
+        {(user?.role === "admin" || user?.role === "registrar") && (
+          <Link to="/admin/evaluation" className={location.pathname.includes('/admin/evaluation') ? 'active' : ''}>
+            <FaBook />
+            <span>Evaluations</span>
+          </Link>
+        )}
 
-      {(user?.role === "admin" || user?.role === "registrar") && (
-        <Link to="/admin/evaluation" className={location.pathname.includes('/admin/evaluation') ? 'active' : ''}>
-          <FaBook />
-          <span>Evaluations</span>
-        </Link>
-      )}
-
-      <Link 
-          to="/admin/billing" 
-          className={location.pathname.includes('/admin/billing') ? 'active' : ''}>
+        <Link to="/admin/billing" className={location.pathname.includes('/admin/billing') ? 'active' : ''}>
           <FaFileInvoiceDollar />
           <span>Billing Ledger</span>
         </Link>
 
+        <Link to="/payment-reports" className={location.pathname.includes('/payment-reports') ? 'active' : ''}>
+          <FaFileInvoiceDollar />
+          <span>Payment Reports</span>
+        </Link>
       </nav>
     </aside>
   );

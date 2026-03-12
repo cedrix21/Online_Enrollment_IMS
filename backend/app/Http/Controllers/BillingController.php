@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\DB;
 
 class BillingController extends Controller
 {
+    public function index()
+    {
+        $payments = Payment::with('student') // eager load student relationship
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($payments);
+    }
     public function addPayment(Request $request, $studentId)
     {
         $validated = $request->validate([
@@ -86,6 +94,24 @@ class BillingController extends Controller
         $totalPaid = $student->payments->sum('amount_paid');
         $balance = $totalTuition - $totalPaid;
         
+        // Define book fees per grade
+            $bookFees = [
+                'Nursery'        => 1579,
+                'Kindergarten 1' => 2241,
+                'Kindergarten 2' => 1642,
+                'Grade 1'        => 4629,
+                'Grade 2'        => 4879,
+                'Grade 3'        => 4859,
+                'Grade 4'        => 5488,
+                'Grade 5'        => 5488,
+                'Grade 6'        => 5488,
+            ];
+
+            $bookFee = $bookFees[$student->gradeLevel] ?? 0;
+            $booksPaid = $student->payments()->where('payment_type', 'Books')->sum('amount_paid');
+            $bookBalance = $bookFee - $booksPaid;
+            $bookStatus = $bookBalance <= 0 ? 'paid' : ($booksPaid > 0 ? 'partial' : 'unpaid');
+
         // Determine overall account status
         $accountStatus = $balance <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
         
@@ -97,8 +123,15 @@ class BillingController extends Controller
                 'total_tuition' => $totalTuition,
                 'total_paid' => $totalPaid,
                 'balance' => $balance,
-                'status' => $accountStatus
+                'status' => $accountStatus,    
+                'books' => [
+                    'total'   => $bookFee,
+                    'paid'    => $booksPaid,
+                    'balance' => $bookBalance,
+                    'status'  => $bookStatus,
+            ],          
             ]
+            
         ]);
     }
 

@@ -1,7 +1,9 @@
 import logo from "../assets/sics-logo.png";
 import "./TopBar.css";
 
-export default function TopBar({ user }) {
+export default function TopBar() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -11,7 +13,7 @@ export default function TopBar({ user }) {
 
       <div className="topbar-user">
         <span>{user?.name || 'Guest'}</span>
-        <span className={`role ${user.role}`}>{user.role}</span>
+        <span className={`role-badge ${user?.role}`}>{user?.role || 'guest'}</span>
       </div>
     </header>
   );

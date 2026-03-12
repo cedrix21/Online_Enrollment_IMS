@@ -28,7 +28,7 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+ 
 }
 
 .sidebar-menu a {

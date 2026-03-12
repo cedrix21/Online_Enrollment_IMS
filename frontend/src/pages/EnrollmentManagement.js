@@ -156,6 +156,7 @@ export default function EnrollmentManagement() {
   const [filterStatus, setFilterStatus] = useState(() => location.state?.filter || "all");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState(() => location.state?.paymentFilter || "all");
   const [filterGrade, setFilterGrade] = useState("all");
+  const [filterRequirements, setFilterRequirements] = useState("all");
   
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [linkedStudent, setLinkedStudent] = useState(null);
@@ -169,8 +170,7 @@ export default function EnrollmentManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300); // Wait 300ms after last keystroke
-
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
@@ -239,16 +239,13 @@ export default function EnrollmentManagement() {
     if (!window.confirm(`Are you sure you want to mark this as ${status}?`))
       return;
     
-    // Optimistic update
     setEnrollments(prev => 
       prev.map(e => e.id === id ? { ...e, status } : e)
     );
     
     try {
-      // Check if this is a cash payment and status is approved
       const enrollment = enrollments.find(e => e.id === id);
       if (status === 'approved' && enrollment?.payments?.[0]?.paymentMethod === 'Cash') {
-        // Update payment amount to 5000 for cash payments
         const payment = enrollment.payments[0];
         await API.put(`/admin/billing/payment/${payment.id}`, { amount_paid: 5000 }, {
           headers: { 'Content-Type': 'application/json' }
@@ -257,12 +254,9 @@ export default function EnrollmentManagement() {
 
       await API.put(`/enrollment/${id}/status`, { status });
       setMessage(`Enrollment ${status} successfully`);
-      
-      // Refresh to ensure consistency
       fetchEnrollments();
     } catch (err) {
       setMessage("Action failed");
-      // Revert optimistic update on error
       fetchEnrollments();
     }
   }, [enrollments]);
@@ -270,7 +264,6 @@ export default function EnrollmentManagement() {
   // Add handler to update requirements
   const handleUpdateRequirement = useCallback(async (enrollmentId, requirementField, value) => {
     try {
-      // Optimistic update
       setEnrollments(prev => 
         prev.map(e => e.id === enrollmentId ? { ...e, [requirementField]: value } : e)
       );
@@ -283,12 +276,28 @@ export default function EnrollmentManagement() {
     } catch (err) {
       setMessage("Failed to update requirement");
       console.error(err);
-      // Revert on error
       fetchEnrollments();
     }
   }, []);
 
-  // Memoized filtered data - only recomputes when dependencies change
+  // Helper to check if all required requirements are met
+  const isRequirementsComplete = useCallback((enrollment) => {
+    if (!enrollment.id_picture_received) return false;
+    if (!enrollment.kids_note_installed) return false;
+
+    if (enrollment.registrationType === "New Student" || enrollment.registrationType === "Transferee") {
+      if (!enrollment.psa_received) return false;
+    }
+
+    if (enrollment.registrationType === "Transferee") {
+      if (!enrollment.good_moral_received) return false;
+      if (!enrollment.report_card_received) return false;
+    }
+
+    return true;
+  }, []);
+
+  // Memoized filtered data
   const filteredData = useMemo(() => {
     const searchLower = debouncedSearchTerm.toLowerCase();
     
@@ -300,16 +309,18 @@ export default function EnrollmentManagement() {
         e.email.toLowerCase().includes(searchLower);
       
       const matchesFilter = filterStatus === "all" || e.status === filterStatus;
-      
-      const matchesPaymentMethod = 
-        filterPaymentMethod === "all" || 
-        e.payments?.[0]?.paymentMethod === filterPaymentMethod;
-
+      const matchesPaymentMethod = filterPaymentMethod === "all" || e.payments?.[0]?.paymentMethod === filterPaymentMethod;
       const matchesGrade = filterGrade === "all" || e.gradeLevel === filterGrade;
 
-      return matchesSearch && matchesFilter && matchesPaymentMethod && matchesGrade;
+      let matchesRequirements = true;
+      if (filterRequirements !== "all") {
+        const complete = isRequirementsComplete(e);
+        matchesRequirements = filterRequirements === "complete" ? complete : !complete;
+      }
+
+      return matchesSearch && matchesFilter && matchesPaymentMethod && matchesGrade && matchesRequirements;
     });
-  }, [enrollments, debouncedSearchTerm, filterStatus, filterPaymentMethod, filterGrade]);
+  }, [enrollments, debouncedSearchTerm, filterStatus, filterPaymentMethod, filterGrade, filterRequirements, isRequirementsComplete]);
 
   // Memoized view handler
   const handleViewEnrollment = useCallback((enrollment) => {
@@ -318,20 +329,15 @@ export default function EnrollmentManagement() {
 
   // Optimized PDF generation
   const generatePDF = useCallback((student) => {
-    // Use requestAnimationFrame to prevent UI blocking
     requestAnimationFrame(() => {
       const doc = new jsPDF();
-      
-      // Load image asynchronously
       const img = new Image();
       img.src = logo;
       img.onload = () => {
         doc.addImage(img, 'PNG', 10, 10, 20, 20);
-        
         doc.setFontSize(18);
         doc.setTextColor(184, 134, 11);
         doc.text("SICS - Enrollment Record", 105, 20, { align: "center" });
-        
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 28, { align: "center" });
@@ -382,7 +388,6 @@ export default function EnrollmentManagement() {
 
   // Optimized Excel export
   const exportToExcel = useCallback(() => {
-    // Use setTimeout to prevent UI blocking
     setTimeout(() => {
       const excelData = filteredData.map(e => ({
         "First Name": e.firstName,
@@ -403,13 +408,8 @@ export default function EnrollmentManagement() {
       XLSX.writeFile(workbook, `Enrollment_List_${filterStatus}_${new Date().toLocaleDateString()}.xlsx`);
     }, 0);
   }, [filteredData, filterStatus]);
-  
 
-
-
-
-
-if (!user) return null;
+  if (!user) return null;
 
   return (
     <div className="dashboard-layout">
@@ -472,22 +472,21 @@ if (!user) return null;
                   <option value="Grade 5">Grade 5</option>
                   <option value="Grade 6">Grade 6</option>
                 </select>
+                <select
+                  value={filterRequirements}
+                  onChange={(e) => setFilterRequirements(e.target.value)}
+                  className="filter-select"
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '140px' }}
+                >
+                  <option value="all">All Requirements</option>
+                  <option value="complete">Complete</option>
+                  <option value="incomplete">Incomplete</option>
+                </select>
               </div>
-              <div className="button-group">
-                <button className="btn-add" onClick={() => navigate("/admin/enroll")}>Add Student</button>
-                <button 
-                  className="btn-excel" 
-                  onClick={exportToExcel}
-                  style={{ backgroundColor: '#1d6f42', color: 'white' }}
-                >
-                  📊 Export to Excel
-                </button>
-                <button
-                  className="btn-qr"
-                  onClick={() => navigate("/enrollment-qr")}
-                >
-                  Show QR
-                </button>
+              <div className="enrollment-btn-group">
+                <button className="enrollment-btn-add" onClick={() => navigate("/admin/enroll")}>Add Student</button>
+                <button className="enrollment-btn-excel" onClick={exportToExcel}>📊 Export to Excel</button>
+                <button className="enrollment-btn-qr" onClick={() => navigate("/enrollment-qr")}>Show QR</button>
               </div>
             </div>
 
@@ -532,7 +531,7 @@ if (!user) return null;
         </div>
       </div>
 
-      {/* VIEW DETAILS MODAL */}
+      {/* VIEW DETAILS MODAL (unchanged) */}
       {selectedEnrollment && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

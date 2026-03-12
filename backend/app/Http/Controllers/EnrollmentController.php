@@ -171,6 +171,7 @@ class EnrollmentController extends Controller
                 'emergencyContact'  => $validated['emergencyContact'],
                 'medicalConditions' => $validated['medicalConditions'] ?? null,
                 'status'            => 'pending',  
+                
             ]);
 
             $enrollment->payments()->create([
@@ -180,6 +181,7 @@ class EnrollmentController extends Controller
                 'payment_type'     => 'Downpayment',
                 'payment_date'     => now(),
                 'receipt_path'     => $receiptPath, 
+                'payment_status'   => 'pending',
             ]);
 
             if (!empty($validated['siblings'])) {
@@ -253,7 +255,8 @@ class EnrollmentController extends Controller
                 ]);
 
                 $enrollment->payments()->update([
-                    'student_id' => $student->id
+                    'student_id' => $student->id,
+                    'payment_status' => 'completed',
                 ]);
 
                 $section->increment('students_count');
@@ -439,6 +442,7 @@ class EnrollmentController extends Controller
                     'payment_type'     => 'Downpayment',
                     'payment_date'     => now(),
                     'receipt_path'     => $receiptPath,
+                    'payment_status'   => 'completed', 
                 ]);
                 
                 $section->increment('students_count');
