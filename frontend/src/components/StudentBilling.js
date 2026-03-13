@@ -102,7 +102,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
                             className="billing-form-input"
                             value={baseAmount}
                             onChange={(e) => setBaseAmount(e.target.value)}
-                            placeholder="Leave blank if not paying monthly"
+                            placeholder="Enter monthly installment amount"
                         />
                     </div>
 
@@ -188,7 +188,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
     );
 };
 
-// --- MAIN COMPONENT ---
+
 // --- MAIN COMPONENT ---
 const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPaymentAdded, loading = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
