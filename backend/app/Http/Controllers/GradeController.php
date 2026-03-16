@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Grade;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\SubjectAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

@@ -19,6 +19,9 @@ class Student extends Model
         'section_id',
         'status',
         'school_year',
+        'status',
+        'lrn',
+        'contact_number',
         // 'created_at' removed from here
     ];
 

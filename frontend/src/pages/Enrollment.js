@@ -16,6 +16,14 @@ export default function Enrollment() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [gcashRedirectUrl, setGcashRedirectUrl] = useState("");
 
+  // Calculate current school year (same logic as AdminEnrollment)
+  const getCurrentSchoolYear = () => {
+    const month = new Date().getMonth() + 1; // 1-12
+    const year = new Date().getFullYear();
+    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  };
+  const [schoolYear] = useState(getCurrentSchoolYear());
+
   const [formData, setFormData] = useState({
     registrationType: "", 
     gradeLevel: "",
@@ -337,7 +345,7 @@ export default function Enrollment() {
           <>
             <div className="form-header">
               <h2>SICS ENROLLMENT FORM</h2>
-              <p>S.Y. 2026 - 2027</p>
+              <p>S.Y. {schoolYear}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="enrollment-grid-form">

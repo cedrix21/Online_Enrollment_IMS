@@ -25,6 +25,8 @@ import API from "./api/api";
 import LoadingScreen from "./components/LoadingScreen";
 import SubjectManagement from "./pages/SubjectManagement";
 import PaymentReports from "./pages/PaymentReports";
+import EnrolledStudents from "./pages/EnrolledStudents";
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -164,6 +166,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/enrolled-students"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <EnrolledStudents />
+            </ProtectedRoute>
+          }
+        />
+      
       </Routes>
     </Router>
   );

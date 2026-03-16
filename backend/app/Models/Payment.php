@@ -27,6 +27,17 @@ class Payment extends Model
     {
         return $this->belongsTo(Enrollment::class);
     }
+    // app/Models/Student.php
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
+    }
 
     // Cast payment_date as date
     protected $casts = [

@@ -430,7 +430,7 @@ class EnrollmentController extends Controller
                     'gradeLevel'    => $validated['gradeLevel'],
                     'section_id'    => $section->id,
                     'enrollment_id' => $enrollment->id,
-                    'school_year' => $this->getSchoolYear(),
+                    'school_year' => $request->school_year ?? $this->getSchoolYear(),
                     'status'        => 'active',
                 ]);
 

@@ -1,0 +1,309 @@
+/* pages/EnrolledStudents.css */
+.enrolled-container {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.enrolled-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.enrolled-header h2 {
+  margin: 0;
+  color: #b8860b;
+}
+
+.btn-excel {
+  background: #1d6f42;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-excel:hover {
+  background: #155a36;
+}
+
+.filters-bar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 8px 8px 35px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.filters-bar select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.student-count {
+  font-size: 14px;
+  color: #666;
+  background: #f0f0f0;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.enrolled-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.enrolled-table th {
+  background: #f7e14b;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.enrolled-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.enrolled-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.no-data {
+  text-align: center;
+  color: #999;
+  padding: 40px !important;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  color: #b8860b;
+}
+.enrolled-table th,
+.enrolled-table td {
+  padding: 10px 8px;
+}
+
+/* Optional: adjust column widths if needed */
+.enrolled-table th:nth-child(1) { width: 12%; }  /* Student ID */
+.enrolled-table th:nth-child(2) { width: 25%; }  /* Name */
+.enrolled-table th:nth-child(3) { width: 12%; }  /* Grade Level */
+.enrolled-table th:nth-child(4) { width: 12%; }  /* School Year */
+.enrolled-table th:nth-child(5) { width: 10%; }  /* LRN */
+.enrolled-table th:nth-child(6) { width: 15%; }  /* Contact Number */
+
+/* Add to EnrolledStudents.css */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #b8860b;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-submit {
+  flex: 1;
+  padding: 10px;
+  background: #b8860b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-submit:hover {
+  background: #9a7209;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 10px;
+  background: #ccc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-cancel:hover {
+  background: #999;
+}
+
+/* Add button in header */
+.btn-add {
+  background: #b8860b;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.btn-add:hover {
+  background: #9a7209;
+}
+.action-cell {
+  text-align: center;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #fee;
+  transform: scale(1.1);
+}
+.btn-edit {
+  background: none;
+  border: none;
+  color: #b8860b;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-right: 5px;
+}
+
+.btn-edit:hover {
+  background: #fef0c0;
+  transform: scale(1.1);
+}
+.btn-lrn-edit {
+  background: none;
+  border: none;
+  color: #2196f3; /* blue */
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-lrn-edit:hover {
+  background: #e3f2fd;
+  transform: scale(1.1);
+}
+

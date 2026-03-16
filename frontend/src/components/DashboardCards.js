@@ -28,14 +28,14 @@ export default function DashboardCards({ role }) {
       color: "green-accent",
       show: role === "admin" || role === "registrar",
     },
-    {
-      title: "Student Records",
-      desc: "View and edit enrolled student data",
-      icon: <FaUserGraduate />, 
-      path: "/students",
-      color: "purple-accent",
-      show: role === "admin" || role === "registrar",
-    },
+    // {
+    //   title: "Student Records",
+    //   desc: "View and edit enrolled student data",
+    //   icon: <FaUserGraduate />, 
+    //   path: "/students",
+    //   color: "purple-accent",
+    //   show: role === "admin" || role === "registrar",
+    // },
     {
       title: "System Settings",
       desc: "Configure academic years and users",
