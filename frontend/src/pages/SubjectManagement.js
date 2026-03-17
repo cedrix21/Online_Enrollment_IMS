@@ -30,6 +30,7 @@ export default function SubjectManagement() {
   });
 
   const gradeLevels = [
+    "Nursery",
     "Kindergarten 1",
     "Kindergarten 2",
     "Grade 1",

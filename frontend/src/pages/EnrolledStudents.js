@@ -37,7 +37,7 @@ const EnrolledStudents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterSchoolYear, setFilterSchoolYear] = useState(currentSchoolYear); // default to current
-
+  const [contactInput, setContactInput] = useState('');
   // Modal state (for manual records only)
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -142,6 +142,7 @@ const EnrolledStudents = () => {
   const openLrnModal = (student) => {
     setSelectedStudent(student);
     setLrnInput(student.lrn || '');
+    setContactInput(student.contactNumber || '');
     setLrnModalOpen(true);
   };
 
@@ -149,21 +150,25 @@ const EnrolledStudents = () => {
     setLrnModalOpen(false);
     setSelectedStudent(null);
     setLrnInput('');
+    setContactInput('');
   };
 
   const handleLrnUpdate = async (e) => {
-    e.preventDefault();
-    if (!selectedStudent) return;
-    try {
-      await API.patch(`/students/${selectedStudent.id}/lrn`, { lrn: lrnInput });
-      closeLrnModal();
-      fetchStudents();
-    } catch (err) {
-      console.error('Error updating LRN', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
-      alert('Failed to update LRN: ' + errorMsg);
-    }
-  };
+  e.preventDefault();
+  if (!selectedStudent) return;
+  try {
+    await API.post(`/students/${selectedStudent.id}/update-info`, {
+      lrn: lrnInput,
+      contactNumber: contactInput,
+    });
+    closeLrnModal();
+    fetchStudents();
+  } catch (err) {
+    console.error('Error updating student info', err);
+    const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+    alert('Failed to update: ' + errorMsg);
+  }
+};
 
   // Unique grade levels from current dataset
   const gradeLevels = useMemo(() => {
@@ -321,20 +326,23 @@ const EnrolledStudents = () => {
                                 >
                                   <FaEdit />
                                 </button>
-                                <button
-                                  className="btn-delete"
-                                  onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)}
-                                  title="Delete record"
-                                >
-                                  <FaTrash />
-                                </button>
+                                {/* Show delete button only if NOT current school year */}
+                                {s.schoolYear !== currentSchoolYear && (
+                                  <button
+                                    className="btn-delete"
+                                    onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)}
+                                    title="Delete record"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                )}
                               </>
                             ) : (
                               // Enrolled students: only LRN edit
                               <button
                                 className="btn-lrn-edit"
                                 onClick={() => openLrnModal(s)}
-                                title="Edit LRN"
+                                title="Edit LRN / Contact"
                               >
                                 <FaPencilAlt />
                               </button>
@@ -457,31 +465,42 @@ const EnrolledStudents = () => {
 
       {/* LRN Edit Modal for Enrolled Students */}
       {lrnModalOpen && selectedStudent && (
-        <div className="modal-overlay" onClick={closeLrnModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Edit LRN</h3>
-              <button className="modal-close" onClick={closeLrnModal}>×</button>
-            </div>
-            <form onSubmit={handleLrnUpdate}>
-              <div className="form-group">
-                <label>Student: {selectedStudent.lastName}, {selectedStudent.firstName}</label>
-                <label>LRN</label>
-                <input
-                  type="text"
-                  value={lrnInput}
-                  onChange={(e) => setLrnInput(e.target.value)}
-                  placeholder="Enter LRN (optional)"
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="submit" className="btn-submit">Update LRN</button>
-                <button type="button" className="btn-cancel" onClick={closeLrnModal}>Cancel</button>
-              </div>
-            </form>
+      <div className="modal-overlay" onClick={closeLrnModal}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>Edit Student Information</h3>
+            <button className="modal-close" onClick={closeLrnModal}>×</button>
           </div>
+          <form onSubmit={handleLrnUpdate}>
+            <div className="form-group">
+              <label>Student: {selectedStudent.lastName}, {selectedStudent.firstName}</label>
+            </div>
+            <div className="form-group">
+              <label>LRN (Optional)</label>
+              <input
+                type="text"
+                value={lrnInput}
+                onChange={(e) => setLrnInput(e.target.value)}
+                placeholder="Enter LRN"
+              />
+            </div>
+            <div className="form-group">
+              <label>Contact Number (Optional)</label>
+              <input
+                type="text"
+                value={contactInput}
+                onChange={(e) => setContactInput(e.target.value)}
+                placeholder="Enter contact number"
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="submit" className="btn-submit">Update</button>
+              <button type="button" className="btn-cancel" onClick={closeLrnModal}>Cancel</button>
+            </div>
+          </form>
         </div>
-      )}
+      </div>
+    )}
     </div>
   );
 };

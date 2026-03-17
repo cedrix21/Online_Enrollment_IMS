@@ -92,6 +92,7 @@ public function destroy($id)
         return response()->json(['message' => 'Error deleting student: ' . $e->getMessage()], 500);
     }
 }
+
 public function getCurrentYearList(Request $request)
 {
     $schoolYear = $request->input('school_year');
@@ -109,7 +110,7 @@ public function getCurrentYearList(Request $request)
                     'gradeLevel' => $student->gradeLevel,
                     'schoolYear' => $student->school_year,
                     'lrn' => $student->lrn ?? null,
-                    'contactNumber' => $student->fatherContact ?? $student->motherContact ?? $student->emergencyContact ?? '—',
+                    'contactNumber' => $student->fatherContact ?? $student->motherContact ?? $student->emergencyContact ?? $student->contact_number ??'—',
                     'source' => 'enrolled',
                 ];
             });
@@ -148,7 +149,7 @@ public function getCurrentYearList(Request $request)
                     'gradeLevel' => $student->gradeLevel,
                     'schoolYear' => $student->school_year,
                     'lrn' => $student->lrn ?? null,
-                    'contactNumber' => $student->fatherContact ?? $student->motherContact ?? $student->emergencyContact ?? '—',
+                    'contactNumber' => $student->contact_number ?? '—',
                     'source' => 'enrolled',
                 ];
             });
@@ -179,17 +180,20 @@ public function getCurrentYearList(Request $request)
     return response()->json($combined);
 }
 
-public function updateLrn(Request $request, $id)
+public function updateStudentInfo(Request $request, $id)
 {
-    $student = Student::findOrFail($id);
+     $student = Student::findOrFail($id);
     $validated = $request->validate([
-        'lrn' => 'nullable|string|max:50'
+        'lrn' => 'nullable|string|max:50',
+        'contactNumber' => 'nullable|string|max:20',
     ]);
     $student->lrn = $validated['lrn'];
+    $student->contact_number = $validated['contactNumber'];
     $student->save();
     return response()->json([
-        'message' => 'LRN updated successfully',
-        'lrn' => $student->lrn
+        'message' => 'Student information updated successfully',
+        'lrn' => $student->lrn,
+        'contactNumber' => $student->contact_number,
     ]);
 }
 }
