@@ -100,6 +100,11 @@ export default function Sidebar() {
           <span>Load Slips</span>
         </Link>
 
+        <Link to="/form137" className={location.pathname.includes('/form137') ? 'active' : ''}>
+          <FaBook />
+          <span>Form 137</span>
+        </Link>
+
         {(user?.role === "admin" || user?.role === "registrar") && (
           <Link
             to="/admin/evaluation"

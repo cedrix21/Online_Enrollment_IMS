@@ -1,0 +1,852 @@
+// src/pages/Form137.js
+import { useState, useCallback } from 'react';
+import { SICS_LOGO_BASE64 } from '../constants/reportImages';
+// ─── constants ───────────────────────────────────────────────────────────────
+
+const GRADES = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+
+const SUBJECTS_BY_GRADE = {
+  I:   ['Mother Tongue', 'Filipino / Korean', 'English Language', 'English Reading', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+  II:  ['Mother Tongue', 'Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+  III: ['Mother Tongue', 'Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+  IV:  ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+  V:   ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+  VI:  ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+};
+
+const CORE_VALUES = [
+  { key: 'makaDiyos',      label: '1. Maka-Diyos',    statement: "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others" },
+  { key: 'makatao',        label: '2. Makatao',        statement: 'Shows adherence to ethical principles by upholding truth' },
+  { key: 'makakalikasan',  label: '3. Maka-kalikasan', statement: 'Cares for the environment and utilizes resources wisely, judiciously, and economically' },
+  { key: 'makabansa1',     label: '4. Makabansa',      statement: 'Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.' },
+  { key: 'makabansa2',     label: '',                  statement: 'Demonstrates appropriate behavior in carrying out activities in the school, community, and country' },
+];
+
+// ─── initial state factories ──────────────────────────────────────────────────
+
+const makeGradeData = () => ({
+  school: '', schoolYear: '', subjects: {}, eligible: '',
+});
+
+const makeAttendance = () =>
+  Object.fromEntries(GRADES.map(g => [g, { schoolDays: '', absent: '', cause1: '', tardy: '', cause2: '', present: '' }]));
+
+const makeObserved = () =>
+  Object.fromEntries(
+    GRADES.map(g => [g, Object.fromEntries(CORE_VALUES.map(cv => [cv.key, { q1: '', q2: '', q3: '', q4: '' }]))])
+  );
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+const gradeLabel = (g) => ({ I: 'Grade I', II: 'Grade II', III: 'Grade III', IV: 'Grade IV', V: 'Grade V', VI: 'Grade VI' }[g]);
+
+const MAPEH_SUBS = ['Music', 'Art', 'Physical Education', 'Health'];
+const isMapehSub = (s) => MAPEH_SUBS.includes(s);
+
+// ─── sub-components ───────────────────────────────────────────────────────────
+
+const Field = ({ label, value, onChange, placeholder = '', className = '', type = 'text', small = false }) => (
+  <div className={`field-group ${className}`}>
+    {label && <label className="field-label">{label}</label>}
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`field-input ${small ? 'field-input--small' : ''}`}
+    />
+  </div>
+);
+
+const GradeRatingInput = ({ value, onChange }) => (
+  <input
+    type="text"
+    maxLength={3}
+    value={value || ''}
+    onChange={e => onChange(e.target.value)}
+    className="rating-input"
+    placeholder="—"
+  />
+);
+
+// ─── main component ───────────────────────────────────────────────────────────
+
+export default function Form137() {
+  const [student, setStudent] = useState({
+    lastName: '', firstName: '', middleInitial: '',
+    division: '', lrn: '', sex: '',
+    birthMonth: '', birthDay: '', birthYear: '',
+    placeOfBirth: '',
+    entranceMonth: '', entranceDay: '', entranceYear: '',
+    parentName: '', parentAddress: '', parentOccupation: '',
+  });
+
+  const [gradeData,   setGradeData]   = useState(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
+  const [attendance,  setAttendance]  = useState(makeAttendance());
+  const [observed,    setObserved]    = useState(makeObserved());
+  const [activeTab,   setActiveTab]   = useState('student');
+  const [activeGrade, setActiveGrade] = useState('I');
+
+  // ─── updaters ────────────────────────────────────────────────────────────────
+
+  const setStudentField  = useCallback((field, value) => setStudent(p => ({ ...p, [field]: value })), []);
+  const setGradeField    = useCallback((grade, field, value) => setGradeData(p => ({ ...p, [grade]: { ...p[grade], [field]: value } })), []);
+  const setSubjectGrade  = useCallback((grade, subject, qtr, value) =>
+    setGradeData(p => ({ ...p, [grade]: { ...p[grade], subjects: { ...p[grade].subjects, [subject]: { ...p[grade].subjects[subject], [qtr]: value } } } })), []);
+  const setSubjectRemarks = useCallback((grade, subject, value) =>
+    setGradeData(p => ({ ...p, [grade]: { ...p[grade], subjects: { ...p[grade].subjects, [subject]: { ...p[grade].subjects[subject], remarks: value } } } })), []);
+  const setAttField      = useCallback((grade, field, value) => setAttendance(p => ({ ...p, [grade]: { ...p[grade], [field]: value } })), []);
+  const setObsField      = useCallback((grade, key, qtr, value) =>
+    setObserved(p => ({ ...p, [grade]: { ...p[grade], [key]: { ...p[grade][key], [qtr]: value } } })), []);
+
+  // ─── print ────────────────────────────────────────────────────────────────────
+
+  const handlePrint = () => {
+
+    const buildGradeTable = (g) => {
+      const subjects = SUBJECTS_BY_GRADE[g];
+      const data = gradeData[g];
+      const rows = subjects.map(s => {
+        const sd = data.subjects[s] || {};
+        const indent = isMapehSub(s) ? '&nbsp;&nbsp;' : '';
+        return `<tr>
+          <td class="area-col">${indent}${s}</td>
+          <td>${sd.q1||''}</td><td>${sd.q2||''}</td><td>${sd.q3||''}</td><td>${sd.q4||''}</td>
+          <td>${sd.remarks||''}</td>
+        </tr>`;
+      }).join('');
+
+      const allRatings = subjects.flatMap(s => {
+        const sd = gradeData[g].subjects[s] || {};
+        return [sd.q1, sd.q2, sd.q3, sd.q4].filter(v => v && !isNaN(parseFloat(v))).map(parseFloat);
+      });
+      const avg = allRatings.length ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2) : '';
+
+      return `
+        <div class="grade-block">
+          <div class="grade-block-header">${gradeLabel(g)} – School:
+            <span style="border-bottom:1px solid #000;display:inline-block;min-width:110px;">&nbsp;${data.school}&nbsp;</span>
+          </div>
+          <div class="grade-info-line">
+            <span class="lbl">School Year:</span>
+            <span class="ln">&nbsp;${data.schoolYear}&nbsp;</span>
+          </div>
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th class="area-col" rowspan="2">LEARNING AREAS</th>
+                <th colspan="4">Periodic Rating</th>
+                <th class="rem-col" rowspan="2">Remarks</th>
+              </tr>
+              <tr>
+                <th class="q-col">1</th><th class="q-col">2</th>
+                <th class="q-col">3</th><th class="q-col">4</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+              <tr class="bold-row">
+                <td class="area-col"><strong>General Average</strong></td>
+                <td colspan="4" style="font-weight:bold;">${avg}</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td colspan="6" class="eligible-row">
+                  Eligible for Admission to:
+                  <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">
+                    &nbsp;${data.eligible}&nbsp;
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`;
+    };
+
+    const buildObsTable = (grades) => {
+      const headerCells = grades.map(g =>
+        `<th colspan="4" class="hdr-gr">${gradeLabel(g)} S.Y. ${gradeData[g].schoolYear || '___'}</th>`
+      ).join('');
+      const qtrHeaders = grades.map(() =>
+        `<th class="q-col">1</th><th class="q-col">2</th><th class="q-col">3</th><th class="q-col">4</th>`
+      ).join('');
+      const bodyRows = CORE_VALUES.map(cv => {
+        const cells = grades.map(g => {
+          const d = observed[g][cv.key] || {};
+          return `<td>${d.q1||''}</td><td>${d.q2||''}</td><td>${d.q3||''}</td><td>${d.q4||''}</td>`;
+        }).join('');
+        const rowspan    = cv.key === 'makabansa1' ? ' rowspan="2"' : '';
+        const labelCell  = cv.key === 'makabansa2' ? '' :
+          `<td class="cv-col" style="text-align:left;"${rowspan}>${cv.label}</td>`;
+        return `<tr>${labelCell}<td class="beh-col" style="text-align:left;">${cv.statement}</td>${cells}</tr>`;
+      }).join('');
+
+      return `<table class="obs-table">
+        <thead>
+          <tr>
+            <th class="cv-col" rowspan="3">Core Values</th>
+            <th class="beh-col" rowspan="3">Behavior Statements</th>
+            ${headerCells}
+          </tr>
+          <tr>${grades.map(() => '<th colspan="4" class="hdr-sub">Quarter</th>').join('')}</tr>
+          <tr>${qtrHeaders}</tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>`;
+    };
+
+    const attRows = GRADES.map(g => {
+      const a = attendance[g];
+      return `<tr>
+        <td>${g}</td>
+        <td>${a.schoolDays||''}</td><td>${a.absent||''}</td><td>${a.cause1||''}</td>
+        <td>${a.tardy||''}</td><td>${a.cause2||''}</td><td>${a.present||''}</td>
+      </tr>`;
+    }).join('');
+
+    const printHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Form 137 – ${student.lastName}, ${student.firstName}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,sans-serif;font-size:9pt;color:#000;}
+  @page{size:8.5in 13in portrait;margin:0.4in 0.5in;}
+  .school-name{font-size:15pt;font-weight:bold;text-transform:uppercase;}
+  .school-address{font-size:8.5pt;}
+  .school-header{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;}  
+  .logo-sics{width:60px;height:60px;object-fit:contain;flex-shrink:0;}
+  .school-header-text{text-align:left;}
+  .school-name-row{display:flex;align-items:center;justify-content:center;gap:8px;}
+  .form-title{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;text-decoration:underline;margin:6px 0 8px;letter-spacing:1px;}
+
+  /* ── Student info ── */
+  .info-section{border:1px solid #000;padding:6px 8px;margin-bottom:10px;font-size:8.5pt;}
+  .info-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+  .info-table td{padding:5px 3px;vertical-align:bottom;font-size:8.5pt;}
+  td.info-lbl{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;padding-bottom:17px;width:1%;}
+  td.info-lbls{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;width:1%;}
+  
+      
+  .info-val{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;text-align:center;}
+  .info-vals{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;margin-bottom:15px;text-align:center;}
+  .info-sub{display:block;font-size:6.5pt;color:#333;text-align:center;line-height:1.6;}
+
+  .section-title{text-align:center;font-weight:bold;font-size:10pt;text-transform:uppercase;background:#dce6f1;padding:3px 0;border:1px solid #000;letter-spacing:.5px;}
+  .grades-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+  .grade-block{border:1px solid #000;font-size:8pt;}
+  .grade-block-header{background:#f0f0f0;padding:3px 5px;border-bottom:1px solid #000;font-weight:bold;}
+  .grade-info-line{display:flex;gap:2px;padding:2px 5px;border-bottom:1px solid #ccc;align-items:flex-end;font-size:7.5pt;}
+  .grade-info-line .lbl{font-weight:bold;white-space:nowrap;}
+  .grade-info-line .ln{flex:1;border-bottom:1px solid #000;height:12px;}
+  .grade-table{width:100%;border-collapse:collapse;font-size:7.5pt;}
+  .grade-table th,.grade-table td{border:1px solid #000;padding:2px 3px;text-align:center;}
+  .grade-table .area-col{text-align:left;width:55%;}
+  .grade-table .q-col{width:7%;}
+  .grade-table .rem-col{width:18%;}
+  .grade-table thead tr:first-child th{background:#dce6f1;font-size:7pt;}
+  .grade-table .bold-row td{font-weight:bold;background:#f5f5f5;}
+  .grade-table .eligible-row{font-style:italic;font-size:7pt;background:#fafafa;text-align:left;padding:2px 4px;}
+  .legend-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:7.5pt;}
+  .legend-table td{border:1px solid #000;padding:3px 6px;}
+  .obs-title{text-align:center;font-weight:bold;font-size:10pt;text-transform:uppercase;background:#dce6f1;padding:3px 0;border:1px solid #000;letter-spacing:.5px;}
+  .obs-table{width:100%;border-collapse:collapse;font-size:7pt;margin-bottom:6px;}
+  .obs-table th,.obs-table td{border:1px solid #000;padding:2px 3px;text-align:center;vertical-align:middle;}
+  .obs-table .cv-col{width:9%;text-align:left;}
+  .obs-table .beh-col{width:22%;text-align:left;}
+  .obs-table .q-col{width:5%;font-size:6.5pt;}
+  .obs-table .hdr-gr{background:#dce6f1;font-weight:bold;}
+  .obs-table .hdr-sub{background:#eef3f9;font-weight:bold;}
+  .obs-legend{font-size:7.5pt;margin:4px 0 8px;}
+  .att-title{text-align:center;font-weight:bold;font-size:10pt;text-transform:uppercase;background:#dce6f1;padding:3px 0;border:1px solid #000;margin:10px 0 0;letter-spacing:.5px;}
+  .att-table{width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:8px;}
+  .att-table th,.att-table td{border:1px solid #000;padding:3px 4px;text-align:center;}
+  .att-table .att-hdr{background:#dce6f1;font-weight:bold;}
+  .att-table td{height:18px;}
+  .cert-box{border:1px solid #000;padding:8px 10px;margin-top:8px;font-size:8.5pt;}
+  .cert-title-text{font-weight:bold;text-align:center;font-size:9pt;text-transform:uppercase;margin-bottom:6px;letter-spacing:.5px;}
+  .cert-box p{margin-bottom:8px;line-height:1.7;}
+  .cert-sig{display:flex;justify-content:space-between;margin-top:18px;font-size:8pt;}
+  .cert-sig .sig-block{text-align:center;}
+  .cert-sig .sig-line{border-bottom:1px solid #000;width:160px;margin-bottom:2px;}
+  .divider{border-top:1.5px solid #000;margin:10px 0 6px;}
+</style>
+</head>
+<body>
+<div class="school-header">
+  <img src="${SICS_LOGO_BASE64}" class="logo-sics" alt="SICS Logo">
+  <div class="school-header-text">
+    <div class="school-name">Siloam International Christian School</div>
+    <div class="school-address">Purok Bayanihan, Motong, Dumaguete City, Negros Oriental, Philippines</div>
+  </div>
+</div>
+<div class="form-title">Grade School Permanent Record</div>
+
+<div class="info-section">
+
+  <!-- Row 1: Name / Division / LRN -->
+  <table class="info-table">
+    <tr>
+      <td class="info-lbl">NAME:</td>
+      <td style="width:22%">
+        <div class="info-val">${student.lastName}</div>
+        <div class="info-sub">LAST NAME</div>
+      </td>
+      <td style="width:18%">
+        <div class="info-val">${student.firstName}</div>
+        <div class="info-sub">FIRST NAME</div>
+      </td>
+      <td style="width:7%">
+        <div class="info-val">${student.middleInitial}</div>
+        <div class="info-sub">M.I.</div>
+      </td>
+      <td class="info-lbl" style="padding-left:8px;">DIVISION:</td>
+      <td style="width:13%"><div class="info-vals">${student.division}</div></td>
+      <td class="info-lbl" style="padding-left:8px;">LRN:</td>
+      <td style="width:13%"><div class="info-vals">${student.lrn}</div></td>
+    </tr>
+  </table>
+
+  <!-- Row 2: Sex / DOB / Place -->
+  <table class="info-table">
+    <tr>
+      <td class="info-lbl">SEX:</td>
+      <td style="width:6%"><div class="info-vals">${student.sex}</div></td>
+      <td class="info-lbl" style="padding-left:8px;">DATE OF BIRTH:</td>
+      <td style="width:6%">
+        <div class="info-val">${student.birthMonth}</div>
+        <div class="info-sub">M</div>
+      </td>
+      <td style="width:6%">
+        <div class="info-val">${student.birthDay}</div>
+        <div class="info-sub">D</div>
+      </td>
+      <td style="width:8%">
+        <div class="info-val">${student.birthYear}</div>
+        <div class="info-sub">Y</div>
+      </td>
+      <td class="info-lbl" style="padding-left:8px;">PLACE:</td>
+      <td style="width:38%">
+        <div class="info-val">${student.placeOfBirth}</div>
+        <div class="info-sub">(BRGY / Town / City / Province)</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Row 3: Date of Entrance -->
+  <table class="info-table">
+    <tr>
+      <td class="info-lbl">DATE OF ENTRANCE:</td>
+      <td style="width:6%">
+        <div class="info-val">${student.entranceMonth}</div>
+        <div class="info-sub">M</div>
+      </td>
+      <td style="width:6%">
+        <div class="info-val">${student.entranceDay}</div>
+        <div class="info-sub">D</div>
+      </td>
+      <td style="width:8%">
+        <div class="info-val">${student.entranceYear}</div>
+        <div class="info-sub">Y</div>
+      </td>
+      <td></td>
+    </tr>
+  </table>
+
+  <!-- Row 4: Parent / Guardian -->
+  <table class="info-table">
+    <tr>
+      <td class="info-lbl">PARENT / GUARDIAN:</td>
+      <td style="width:20%">
+        <div class="info-val">${student.parentName}</div>
+        <div class="info-sub">(Name)</div>
+      </td>
+      <td style="padding:0 4px;vertical-align:middle;width:1%">/</td>
+      <td style="width:28%">
+        <div class="info-val">${student.parentAddress}</div>
+        <div class="info-sub">(Address)</div>
+      </td>
+      <td style="padding:0 4px;vertical-align:middle;width:1%">/</td>
+      <td style="width:18%">
+        <div class="info-val">${student.parentOccupation}</div>
+        <div class="info-sub">(Occupation)</div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+<div class="section-title">Elementary School Progress</div>
+<div class="grades-grid">
+  ${GRADES.map(g => buildGradeTable(g)).join('')}
+</div>
+
+<table class="legend-table" style="margin-top:10px;">
+  <tr>
+    <td><strong>Legend: &nbsp;Outstanding (O)</strong></td><td>90–100%</td>
+    <td><strong>Fairly Satisfactory (FS)</strong></td><td>75–79%</td>
+  </tr>
+  <tr>
+    <td><strong>Very Satisfactory (VS)</strong></td><td>85–89%</td>
+    <td><strong>Did Not Meet Expectation (DE)</strong></td><td>74% and below</td>
+  </tr>
+  <tr>
+    <td><strong>Satisfactory (S)</strong></td><td>80–84%</td>
+    <td colspan="2"></td>
+  </tr>
+</table>
+
+<div class="divider"></div>
+<div class="obs-title">Report on Learner's Observed Values</div>
+${buildObsTable(['I','II','III'])}
+<div style="margin-top:6px;">${buildObsTable(['IV','V','VI'])}</div>
+
+<div class="obs-legend">
+  <strong>AO</strong> – Always Observed &nbsp;&nbsp;
+  <strong>SO</strong> – Sometimes Observed &nbsp;&nbsp;
+  <strong>RO</strong> – Rarely Observed &nbsp;&nbsp;
+  <strong>NO</strong> – Not Observed
+</div>
+
+<div class="att-title">Attendance Record</div>
+<table class="att-table">
+  <thead>
+    <tr class="att-hdr">
+      <th style="width:8%;">Grade</th>
+      <th style="width:12%;">No. of School Days</th>
+      <th style="width:14%;">No. of Days Absent</th>
+      <th style="width:22%;">Cause</th>
+      <th style="width:12%;">No. of Times Tardy</th>
+      <th style="width:22%;">Cause</th>
+      <th style="width:12%;">No. of Days Present</th>
+    </tr>
+  </thead>
+  <tbody>${attRows}</tbody>
+</table>
+
+<div class="cert-box">
+  <div class="cert-title-text">Certificate of Transfer</div>
+  <p><strong>TO WHOM IT MAY CONCERN:</strong></p>
+  <p>This is to certify that this is a true record of the Elementary School Permanent Record of
+    <span style="display:inline-block;border-bottom:1px solid #000;min-width:220px;">&nbsp;${student.firstName} ${student.lastName}&nbsp;</span>.
+    He / She is eligible for transfer and admission of Grade/Year
+    <span style="display:inline-block;border-bottom:1px solid #000;min-width:100px;">&nbsp;</span>.
+  </p>
+  <div class="cert-sig">
+    <div class="sig-block"><div class="sig-line"></div><div>Signature</div></div>
+    <div class="sig-block"><div class="sig-line"></div><div>Date</div></div>
+    <div class="sig-block"><div class="sig-line"></div><div>Designation</div></div>
+  </div>
+</div>
+
+<script>
+  window.onload = () => {
+    setTimeout(() => {
+      window.print();
+      window.addEventListener('afterprint', () => window.close());
+    }, 400);
+  };
+</script>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('Popup blocked. Please allow popups to print.'); return; }
+    win.document.write(printHTML);
+    win.document.close();
+  };
+
+  // ─── render ───────────────────────────────────────────────────────────────────
+
+  const tabs = [
+    { id: 'student',    label: '👤 Student Info' },
+    { id: 'grades',     label: '📚 Grades' },
+    { id: 'values',     label: '🌟 Observed Values' },
+    { id: 'attendance', label: '📅 Attendance' },
+  ];
+
+  return (
+    <div style={styles.page}>
+
+      <div style={styles.pageHeader}>
+        <div>
+          <h1 style={styles.pageTitle}>Form 137</h1>
+          <p style={styles.pageSubtitle}>Grade School Permanent Record</p>
+        </div>
+        <button style={styles.printBtn} onClick={handlePrint}>
+          🖨️ Print Form 137
+        </button>
+      </div>
+
+      <div style={styles.tabBar}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            style={{ ...styles.tab, ...(activeTab === t.id ? styles.tabActive : {}) }}
+            onClick={() => setActiveTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={styles.panel}>
+
+        {/* ════ STUDENT INFO ════ */}
+        {activeTab === 'student' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Student Information</h2>
+            <div style={styles.gridContainer}>
+              <Field label="Last Name"          value={student.lastName}          onChange={v => setStudentField('lastName', v)} />
+              <Field label="First Name"         value={student.firstName}         onChange={v => setStudentField('firstName', v)} />
+              <Field label="M.I."               value={student.middleInitial}     onChange={v => setStudentField('middleInitial', v)} />
+              <Field label="Division"           value={student.division}          onChange={v => setStudentField('division', v)} />
+              <Field label="LRN"                value={student.lrn}               onChange={v => setStudentField('lrn', v)} />
+              <Field label="Sex"                value={student.sex}               onChange={v => setStudentField('sex', v)} />
+              <Field label="Birth Month"        value={student.birthMonth}        onChange={v => setStudentField('birthMonth', v)} />
+              <Field label="Birth Day"          value={student.birthDay}          onChange={v => setStudentField('birthDay', v)} />
+              <Field label="Birth Year"         value={student.birthYear}         onChange={v => setStudentField('birthYear', v)} />
+              <Field label="Place of Birth"     value={student.placeOfBirth}      onChange={v => setStudentField('placeOfBirth', v)} style={{ gridColumn: 'span 3' }} />
+              <Field label="Entrance Month"     value={student.entranceMonth}     onChange={v => setStudentField('entranceMonth', v)} />
+              <Field label="Entrance Day"       value={student.entranceDay}       onChange={v => setStudentField('entranceDay', v)} />
+              <Field label="Entrance Year"      value={student.entranceYear}      onChange={v => setStudentField('entranceYear', v)} />
+              <Field label="Parent Name"        value={student.parentName}        onChange={v => setStudentField('parentName', v)} />
+              <Field label="Parent Address"     value={student.parentAddress}     onChange={v => setStudentField('parentAddress', v)} />
+              <Field label="Parent Occupation"  value={student.parentOccupation}  onChange={v => setStudentField('parentOccupation', v)} />
+            </div>
+          </div>
+        )}
+
+        {/* ════ GRADES ════ */}
+        {activeTab === 'grades' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Elementary School Progress</h2>
+            <div style={styles.gradeTabBar}>
+              {GRADES.map(g => (
+                <button
+                  key={g}
+                  style={{ ...styles.gradeTab, ...(activeGrade === g ? styles.gradeTabActive : {}) }}
+                  onClick={() => setActiveGrade(g)}
+                >
+                  Grade {g}
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const g = activeGrade;
+              const data = gradeData[g];
+              return (
+                <div style={styles.gradePanel}>
+                  <div style={styles.row}>
+                    <Field label="School Name"             value={data.school}     onChange={v => setGradeField(g, 'school', v)}     className="flex-3" />
+                    <Field label="School Year"             value={data.schoolYear} onChange={v => setGradeField(g, 'schoolYear', v)} className="flex-1" />
+                    <Field label="Eligible for Admission to" value={data.eligible} onChange={v => setGradeField(g, 'eligible', v)}   className="flex-2" />
+                  </div>
+                  <table style={styles.subjectTable}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Learning Area</th>
+                        <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
+                        <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
+                        <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
+                        <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
+                        <th style={{ ...styles.th, width: '120px' }}>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {SUBJECTS_BY_GRADE[g].map(s => {
+                        const sd = data.subjects[s] || {};
+                        return (
+                          <tr key={s} style={isMapehSub(s) ? styles.mapehRow : {}}>
+                            <td style={styles.td}>
+                              {isMapehSub(s) && <span style={{ color: '#aaa', marginRight: 4 }}>↳</span>}
+                              {s}
+                            </td>
+                            {['q1','q2','q3','q4'].map(q => (
+                              <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
+                                <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, s, q, v)} />
+                              </td>
+                            ))}
+                            <td style={styles.td}>
+                              <input
+                                type="text"
+                                value={sd.remarks || ''}
+                                onChange={e => setSubjectRemarks(g, s, e.target.value)}
+                                style={styles.remarksInput}
+                                placeholder="—"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ════ OBSERVED VALUES ════ */}
+        {activeTab === 'values' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Report on Learner's Observed Values</h2>
+            <p style={styles.hint}>AO – Always Observed &nbsp; SO – Sometimes Observed &nbsp; RO – Rarely Observed &nbsp; NO – Not Observed</p>
+            <div style={styles.gradeTabBar}>
+              {GRADES.map(g => (
+                <button
+                  key={g}
+                  style={{ ...styles.gradeTab, ...(activeGrade === g ? styles.gradeTabActive : {}) }}
+                  onClick={() => setActiveGrade(g)}
+                >
+                  Grade {g}
+                </button>
+              ))}
+            </div>
+            <table style={styles.subjectTable}>
+              <thead>
+                <tr>
+                  <th style={{ ...styles.th, width: '110px' }}>Core Value</th>
+                  <th style={styles.th}>Behavior Statement</th>
+                  <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
+                  <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
+                  <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
+                  <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CORE_VALUES.map(cv => {
+                  const d = observed[activeGrade][cv.key] || {};
+                  return (
+                    <tr key={cv.key}>
+                      <td style={{ ...styles.td, fontWeight: cv.label ? '600' : 'normal', color: '#334155' }}>{cv.label}</td>
+                      <td style={{ ...styles.td, fontSize: '0.82rem', color: '#475569' }}>{cv.statement}</td>
+                      {['q1','q2','q3','q4'].map(q => (
+                        <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
+                          <GradeRatingInput value={d[q]} onChange={v => setObsField(activeGrade, cv.key, q, v)} />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ════ ATTENDANCE ════ */}
+        {activeTab === 'attendance' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Attendance Record</h2>
+            <table style={styles.subjectTable}>
+              <thead>
+                <tr>
+                  <th style={{ ...styles.th, width: '60px' }}>Grade</th>
+                  <th style={styles.th}>No. of School Days</th>
+                  <th style={styles.th}>No. of Days Absent</th>
+                  <th style={styles.th}>Cause</th>
+                  <th style={styles.th}>No. of Times Tardy</th>
+                  <th style={styles.th}>Cause</th>
+                  <th style={styles.th}>No. of Days Present</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GRADES.map(g => {
+                  const a = attendance[g];
+                  return (
+                    <tr key={g}>
+                      <td style={{ ...styles.td, textAlign: 'center', fontWeight: '600' }}>{g}</td>
+                      {['schoolDays','absent','cause1','tardy','cause2','present'].map(f => (
+                        <td key={f} style={{ ...styles.td, textAlign: 'center' }}>
+                          <input
+                            type="text"
+                            value={a[f]}
+                            onChange={e => setAttField(g, f, e.target.value)}
+                            style={styles.attInput}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ─── styles ───────────────────────────────────────────────────────────────────
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: '#f3f4f6',
+    fontFamily: "'Segoe UI', system-ui, sans-serif",
+    padding: '24px',
+  },
+  pageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '20px',
+  },
+  pageTitle: {
+    fontSize: '1.8rem',
+    fontWeight: '700',
+    color: '#b8860b',
+    margin: 0,
+  },
+  pageSubtitle: {
+    fontSize: '0.9rem',
+    color: '#64748b',
+    margin: '2px 0 0',
+  },
+  printBtn: {
+    background: '#b8860b',
+    color: '#fff',
+    border: 'none',
+    padding: '10px 24px',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    letterSpacing: '0.3px',
+    boxShadow: '0 2px 8px rgba(184,134,11,0.3)',
+  },
+  tabBar: {
+    display: 'flex',
+    gap: '4px',
+    borderBottom: '2px solid #e2e8f0',
+    marginBottom: '0',
+  },
+  tab: {
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    padding: '10px 20px',
+    fontSize: '0.9rem',
+    fontWeight: '500',
+    color: '#64748b',
+    cursor: 'pointer',
+    marginBottom: '-2px',
+    borderRadius: '6px 6px 0 0',
+    transition: 'all 0.15s',
+  },
+  tabActive: {
+    borderBottomColor: '#b8860b',
+    color: '#b8860b',
+    background: '#fff',
+    fontWeight: '600',
+  },
+  panel: {
+    background: '#fff',
+    borderRadius: '0 8px 8px 8px',
+    boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+    padding: '24px',
+  },
+  section: {},
+  sectionTitle: {
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    color: '#b8860b',
+    marginBottom: '16px',
+    paddingBottom: '8px',
+    borderBottom: '2px solid #f7e14b',
+  },
+  row: {
+    display: 'flex',
+    gap: '12px',
+    marginBottom: '12px',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  gradeTabBar: {
+    display: 'flex',
+    gap: '6px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+  },
+  gradeTab: {
+    background: '#f0f4f8',
+    border: '1px solid #e2e8f0',
+    borderRadius: '20px',
+    padding: '5px 16px',
+    fontSize: '0.85rem',
+    fontWeight: '500',
+    color: '#64748b',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  gradeTabActive: {
+    background: '#b8860b',
+    color: '#fff',
+    borderColor: '#b8860b',
+  },
+  gradePanel: {},
+  subjectTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '0.875rem',
+    marginTop: '8px',
+  },
+  th: {
+    background: '#f7e14b',
+    border: '1px solid #e0d8b0',
+    padding: '8px 10px',
+    textAlign: 'left',
+    fontWeight: '600',
+    fontSize: '0.8rem',
+    color: '#333',
+  },
+  thQ: {
+    width: '55px',
+    textAlign: 'center',
+  },
+  td: {
+    border: '1px solid #e2e8f0',
+    padding: '5px 8px',
+    color: '#334155',
+    fontSize: '0.875rem',
+  },
+  mapehRow: {
+    background: '#fafbfd',
+  },
+  hint: {
+    fontSize: '0.8rem',
+    color: '#64748b',
+    marginBottom: '14px',
+    padding: '8px 12px',
+    background: '#f8fafc',
+    borderRadius: '6px',
+    border: '1px solid #e2e8f0',
+  },
+  attInput: {
+    width: '100%',
+    border: 'none',
+    borderBottom: '1px solid #cbd5e1',
+    padding: '3px 4px',
+    fontSize: '0.85rem',
+    textAlign: 'center',
+    outline: 'none',
+    background: 'transparent',
+  },
+  remarksInput: {
+    width: '100%',
+    border: 'none',
+    borderBottom: '1px solid #cbd5e1',
+    padding: '3px 4px',
+    fontSize: '0.8rem',
+    outline: 'none',
+    background: 'transparent',
+  },
+  gridContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gap: '16px',
+    marginTop: '8px',
+  },
+};

@@ -244,9 +244,6 @@ const GradeModal = memo(({
           <button className="btn-print" onClick={onPrintReportCard}>
             <FaPrint /> Report Card
           </button>
-          <button className="btn-print" onClick={onPrintForm137}>
-            <FaFilePdf /> Form 137
-          </button>
           <button className="btn-close-modal" onClick={onClose}>Close</button>
         </div>
       </div>
@@ -470,10 +467,6 @@ const EvaluationManagement = () => {
   });
 }, [selectedStudent, teacherName]);
 
-  const handlePrintForm137 = useCallback(() => {
-    alert("Print Form 137 – to be implemented");
-  }, []);
-
   // ────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────
@@ -580,7 +573,7 @@ const EvaluationManagement = () => {
           editData={editData}
           onEditChange={handleEditChange}
           onPrintReportCard={handlePrintReportCard}
-          onPrintForm137={handlePrintForm137}
+          
         />
       )}
     </div>

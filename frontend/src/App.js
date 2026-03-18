@@ -26,6 +26,8 @@ import LoadingScreen from "./components/LoadingScreen";
 import SubjectManagement from "./pages/SubjectManagement";
 import PaymentReports from "./pages/PaymentReports";
 import EnrolledStudents from "./pages/EnrolledStudents";
+import Form137 from "./pages/Form137";
+
 
 
 function App() {
@@ -175,7 +177,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-      
+        <Route
+          path="/form137"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <Form137 />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

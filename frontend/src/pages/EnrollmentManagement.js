@@ -625,7 +625,7 @@ export default function EnrollmentManagement() {
                       </div>
                     )}
 
-                    {selectedEnrollment.payments?.[0]?.paymentMethod !== 'Cash' && selectedEnrollment.payments?.[0]?.receipt_path && (
+                    {selectedEnrollment.payments?.[0]?.receipt_path && (
                       <div className="receipt-preview" style={{ marginTop: '15px' }}>
                         <label><strong>Proof of Payment:</strong></label>
                         <div style={{ marginTop: '10px' }}>

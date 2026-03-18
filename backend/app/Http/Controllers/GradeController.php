@@ -287,7 +287,7 @@ class GradeController extends Controller
         // Only show grades for active (approved) students
         $grades = $query->whereHas('student', function ($q) {
             $q->where('status', 'active');
-        })->with(['student', 'subject', 'student.section.advisor', 'teacher'])
+        })->with(['student', 'subject', 'student.section.advisor', 'student.enrollment', 'teacher'])
             ->orderBy('created_at', 'desc')
             ->paginate(50);
 

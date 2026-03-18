@@ -186,6 +186,9 @@ export default function Enrollment() {
     if (paymentMethod === "Cash") {
       dataToSend.append('amount_paid', 0);
       dataToSend.append('reference_number', 'WALK-IN-PENDING');
+       if (receiptFile) {
+      dataToSend.append('receipt_image', receiptFile);
+  }
     } else if (paymentMethod === "GCash") {
       dataToSend.append('amount_paid', amountPaid);
       dataToSend.append('reference_number', paymentRef); // PayMongo Payment Intent ID
@@ -531,10 +534,25 @@ export default function Enrollment() {
                 </div>
 
                 {paymentMethod === "Cash" && (
-                  <div style={{ padding: '15px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', color: '#0d47a1' }}>
-                    <strong>📌 Notice:</strong> Please proceed to the <strong>School Registrar Office</strong> to settle your payment. Your enrollment will remain "Pending" until the cash payment is verified.
-                  </div>
-                )}
+                    <>
+                      <div style={{ padding: '15px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', color: '#0d47a1', marginBottom: '15px' }}>
+                        <strong>📌 Notice:</strong> Please proceed to the <strong>School Registrar Office</strong> to settle your payment. Your enrollment will remain "Pending" until the cash payment is verified.
+                      </div>
+                      
+                      {/* Optional receipt upload for Cash */}
+                      <div className="form-group">
+                        <label>Upload Receipt Before Submitting (Optional)</label>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => setReceiptFile(e.target.files[0])} 
+                        />
+                        <small style={{ color: '#666', fontSize: '0.8rem' }}>
+                          You may upload a photo of your payment receipt for faster verification.
+                        </small>
+                      </div>
+                    </>
+                  )}
 
                 {paymentMethod === "GCash" && (
                   <div style={{ marginTop: '15px' }}>
@@ -557,13 +575,13 @@ export default function Enrollment() {
                         type="number" 
                         value={amountPaid}
                         onChange={(e) => setAmountPaid(e.target.value)} 
-                        placeholder="Enter amount (minimum ₱500)"
-                        min="500"
+                        placeholder="Enter amount (minimum ₱5000.00)"
+                        min="5000.00"
                         step="0.01"
                         required
                       />
                       <small style={{ color: '#666', fontSize: '0.8rem' }}>
-                        Minimum: ₱500.00
+                        Minimum: ₱5000.00
                       </small>
                     </div>
                   </div>
