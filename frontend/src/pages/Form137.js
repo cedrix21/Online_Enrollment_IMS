@@ -1,6 +1,8 @@
 // src/pages/Form137.js
 import { useState, useCallback } from 'react';
 import { SICS_LOGO_BASE64 } from '../constants/reportImages';
+import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
+
 // ─── constants ───────────────────────────────────────────────────────────────
 
 const GRADES = ['I', 'II', 'III', 'IV', 'V', 'VI'];
@@ -72,6 +74,60 @@ const GradeRatingInput = ({ value, onChange }) => (
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function Form137() {
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown,  setShowDropdown]  = useState(false);
+  const { data: studentsRaw, loading: studentsLoading } = useOptimizedFetch('/students');
+  const students = studentsRaw || [];
+
+  const handleSearch = (query) => {
+  setSearchQuery(query);
+  if (!query.trim()) { setSearchResults([]); setShowDropdown(false); return; }
+  const q = query.toLowerCase();
+  const results = students.filter(s => {
+    const full = `${s.lastName} ${s.firstName} ${s.enrollment?.middleName || ''} ${s.lrn || ''}`.toLowerCase();
+    return full.includes(q);
+  }).slice(0, 8);
+  setSearchResults(results);
+  setShowDropdown(true);
+};
+
+  const handleSelectStudent = (s) => {
+  const dob = s.enrollment?.dateOfBirth || '';
+  const dobParts = dob ? dob.split('-') : [];
+
+  // Prefer father info, fallback to mother
+  const parentName       = s.enrollment?.fatherName        || s.enrollment?.motherName        || '';
+  const parentAddress    = s.enrollment?.fatherAddress      || s.enrollment?.motherAddress      || '';
+  const parentOccupation = s.enrollment?.fatherOccupation   || s.enrollment?.motherOccupation   || '';
+
+  setStudent({
+    lastName:         s.lastName                              || '',
+    firstName:        s.firstName                             || '',
+    middleInitial:    s.enrollment?.middleName
+                        ? s.enrollment.middleName.charAt(0) + '.'
+                        : '',
+    division:         s.section?.name                         || '',
+    lrn:              s.lrn                                   || '',
+    sex:              s.enrollment?.gender                    || '',
+    birthMonth:       dobParts[1]                             || '',
+    birthDay:         dobParts[2]                             || '',
+    birthYear:        dobParts[0]                             || '',
+    placeOfBirth:     '',
+    entranceMonth:    '',
+    entranceDay:      '',
+    entranceYear:     '',
+    parentName,
+    parentAddress,
+    parentOccupation,
+  });
+
+  setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
+  setShowDropdown(false);
+};
+
+
+
   const [student, setStudent] = useState({
     lastName: '', firstName: '', middleInitial: '',
     division: '', lrn: '', sex: '',
@@ -213,24 +269,22 @@ export default function Form137() {
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Arial,sans-serif;font-size:9pt;color:#000;}
   @page{size:8.5in 13in portrait;margin:0.4in 0.5in;}
-  .school-name{font-size:15pt;font-weight:bold;text-transform:uppercase;}
+  .school-header{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;}
+  .logo-sics{width:55px;height:55px;object-fit:contain;flex-shrink:0;}
+  .school-header-text{text-align:center;}
+  .school-name{font-size:10pt;font-weight:bold;text-transform:uppercase;}
   .school-address{font-size:8.5pt;}
-  .school-header{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;}  
-  .logo-sics{width:60px;height:60px;object-fit:contain;flex-shrink:0;}
-  .school-header-text{text-align:left;}
-  .school-name-row{display:flex;align-items:center;justify-content:center;gap:8px;}
   .form-title{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;text-decoration:underline;margin:6px 0 8px;letter-spacing:1px;}
 
   /* ── Student info ── */
   .info-section{border:1px solid #000;padding:6px 8px;margin-bottom:10px;font-size:8.5pt;}
   .info-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
-  .info-table td{padding:5px 3px;vertical-align:bottom;font-size:8.5pt;}
-  td.info-lbl{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;padding-bottom:17px;width:1%;}
-  td.info-lbls{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;width:1%;}
-  
-      
+  .info-table td{padding:1px 3px;vertical-align:bottom;font-size:8.5pt;}
+  td.info-lbl{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;width:1%;padding-bottom:14px;}
+  /* KEY FIX: display:block so the underline stretches full cell width,
+     text sits ON TOP of the border, sub-label appears BELOW it */
   .info-val{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;text-align:center;}
-  .info-vals{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;margin-bottom:15px;text-align:center;}
+  .info-vals{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;margin-bottom:14px;text-align:center;}
   .info-sub{display:block;font-size:6.5pt;color:#333;text-align:center;line-height:1.6;}
 
   .section-title{text-align:center;font-weight:bold;font-size:10pt;text-transform:uppercase;background:#dce6f1;padding:3px 0;border:1px solid #000;letter-spacing:.5px;}
@@ -291,7 +345,7 @@ export default function Form137() {
       <td class="info-lbl">NAME:</td>
       <td style="width:22%">
         <div class="info-val">${student.lastName}</div>
-        <div class="info-sub">LAST NAME</div>
+        <div class="info-sub">LAST</div>
       </td>
       <td style="width:18%">
         <div class="info-val">${student.firstName}</div>
@@ -362,12 +416,12 @@ export default function Form137() {
         <div class="info-val">${student.parentName}</div>
         <div class="info-sub">(Name)</div>
       </td>
-      <td style="padding:0 4px;vertical-align:middle;width:1%">/</td>
+      <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
       <td style="width:28%">
         <div class="info-val">${student.parentAddress}</div>
         <div class="info-sub">(Address)</div>
       </td>
-      <td style="padding:0 4px;vertical-align:middle;width:1%">/</td>
+      <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
       <td style="width:18%">
         <div class="info-val">${student.parentOccupation}</div>
         <div class="info-sub">(Occupation)</div>
@@ -496,6 +550,61 @@ ${buildObsTable(['I','II','III'])}
         {activeTab === 'student' && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Student Information</h2>
+
+            {/* ── Search bar ── */}
+            <div style={styles.searchWrapper}>
+              <div style={styles.searchBox}>
+                <span style={styles.searchIcon}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search student by name or LRN..."
+                  value={searchQuery}
+                  onChange={e => handleSearch(e.target.value)}
+                  onFocus={() => searchResults.length && setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  style={styles.searchInput}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchQuery(''); setSearchResults([]); setShowDropdown(false); }}
+                    style={styles.searchClear}
+                  >✕</button>
+                )}
+              </div>
+              
+              {studentsLoading && searchQuery ? (
+                <div style={styles.dropdown}>
+                  <div style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                    Loading students...
+                  </div>
+                </div>
+              ) : showDropdown && searchResults.length > 0 && (
+                <div style={styles.dropdown}>
+                  {searchResults.map((s, i) => (
+                    <div
+                      key={i}
+                      style={styles.dropdownItem}
+                      onMouseDown={() => handleSelectStudent(s)}
+                    >
+                      <div style={styles.dropdownName}>
+                        {s.lastName}, {s.firstName} {s.middleName || ''}
+                      </div>
+                      <div style={styles.dropdownMeta}>
+                        LRN: {s.lrn || '—'} &nbsp;|&nbsp; Grade: {s.gradeLevel || '—'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showDropdown && searchResults.length === 0 && searchQuery && (
+                <div style={styles.dropdown}>
+                  <div style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                    No students found
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={styles.gridContainer}>
               <Field label="Last Name"          value={student.lastName}          onChange={v => setStudentField('lastName', v)} />
               <Field label="First Name"         value={student.firstName}         onChange={v => setStudentField('firstName', v)} />
@@ -848,5 +957,71 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
     gap: '16px',
     marginTop: '8px',
+  },
+  searchWrapper: {
+    position: 'relative',
+    marginBottom: '20px',
+  },
+  searchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    background: '#f8fafc',
+    border: '1.5px solid #e2e8f0',
+    borderRadius: '10px',
+    padding: '0 12px',
+    gap: '8px',
+    transition: 'border-color 0.15s',
+  },
+  searchIcon: {
+    fontSize: '1rem',
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    border: 'none',
+    background: 'transparent',
+    padding: '10px 0',
+    fontSize: '0.9rem',
+    outline: 'none',
+    color: '#334155',
+  },
+  searchClear: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#94a3b8',
+    fontSize: '0.85rem',
+    padding: '2px 4px',
+    borderRadius: '4px',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    left: 0,
+    right: 0,
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '10px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+    zIndex: 100,
+    overflow: 'hidden',
+    maxHeight: '280px',
+    overflowY: 'auto',
+  },
+  dropdownItem: {
+    padding: '10px 16px',
+    cursor: 'pointer',
+    borderBottom: '1px solid #f1f5f9',
+    transition: 'background 0.1s',
+  },
+  dropdownName: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  dropdownMeta: {
+    fontSize: '0.78rem',
+    color: '#94a3b8',
+    marginTop: '2px',
   },
 };
