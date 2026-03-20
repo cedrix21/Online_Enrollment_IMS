@@ -14,7 +14,7 @@ use App\Http\Controllers\GradeController;
 use App\Http\Controllers\TeacherPortalController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentRecordController;
-
+use App\Http\Controllers\TuitionFeeController;
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -22,6 +22,7 @@ use App\Http\Controllers\StudentRecordController;
 */
 Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/tuition-fees/public', [TuitionFeeController::class, 'public']);
 
 // PayMongo public routes
 Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);
@@ -32,6 +33,14 @@ Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
 | Protected Routes (require authentication)
 |--------------------------------------------------------------------------
 */
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/tuition-fees',         [TuitionFeeController::class, 'index']);
+    Route::get('/tuition-fees/{id}',    [TuitionFeeController::class, 'show']);
+    Route::post('/tuition-fees',        [TuitionFeeController::class, 'store']);
+    Route::put('/tuition-fees/{id}',    [TuitionFeeController::class, 'update']);
+    Route::delete('/tuition-fees/{id}', [TuitionFeeController::class, 'destroy']);
+});
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::put('/user/update-credentials', [AuthController::class, 'updateCredentials']);

@@ -1,0 +1,457 @@
+/* src/pages/TuitionFeeManagement.css */
+
+/* ── Page layout ────────────────────────────────────────── */
+.tfm-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  padding: 24px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.tfm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tfm-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #b8860b;
+  margin: 0;
+}
+
+.tfm-subtitle {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.tfm-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tfm-sy-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #334155;
+  outline: none;
+}
+
+.tfm-add-btn {
+  background: #b8860b;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.tfm-add-btn:hover { background: #9a7009; }
+
+/* ── States ─────────────────────────────────────────────── */
+.tfm-loading,
+.tfm-empty {
+  text-align: center;
+  padding: 48px;
+  color: #94a3b8;
+  font-size: 1rem;
+}
+.tfm-empty-link {
+  color: #b8860b;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ── Cards grid ─────────────────────────────────────────── */
+.tfm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── Fee card ───────────────────────────────────────────── */
+.tfm-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  transition: opacity 0.2s;
+}
+.tfm-card--inactive { opacity: 0.6; }
+
+.tfm-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tfm-grade-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tfm-sy-badge {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.tfm-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tfm-status-badge {
+  border: none;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.tfm-status-badge--active   { background: #d1fae5; color: #065f46; }
+.tfm-status-badge--inactive { background: #fee2e2; color: #991b1b; }
+
+.tfm-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.tfm-icon-btn:hover { background: #f1f5f9; }
+.tfm-icon-btn--danger { color: #dc2626; }
+
+/* ── Totals row ─────────────────────────────────────────── */
+.tfm-totals-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tfm-total-box { flex: 1; }
+.tfm-total-box--highlight {
+  background: #b8860b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 1;
+}
+
+.tfm-total-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.tfm-total-label--light { color: rgba(255, 255, 255, 0.8); }
+
+.tfm-total-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+.tfm-total-val--light { color: #fff; }
+
+/* ── Breakdown ──────────────────────────────────────────── */
+.tfm-breakdown {
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.tfm-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.83rem;
+  color: #475569;
+  padding: 3px 0;
+}
+
+/* ── Misc toggle ────────────────────────────────────────── */
+.tfm-misc-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #b8860b;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.1s;
+}
+.tfm-misc-toggle:hover { background: #fffdf0; }
+
+.tfm-misc-list { padding: 6px 16px 12px; }
+
+.tfm-misc-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 3px 0;
+  color: #475569;
+}
+
+.tfm-misc-item--total {
+  border-top: 1px solid #e6dbac;
+  margin-top: 4px;
+  padding-top: 6px;
+  font-weight: 600;
+}
+
+.tfm-misc-item--total span:last-child { color: #b8860b; }
+
+/* ── Modal overlay ──────────────────────────────────────── */
+.tfm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.tfm-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.tfm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.tfm-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #b8860b;
+  margin: 0;
+}
+
+.tfm-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.tfm-close-btn:hover { background: #f1f5f9; }
+
+.tfm-modal-body { padding: 20px 24px; }
+
+/* ── Form fields ────────────────────────────────────────── */
+.tfm-form-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.tfm-form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tfm-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tfm-input {
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+  color: #334155;
+}
+.tfm-input:focus { border-color: #b8860b; }
+.tfm-input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+
+.tfm-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+/* ── Live preview ───────────────────────────────────────── */
+.tfm-preview {
+  background: #fffdf0;
+  border: 1px solid #e6dbac;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.tfm-preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #555;
+  padding: 3px 0;
+}
+
+.tfm-preview-row--total {
+  font-weight: 600;
+  color: #b8860b;
+}
+
+.tfm-preview-row--bold { font-weight: 600; }
+
+/* ── Misc items section ─────────────────────────────────── */
+.tfm-misc-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.tfm-misc-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tfm-misc-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.tfm-add-misc-btn {
+  background: #f0f4f8;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #374151;
+  font-weight: 500;
+  transition: background 0.1s;
+}
+.tfm-add-misc-btn:hover { background: #e2e8f0; }
+
+.tfm-misc-empty {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.tfm-misc-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tfm-misc-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tfm-remove-btn {
+  background: #fee2e2;
+  border: none;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  color: #dc2626;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  transition: background 0.1s;
+}
+.tfm-remove-btn:hover { background: #fecaca; }
+
+/* ── Modal actions ──────────────────────────────────────── */
+.tfm-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tfm-cancel-btn {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #374151;
+  transition: background 0.1s;
+}
+.tfm-cancel-btn:hover { background: #e2e8f0; }
+
+.tfm-save-btn {
+  padding: 9px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #b8860b;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.tfm-save-btn:hover  { background: #9a7009; }
+.tfm-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .tfm-header      { flex-direction: column; }
+  .tfm-form-row    { flex-direction: column; }
+  .tfm-grid        { grid-template-columns: 1fr; }
+  .tfm-totals-row  { flex-wrap: wrap; }
+}

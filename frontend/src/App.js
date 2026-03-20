@@ -27,7 +27,7 @@ import SubjectManagement from "./pages/SubjectManagement";
 import PaymentReports from "./pages/PaymentReports";
 import EnrolledStudents from "./pages/EnrolledStudents";
 import Form137 from "./pages/Form137";
-
+import TuitionFeeManagement from "./pages/TuitionFeeManagement";  
 
 
 function App() {
@@ -185,6 +185,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/tuition-fees"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <TuitionFeeManagement />
+            </ProtectedRoute>
+          }
+        />
+
+
       </Routes>
     </Router>
   );
