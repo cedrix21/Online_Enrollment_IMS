@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import './StudentBilling.css';
 
@@ -26,6 +26,39 @@ const TableSkeleton = () => (
         {[1, 2, 3, 4, 5].map(i => <TableRowSkeleton key={i} />)}
     </>
 );
+// Returns true if today is past the 5 business-day grace period from the 1st
+const isPastGracePeriod = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Start from the 1st of the current month
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  // Count 5 business days (skip weekends) from the 1st
+  let businessDays = 0;
+  let graceEnd = new Date(firstOfMonth);
+
+  while (businessDays < 5) {
+    const day = graceEnd.getDay(); // 0 = Sun, 6 = Sat
+    if (day !== 0 && day !== 6) {
+      businessDays++;
+    }
+    if (businessDays < 5) {
+      graceEnd.setDate(graceEnd.getDate() + 1);
+    }
+  }
+
+  // Penalty kicks in the day AFTER the grace period ends
+  const penaltyStartDate = new Date(graceEnd);
+  penaltyStartDate.setDate(penaltyStartDate.getDate() + 1);
+  // Skip if penalty start lands on weekend
+  while (penaltyStartDate.getDay() === 0 || penaltyStartDate.getDay() === 6) {
+    penaltyStartDate.setDate(penaltyStartDate.getDate() + 1);
+  }
+
+  return today >= penaltyStartDate;
+};
+
 
 // --- Modal Component (unchanged) ---
 const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
@@ -42,6 +75,12 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
     const books = parseFloat(bookAmount) || 0;
     const penalty = applyPenalty ? monthly * 0.10 : 0;
     const monthlyTotal = monthly + penalty;
+
+    useEffect(() => {
+    if (isPastGracePeriod()) {
+        setApplyPenalty(true);
+    }
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -121,17 +160,26 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 
                     {/* Penalty checkbox - disabled if no monthly amount */}
                     <div className="billing-form-group">
-                        <label className="billing-form-label" style={{ display: 'flex', alignItems: 'center' }}>
-                            <input
-                                type="checkbox"
-                                checked={applyPenalty}
-                                onChange={(e) => setApplyPenalty(e.target.checked)}
-                                disabled={!baseAmount || parseFloat(baseAmount) <= 0}
-                            />
-                            <span style={{ marginLeft: '8px', opacity: (!baseAmount || parseFloat(baseAmount) <= 0) ? 0.6 : 1 }}>
-                                Apply 10% late penalty
-                            </span>
-                        </label>
+                    <label className="billing-form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                        type="checkbox"
+                        checked={applyPenalty}
+                        onChange={(e) => setApplyPenalty(e.target.checked)}
+                        disabled={!baseAmount || parseFloat(baseAmount) <= 0}
+                        />
+                        <span style={{ opacity: (!baseAmount || parseFloat(baseAmount) <= 0) ? 0.6 : 1 }}>
+                        Apply 10% late penalty
+                        </span>
+                        {isPastGracePeriod() && (
+                        <span style={{
+                            fontSize: '0.75rem', backgroundColor: '#fff3e0',
+                            color: '#e65100', padding: '2px 8px', borderRadius: '12px',
+                            fontWeight: 600, border: '1px solid #ffcc80'
+                        }}>
+                            ⚠️ Past due — auto-applied
+                        </span>
+                        )}
+                    </label>
                     </div>
 
                     {/* Show totals breakdown only if there's something to show */}
