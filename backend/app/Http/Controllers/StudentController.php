@@ -197,4 +197,20 @@ public function updateStudentInfo(Request $request, $id)
         'contactNumber' => $student->contact_number,
     ]);
 }
+public function searchByEmail(Request $request)
+{
+    $email = $request->query('email');
+
+    $student = Student::with('section', 'enrollment')
+        ->whereHas('enrollment', function($q) use ($email) {
+            $q->where('email', $email);
+        })
+        ->first();
+
+    if (!$student) {
+        return response()->json(['message' => 'Student not found'], 404);
+    }
+
+    return response()->json($student);
+}
 }

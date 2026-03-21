@@ -12,68 +12,69 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\EnrollmentApproved;
 use Barryvdh\DomPDF\Facade\Pdf;
 use GuzzleHttp\Client;
+use App\Models\EnrollmentRequirement;
+use Illuminate\Support\Facades\Storage;
 
 class EnrollmentController extends Controller
 {
     // NEW METHOD: Upload to Supabase
     private function uploadToSupabase($file)
-{
-    try {
-        $client = new Client([
-            'verify' => env('APP_ENV') === 'production'
-        ]);
-        
-        $supabaseUrl = env('SUPABASE_URL');
-        $supabaseKey = env('SUPABASE_KEY');
-        
-        // Log for debugging
-        Log::info("Starting Supabase upload", [
-            'url' => $supabaseUrl,
-            'key_length' => strlen($supabaseKey),
-            'file_name' => $file->getClientOriginalName(),
-            'file_size' => $file->getSize()
-        ]);
-        
-        // Generate unique filename
-        $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $uploadUrl = "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}";
-        
-        Log::info("Upload URL: {$uploadUrl}");
-        
-        // Upload to Supabase Storage
-        $response = $client->post($uploadUrl, [
-            'headers' => [
-                'Authorization' => "Bearer {$supabaseKey}",
-                'Content-Type' => $file->getMimeType(),
-            ],
-            'body' => file_get_contents($file->getRealPath())
-        ]);
+    {
+        try {
+            $client = new Client([
+                'verify' => env('APP_ENV') === 'production'
+            ]);
 
-        $statusCode = $response->getStatusCode();
-        $responseBody = $response->getBody()->getContents();
-        
-        Log::info("Supabase response", [
-            'status' => $statusCode,
-            'body' => $responseBody
-        ]);
+            $supabaseUrl = env('SUPABASE_URL');
+            $supabaseKey = env('SUPABASE_KEY');
 
-        if ($statusCode !== 200 && $statusCode !== 201) {
-            throw new \Exception("Upload failed with status code: {$statusCode}. Response: {$responseBody}");
+            // Log for debugging
+            Log::info("Starting Supabase upload", [
+                'url' => $supabaseUrl,
+                'key_length' => strlen($supabaseKey),
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize()
+            ]);
+
+            // Generate unique filename
+            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $uploadUrl = "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}";
+
+            Log::info("Upload URL: {$uploadUrl}");
+
+            // Upload to Supabase Storage
+            $response = $client->post($uploadUrl, [
+                'headers' => [
+                    'Authorization' => "Bearer {$supabaseKey}",
+                    'Content-Type' => $file->getMimeType(),
+                ],
+                'body' => file_get_contents($file->getRealPath())
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $responseBody = $response->getBody()->getContents();
+
+            Log::info("Supabase response", [
+                'status' => $statusCode,
+                'body' => $responseBody
+            ]);
+
+            if ($statusCode !== 200 && $statusCode !== 201) {
+                throw new \Exception("Upload failed with status code: {$statusCode}. Response: {$responseBody}");
+            }
+
+            // Return public URL
+            $publicUrl = "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
+            Log::info("Generated public URL: {$publicUrl}");
+
+            return $publicUrl;
+        } catch (\Exception $e) {
+            Log::error("Supabase upload failed: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \Exception("File upload failed: " . $e->getMessage());
         }
-
-        // Return public URL
-        $publicUrl = "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
-        Log::info("Generated public URL: {$publicUrl}");
-        
-        return $publicUrl;
-        
-    } catch (\Exception $e) {
-        Log::error("Supabase upload failed: " . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw new \Exception("File upload failed: " . $e->getMessage());
     }
-}
 
 
 
@@ -81,7 +82,11 @@ class EnrollmentController extends Controller
     public function index()
     {
         try {
-            $enrollments = Enrollment::with('siblings','payments')->orderBy('created_at', 'desc')->get();
+            $enrollments = Enrollment::with(
+            'siblings', 
+            'payments',
+            'student', 
+            'student.section')->orderBy('created_at', 'desc')->get();
             return response()->json($enrollments, 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -104,7 +109,7 @@ class EnrollmentController extends Controller
             'dateOfBirth' => 'required|date',
             'registrationType' => 'required|string',
             'handedness' => 'nullable|string',
-            
+
             'fatherName' => 'nullable|string',
             'fatherContact' => 'nullable|string',
             'fatherOccupation' => 'nullable|string',
@@ -133,16 +138,16 @@ class EnrollmentController extends Controller
             // UPDATED: Handle file upload with Supabase
             // $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
             $receiptPath = null;
-            
+
             if ($request->hasFile('receipt_image')) {
                 $file = $request->file('receipt_image');
                 $fileName = time() . '_' . $file->getClientOriginalName();
-                
+
                 // This stores it in: storage/app/public/receipts
-                $path = $file->storeAs('receipts', $fileName, 'public'); 
-                
+                $path = $file->storeAs('receipts', $fileName, 'public');
+
                 // Save ONLY the path in the DB, not the 'storage/' prefix
-                $receiptPath = $path; 
+                $receiptPath = $path;
             }
 
             $enrollment = Enrollment::create([
@@ -156,7 +161,7 @@ class EnrollmentController extends Controller
                 'dateOfBirth'       => $validated['dateOfBirth'],
                 'registrationType'  => $validated['registrationType'],
                 'handedness'        => $validated['handedness'] ?? null,
-                
+
                 'fatherName'        => $validated['fatherName'] ?? null,
                 'fatherContact'     => $validated['fatherContact'] ?? null,
                 'fatherOccupation'  => $validated['fatherOccupation'] ?? null,
@@ -170,17 +175,34 @@ class EnrollmentController extends Controller
 
                 'emergencyContact'  => $validated['emergencyContact'],
                 'medicalConditions' => $validated['medicalConditions'] ?? null,
-                'status'            => 'pending',  
-                
+                'status'            => 'pending',
+
             ]);
+            $requirementTypes = ['psa', 'good_moral', 'report_card', 'picture_2x2', 'picture_1x1'];
+
+            foreach ($requirementTypes as $type) {
+                $key = "requirement_{$type}";
+                if ($request->hasFile($key)) {
+                    $file = $request->file($key);
+                    $path = $file->store("requirements/{$enrollment->id}", 'public');
+
+                    EnrollmentRequirement::create([
+                        'enrollment_id' => $enrollment->id,
+                        'type'          => $type,
+                        'file_path'     => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'status'        => 'pending',
+                    ]);
+                }
+            }
 
             $enrollment->payments()->create([
                 'amount_paid'      => $validated['amount_paid'] ?? 0,
-                'paymentMethod'    => $validated['paymentMethod'], 
+                'paymentMethod'    => $validated['paymentMethod'],
                 'reference_number' => $validated['reference_number'] ?? 'WALK-IN',
                 'payment_type'     => 'Downpayment',
                 'payment_date'     => now(),
-                'receipt_path'     => $receiptPath, 
+                'receipt_path'     => $receiptPath,
                 'payment_status'   => 'pending',
             ]);
 
@@ -204,11 +226,12 @@ class EnrollmentController extends Controller
 
 
 
-    private function getSchoolYear(): string {
-    $month = (int) date('n'); 
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}–" . ($year + 1) : ($year - 1) . "–{$year}";
-}
+    private function getSchoolYear(): string
+    {
+        $month = (int) date('n');
+        $year  = (int) date('Y');
+        return ($month >= 6) ? "{$year}–" . ($year + 1) : ($year - 1) . "–{$year}";
+    }
 
 
 
@@ -262,7 +285,7 @@ class EnrollmentController extends Controller
                 $section->increment('students_count');
 
                 $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $formattedId);
-                
+
                 return response()->json([
                     'message' => "Approved, assigned to {$section->name}. {$emailStatus}",
                     'generatedId' => $formattedId
@@ -292,46 +315,46 @@ class EnrollmentController extends Controller
         ]);
     }
 
-   public function summary()
-{
-    // Define tuition rates (same as BillingController)
-    $rates = [
-    'Nursery'        => 31540, // 26,288 + 5,252 misc
-    'Kindergarten 1' => 32090, // 26,838 + 5,252 misc
-    'Kindergarten 2' => 32490, // 26,988 + 5,502 misc
-    'Grade 1'        => 37234, // 30,582 + 5,152 misc + 1,500 Korean
-    'Grade 2'        => 37234, // same as Grade 1
-    'Grade 3'        => 37234, // same
-    'Grade 4'        => 37772, // 30,582 + 5,690 misc + 1,500 Korean
-    'Grade 5'        => 37772, // same
-    'Grade 6'        => 38272, // 30,582 + 6,190 misc + 1,500 Korean
-];
+    public function summary()
+    {
+        // Define tuition rates (same as BillingController)
+        $rates = [
+            'Nursery'        => 31540, // 26,288 + 5,252 misc
+            'Kindergarten 1' => 32090, // 26,838 + 5,252 misc
+            'Kindergarten 2' => 32490, // 26,988 + 5,502 misc
+            'Grade 1'        => 37234, // 30,582 + 5,152 misc + 1,500 Korean
+            'Grade 2'        => 37234, // same as Grade 1
+            'Grade 3'        => 37234, // same
+            'Grade 4'        => 37772, // 30,582 + 5,690 misc + 1,500 Korean
+            'Grade 5'        => 37772, // same
+            'Grade 6'        => 38272, // 30,582 + 6,190 misc + 1,500 Korean
+        ];
 
-    // Count enrollments where payment method is Cash (walk-in pending)
-    $cashEnrollments = Enrollment::whereHas('payments', function($query) {
-        $query->where('paymentMethod', 'Cash');
-    })->where('status', 'pending')->count();
+        // Count enrollments where payment method is Cash (walk-in pending)
+        $cashEnrollments = Enrollment::whereHas('payments', function ($query) {
+            $query->where('paymentMethod', 'Cash');
+        })->where('status', 'pending')->count();
 
-    // Count students with unpaid balance (not fully paid)
-    $unpaidStudents = Student::get()->filter(function($student) use ($rates) {
-        $totalTuition = $rates[$student->gradeLevel] ?? 31540;
-        $totalPaid = $student->payments->sum('amount_paid');
-        return ($totalTuition - $totalPaid) > 0;
-    })->count();
+        // Count students with unpaid balance (not fully paid)
+        $unpaidStudents = Student::get()->filter(function ($student) use ($rates) {
+            $totalTuition = $rates[$student->gradeLevel] ?? 31540;
+            $totalPaid = $student->payments->sum('amount_paid');
+            return ($totalTuition - $totalPaid) > 0;
+        })->count();
 
-    return response()->json([
-        'total' => Enrollment::count(),
-        'pending' => Enrollment::where('status', 'pending')->count(),
-        'approved' => Enrollment::where('status', 'approved')->count(),
-        'rejected' => Enrollment::where('status', 'rejected')->count(),
-        
-        // Cash enrollments awaiting walk-in payment
-        'cash_enrollments' => $cashEnrollments,
-        
-        // Students with unpaid balance
-        'unpaid_students' => $unpaidStudents,
-    ]);
-}
+        return response()->json([
+            'total' => Enrollment::count(),
+            'pending' => Enrollment::where('status', 'pending')->count(),
+            'approved' => Enrollment::where('status', 'approved')->count(),
+            'rejected' => Enrollment::where('status', 'rejected')->count(),
+
+            // Cash enrollments awaiting walk-in payment
+            'cash_enrollments' => $cashEnrollments,
+
+            // Students with unpaid balance
+            'unpaid_students' => $unpaidStudents,
+        ]);
+    }
 
 
 
@@ -349,7 +372,7 @@ class EnrollmentController extends Controller
             'registrationType' => 'required|string',
             'handedness' => 'nullable|string',
             'medicalConditions' => 'nullable|string',
-            
+
             'fatherName' => 'nullable|string',
             'fatherContact' => 'nullable|string',
             'motherName' => 'nullable|string',
@@ -383,9 +406,13 @@ class EnrollmentController extends Controller
                 if ($request->hasFile('receipt_image')) {
                     $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
                 }
-                
+
                 $enrollmentData = collect($validated)->except([
-                    'siblings', 'amount_paid', 'paymentMethod', 'reference_number', 'payment_type',
+                    'siblings',
+                    'amount_paid',
+                    'paymentMethod',
+                    'reference_number',
+                    'payment_type',
                     'payment_status'
                 ])->toArray();
 
@@ -435,16 +462,16 @@ class EnrollmentController extends Controller
                 ]);
 
                 $enrollment->payments()->create([
-                    'student_id'       => $student->id, 
+                    'student_id'       => $student->id,
                     'amount_paid'      => $validated['amount_paid'],
                     'paymentMethod'    => $validated['paymentMethod'],
                     'reference_number' => $validated['reference_number'] ?? 'WALK-IN-' . time(),
                     'payment_type'     => 'Downpayment',
                     'payment_date'     => now(),
                     'receipt_path'     => $receiptPath,
-                    'payment_status'   => 'completed', 
+                    'payment_status'   => 'completed',
                 ]);
-                
+
                 $section->increment('students_count');
 
                 return ['enrollment' => $enrollment, 'section' => $section, 'id' => $formattedId];
@@ -456,52 +483,49 @@ class EnrollmentController extends Controller
                 'message' => 'Student approved ' . $emailMessage,
                 'studentId' => $result['id']
             ], 201);
-
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-   private function sendEnrollmentEmail($enrollment, $section, $formattedId)
-{
-    try {
-        $logoBase64 = '';
-
-        Log::info('=== EMAIL START === Student: ' . $formattedId);
-        Log::info('Sending to email: ' . $enrollment->email);
-
-        $section->load(['schedules.subject', 'schedules.time_slot', 'schedules.room', 'advisor']);
-
+    private function sendEnrollmentEmail($enrollment, $section, $formattedId)
+    {
         try {
-            Log::info('Generating PDF...');
-            $pdf = Pdf::loadView('pdf.loadslip', [
-                'enrollment' => $enrollment,
-                'section'    => $section,
-                'studentId'  => $formattedId,
-                'logo'       => $logoBase64
-            ])->setPaper('a4', 'portrait');
+            $logoBase64 = '';
 
-            $pdfOutput = $pdf->output();
-            Log::info('PDF generated OK, size: ' . strlen($pdfOutput) . ' bytes');
+            Log::info('=== EMAIL START === Student: ' . $formattedId);
+            Log::info('Sending to email: ' . $enrollment->email);
 
-        } catch (\Exception $pdfError) {
-            Log::error('PDF FAILED: ' . $pdfError->getMessage());
-            Log::error($pdfError->getTraceAsString());
-            return "but PDF generation failed.";
+            $section->load(['schedules.subject', 'schedules.time_slot', 'schedules.room', 'advisor']);
+
+            try {
+                Log::info('Generating PDF...');
+                $pdf = Pdf::loadView('pdf.loadslip', [
+                    'enrollment' => $enrollment,
+                    'section'    => $section,
+                    'studentId'  => $formattedId,
+                    'logo'       => $logoBase64
+                ])->setPaper('a4', 'portrait');
+
+                $pdfOutput = $pdf->output();
+                Log::info('PDF generated OK, size: ' . strlen($pdfOutput) . ' bytes');
+            } catch (\Exception $pdfError) {
+                Log::error('PDF FAILED: ' . $pdfError->getMessage());
+                Log::error($pdfError->getTraceAsString());
+                return "but PDF generation failed.";
+            }
+
+            Log::info('Sending mail...');
+            Mail::to($enrollment->email)
+                ->cc('ravelocedrix@gmail.com')
+                ->send(new EnrollmentApproved($enrollment, $pdfOutput));
+
+            Log::info('=== EMAIL SENT SUCCESSFULLY ===');
+            return "and Loadslip sent to parent email.";
+        } catch (\Exception $e) {
+            Log::error('=== EMAIL FAILED === ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return "but email failed to send (Check SMTP settings).";
         }
-
-        Log::info('Sending mail...');
-        Mail::to($enrollment->email)
-            ->cc('ravelocedrix@gmail.com')
-            ->send(new EnrollmentApproved($enrollment, $pdfOutput));
-
-        Log::info('=== EMAIL SENT SUCCESSFULLY ===');
-        return "and Loadslip sent to parent email.";
-
-    } catch (\Exception $e) {
-        Log::error('=== EMAIL FAILED === ' . $e->getMessage());
-        Log::error($e->getTraceAsString());
-        return "but email failed to send (Check SMTP settings).";
     }
-}
 };

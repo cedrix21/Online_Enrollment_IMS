@@ -55,6 +55,14 @@ class Enrollment extends Model
     public function payments() {
         return $this->hasMany(Payment::class);
     }
+    public function requirements()
+{
+    return $this->hasMany(EnrollmentRequirement::class);
+}
+public function student()
+{
+    return $this->hasOne(Student::class);
+}
 }
 
 

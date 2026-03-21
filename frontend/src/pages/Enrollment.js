@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";  
+import { useState, useEffect } from "react";
 import API from "../api/api";
 import "./Enrollment.css";
 import "./LoadingSpinner.css";
@@ -14,9 +14,22 @@ export default function Enrollment() {
   const [processingPayment,  setProcessingPayment]  = useState(false);
   const [gcashRedirectUrl,   setGcashRedirectUrl]   = useState("");
 
+  // ── Requirement files (all optional) ─────────────────────────
+  const [requirementFiles, setRequirementFiles] = useState({
+    psa:          null,
+    good_moral:   null,
+    report_card:  null,
+    picture_2x2:  null,
+    picture_1x1:  null,
+  });
+
+  const handleRequirementFile = (key, file) => {
+    setRequirementFiles(prev => ({ ...prev, [key]: file }));
+  };
+
   // ── Tuition fees from API ─────────────────────────────────────
-  const [tuitionFees,  setTuitionFees]  = useState({});
-  const [feesLoading,  setFeesLoading]  = useState(true);
+  const [tuitionFees, setTuitionFees] = useState({});
+  const [feesLoading, setFeesLoading] = useState(true);
 
   useEffect(() => {
     const fetchFees = async () => {
@@ -79,6 +92,37 @@ export default function Enrollment() {
   // ── Fee breakdown helper ──────────────────────────────────────
   const fmtPeso = (n) =>
     '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+
+  // ── Requirements list per registration type ───────────────────
+  const getRequirementsList = () => {
+    const base = [
+      '🖼️ 1x1 ID Picture (1 pc) & 2x2 ID Picture (2 pcs)',
+      '📄 PSA Birth Certificate (Photocopy)',
+      '📱 Kids Note App',
+    ];
+
+    switch (formData.registrationType) {
+      case 'New Student':
+        return [...base,
+          '✅ Certificate of Good Moral',
+          '📋 Original Report Card (If Applicable)',
+        ];
+      case 'Continuing':
+        return base;
+      case 'Transferee':
+        return [...base,
+          '✅ Certificate of Good Moral',
+          '📋 Original Report Card',
+        ];
+      case 'Returning Student':
+        return [...base,
+          '✅ Certificate of Good Moral',
+          '📋 Original Report Card',
+        ];
+      default:
+        return base;
+    }
+  };
 
   // ── GCash handler ─────────────────────────────────────────────
   const handleGCashPayment = async () => {
@@ -155,8 +199,13 @@ export default function Enrollment() {
     });
 
     formData.siblings?.forEach((sib, index) => {
-      if (sib.name)     dataToSend.append(`siblings[${index}][name]`, sib.name);
+      if (sib.name)      dataToSend.append(`siblings[${index}][name]`, sib.name);
       if (sib.birthDate) dataToSend.append(`siblings[${index}][birthDate]`, sib.birthDate);
+    });
+
+    // ── Append requirement files (all optional) ───────────────
+    Object.entries(requirementFiles).forEach(([key, file]) => {
+      if (file) dataToSend.append(`requirement_${key}`, file);
     });
 
     dataToSend.append('paymentMethod', paymentMethod);
@@ -202,7 +251,7 @@ export default function Enrollment() {
   return (
     <div className="enrollment-container">
 
-      {/* Data Privacy Modal */}
+      {/* ── Data Privacy Modal ── */}
       {showPrivacy && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
@@ -250,7 +299,7 @@ export default function Enrollment() {
 
       <div className="enrollment-card">
         {isSubmitted ? (
-          /* Success screen */
+          /* ── Success Screen ── */
           <div className="success-overlay" style={{ textAlign: 'center', padding: '40px 20px' }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎉</div>
             <h2 style={{ color: '#b8860b', fontSize: '2rem', marginBottom: '10px' }}>
@@ -312,43 +361,35 @@ export default function Enrollment() {
                   </div>
                 </div>
 
-                {/* Requirements Reminder */}
-                <div className="requirements-box" style={{
-                  marginTop: '20px', padding: '15px', backgroundColor: '#fffdf0',
-                  border: '1px solid #e6dbac', borderRadius: '8px'
-                }}>
-                  <h4 style={{ color: '#b8860b', marginTop: 0 }}>Enrollment Requirements Reminder</h4>
-                  {formData.registrationType === "Continuing" ? (
-                    <div style={{ padding: '10px', backgroundColor: '#e8f5e9',
-                      border: '1px solid #c8e6c9', borderRadius: '6px' }}>
-                      <p style={{ fontSize: '0.9rem', color: '#2e7d32', margin: 0 }}>
-                        <strong>Welcome back!</strong> As a continuing student, you only need to
-                        ensure your "Kid's Note" app is active.
-                      </p>
+                {/* ── Requirements Reminder ── */}
+                {formData.registrationType && (
+                  <div className="requirements-box" style={{
+                    marginTop: '20px', padding: '15px', backgroundColor: '#fffdf0',
+                    border: '1px solid #e6dbac', borderRadius: '8px'
+                  }}>
+                    <h4 style={{ color: '#b8860b', marginTop: 0 }}>
+                      Enrollment Requirements —{' '}
+                      <span style={{ fontWeight: 'normal', fontSize: '0.9rem' }}>
+                        {formData.registrationType}
+                      </span>
+                    </h4>
+                    <ul style={{
+                      listStyleType: 'none', padding: 0, margin: 0,
+                      display: 'grid', gridTemplateColumns: '1fr 1fr',
+                      gap: '8px', fontSize: '0.85rem'
+                    }}>
+                      {getRequirementsList().map((req, i) => (
+                        <li key={i} style={{ color: '#444' }}>{req}</li>
+                      ))}
+                    </ul>
+                    <div style={{
+                      marginTop: '12px', fontSize: '0.82rem', color: '#d32f2f',
+                      fontWeight: 'bold', borderTop: '1px dashed #e6dbac', paddingTop: '10px'
+                    }}>
+                      📌 Required for all: Install "Kid's Note" app for official school updates.
                     </div>
-                  ) : (
-                    <>
-                      <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '10px' }}>
-                        Please prepare the following for the School Office:
-                      </p>
-                      <ul style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
-                        listStyleType: 'none', padding: 0, fontSize: '0.85rem' }}>
-                        <li>✅ 1x1 ID Picture (Recent)</li>
-                        <li>✅ PSA Birth Certificate</li>
-                        {["New Student","Returning Student","Transferee"].includes(formData.registrationType) && (
-                          <>
-                            <li>✅ Certificate of Good Moral</li>
-                            <li>✅ Original Report Card (Form 138)</li>
-                          </>
-                        )}
-                      </ul>
-                    </>
-                  )}
-                  <div style={{ marginTop: '15px', fontSize: '0.85rem', color: '#d32f2f',
-                    fontWeight: 'bold', borderTop: '1px dashed #e6dbac', paddingTop: '10px' }}>
-                    📌 Required for all: Install "Kid's Note" app for official school updates.
                   </div>
-                </div>
+                )}
 
                 {/* ── Fee Breakdown Box ── */}
                 {formData.gradeLevel && tuitionFees[formData.gradeLevel] && (() => {
@@ -356,8 +397,6 @@ export default function Enrollment() {
                   return (
                     <div style={{ marginTop: '16px', border: '1.5px solid #b8860b',
                       borderRadius: '10px', overflow: 'hidden', fontSize: '0.875rem' }}>
-
-                      {/* Header */}
                       <div style={{ backgroundColor: '#b8860b', color: '#fff',
                         padding: '10px 15px', fontWeight: 'bold' }}>
                         💰 Tuition & Fee Breakdown — {formData.gradeLevel}
@@ -365,8 +404,6 @@ export default function Enrollment() {
                           &nbsp; SY: {fee.school_year}
                         </span>
                       </div>
-
-                      {/* Fee table */}
                       <div style={{ padding: '12px 15px', backgroundColor: '#fffdf0' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                           <thead>
@@ -397,41 +434,27 @@ export default function Enrollment() {
                           </tbody>
                         </table>
                       </div>
-
-                      {/* Payment details */}
                       <div style={{ padding: '10px 15px', backgroundColor: '#f7f0de',
                         borderTop: '1px solid #e6dbac' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
                           gap: '8px', textAlign: 'center' }}>
                           <div style={{ backgroundColor: '#fff', borderRadius: '8px',
                             padding: '10px', border: '1px solid #e6dbac' }}>
-                            <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: '2px' }}>
-                              Down Payment
-                            </div>
-                            <div style={{ fontWeight: 'bold', color: '#333' }}>
-                              {fmtPeso(fee.down_payment)}
-                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: '2px' }}>Down Payment</div>
+                            <div style={{ fontWeight: 'bold', color: '#333' }}>{fmtPeso(fee.down_payment)}</div>
                           </div>
                           <div style={{ backgroundColor: '#fff', borderRadius: '8px',
                             padding: '10px', border: '1px solid #e6dbac' }}>
-                            <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: '2px' }}>
-                              Remaining Balance
-                            </div>
-                            <div style={{ fontWeight: 'bold', color: '#333' }}>
-                              {fmtPeso(fee.remaining_balance)}
-                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: '2px' }}>Remaining Balance</div>
+                            <div style={{ fontWeight: 'bold', color: '#333' }}>{fmtPeso(fee.remaining_balance)}</div>
                           </div>
                           <div style={{ backgroundColor: '#b8860b', borderRadius: '8px', padding: '10px' }}>
                             <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>
                               Monthly ({fee.monthly_terms} mo.)
                             </div>
-                            <div style={{ fontWeight: 'bold', color: '#fff' }}>
-                              {fmtPeso(fee.monthly_payment)}
-                            </div>
+                            <div style={{ fontWeight: 'bold', color: '#fff' }}>{fmtPeso(fee.monthly_payment)}</div>
                           </div>
                         </div>
-
-                        {/* Misc breakdown (collapsible) */}
                         {fee.misc_items?.length > 0 && (
                           <details style={{ marginTop: '10px' }}>
                             <summary style={{ fontSize: '0.8rem', color: '#b8860b',
@@ -444,24 +467,18 @@ export default function Enrollment() {
                                 {fee.misc_items.map((item, i) => (
                                   <tr key={i}>
                                     <td style={{ padding: '3px 0', color: '#555' }}>{item.label}</td>
-                                    <td style={{ textAlign: 'right', color: '#444' }}>
-                                      {fmtPeso(item.amount)}
-                                    </td>
+                                    <td style={{ textAlign: 'right', color: '#444' }}>{fmtPeso(item.amount)}</td>
                                   </tr>
                                 ))}
                                 <tr style={{ borderTop: '1px solid #e6dbac', fontWeight: 600 }}>
                                   <td style={{ padding: '4px 0', color: '#b8860b' }}>Total Misc</td>
-                                  <td style={{ textAlign: 'right', color: '#b8860b' }}>
-                                    {fmtPeso(fee.misc_total)}
-                                  </td>
+                                  <td style={{ textAlign: 'right', color: '#b8860b' }}>{fmtPeso(fee.misc_total)}</td>
                                 </tr>
                               </tbody>
                             </table>
                           </details>
                         )}
-
-                        <p style={{ fontSize: '0.75rem', color: '#888', margin: '8px 0 0',
-                          textAlign: 'center' }}>
+                        <p style={{ fontSize: '0.75rem', color: '#888', margin: '8px 0 0', textAlign: 'center' }}>
                           * Fees are subject to change. Contact the school for the latest information.
                         </p>
                       </div>
@@ -477,6 +494,97 @@ export default function Enrollment() {
                     Loading fee information...
                   </div>
                 )}
+              </div>
+
+              {/* ── Requirements Upload ── */}
+              <div className="form-section">
+                <h3>
+                  Upload Requirements{' '}
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 'normal' }}>
+                    (Optional)
+                  </span>
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '15px' }}>
+                  You may upload scanned copies or photos of your documents now for faster
+                  processing. You can still submit without uploading — bring the originals
+                  to the school office.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+
+                  {/* PSA — all types */}
+                  <div className="input-group">
+                    <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      📄 PSA Birth Certificate (Photocopy)
+                    </label>
+                    <input type="file" accept="image/*,.pdf"
+                      onChange={e => handleRequirementFile('psa', e.target.files[0])} />
+                    {requirementFiles.psa && (
+                      <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.psa.name}</small>
+                    )}
+                  </div>
+
+                  {/* 2x2 Picture — all types */}
+                  <div className="input-group">
+                    <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      🖼️ 2x2 ID Picture (2 pcs)
+                    </label>
+                    <input type="file" accept="image/*"
+                      onChange={e => handleRequirementFile('picture_2x2', e.target.files[0])} />
+                    {requirementFiles.picture_2x2 && (
+                      <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.picture_2x2.name}</small>
+                    )}
+                  </div>
+
+                  {/* 1x1 Picture — all types */}
+                  <div className="input-group">
+                    <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      🖼️ 1x1 ID Picture (1 pc)
+                    </label>
+                    <input type="file" accept="image/*"
+                      onChange={e => handleRequirementFile('picture_1x1', e.target.files[0])} />
+                    {requirementFiles.picture_1x1 && (
+                      <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.picture_1x1.name}</small>
+                    )}
+                  </div>
+
+                  {/* Good Moral — New, Transferee, Returning only */}
+                  {['New Student', 'Transferee', 'Returning Student'].includes(formData.registrationType) && (
+                    <div className="input-group">
+                      <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                        📋 Certificate of Good Moral
+                      </label>
+                      <input type="file" accept="image/*,.pdf"
+                        onChange={e => handleRequirementFile('good_moral', e.target.files[0])} />
+                      {requirementFiles.good_moral && (
+                        <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.good_moral.name}</small>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Report Card — New (if applicable), Transferee, Returning */}
+                  {['New Student', 'Transferee', 'Returning Student'].includes(formData.registrationType) && (
+                    <div className="input-group">
+                      <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                        📝 Original Report Card
+                        {formData.registrationType === 'New Student' && (
+                          <span style={{ fontWeight: 'normal', color: '#94a3b8' }}> (If Applicable)</span>
+                        )}
+                      </label>
+                      <input type="file" accept="image/*,.pdf"
+                        onChange={e => handleRequirementFile('report_card', e.target.files[0])} />
+                      {requirementFiles.report_card && (
+                        <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.report_card.name}</small>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+
+                <div style={{ marginTop: '12px', padding: '10px 14px', backgroundColor: '#f0f4f8',
+                  borderRadius: '8px', fontSize: '0.8rem', color: '#555' }}>
+                  📌 Accepted formats: JPG, PNG, PDF &nbsp;|&nbsp; Max size per file: 2MB
+                </div>
               </div>
 
               {/* ── Child's Information ── */}
@@ -612,6 +720,8 @@ export default function Enrollment() {
                 </div>
               </div>
 
+              
+
               {/* ── Payment Section ── */}
               <div className="payment-section">
                 <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
@@ -711,7 +821,7 @@ export default function Enrollment() {
         )}
       </div>
 
-      {/* Loading Overlay */}
+      {/* ── Loading Overlay ── */}
       {(loading || processingPayment) && (
         <div className="loading-overlay">
           <div className="spinner"></div>

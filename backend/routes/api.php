@@ -15,6 +15,9 @@ use App\Http\Controllers\TeacherPortalController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
+use App\Http\Controllers\EnrollmentRequirementController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -67,7 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/students', [StudentController::class, 'store']);
     Route::put('/students/{id}', [StudentController::class, 'update']);
     Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    
+    Route::get('/students/search', [StudentController::class, 'searchByEmail']);
     // ──────────────────────────────────────────────────────────────
     // SUBJECT MANAGEMENT
     // ──────────────────────────────────────────────────────────────
@@ -155,4 +158,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // ──────────────────────────────────────────────────────────────
     Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
     Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
-});
+
+
+    Route::get('/enrollments/{id}/requirements', [EnrollmentRequirementController::class, 'index']);
+    Route::put('/requirements/{id}/status',[EnrollmentRequirementController::class, 'updateStatus']);
+
+}); 
