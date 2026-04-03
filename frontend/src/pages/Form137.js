@@ -1,19 +1,33 @@
 // src/pages/Form137.js
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import API from '../api/api';
 import { SICS_LOGO_BASE64 } from '../constants/reportImages';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
+import SideBar from '../components/SideBar';
+import TopBar from '../components/TopBar';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
 const GRADES = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
-const SUBJECTS_BY_GRADE = {
-  I:   ['Mother Tongue', 'Filipino / Korean', 'English Language', 'English Reading', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
-  II:  ['Mother Tongue', 'Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
-  III: ['Mother Tongue', 'Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
-  IV:  ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
-  V:   ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
-  VI:  ['Filipino / Korean', 'English', 'Science', 'Mathematics', 'Araling Panlipunan', 'ESP / Bible', 'MAPEH', 'Music', 'Art', 'Physical Education', 'Health'],
+// Map Roman numeral to actual grade string
+const romanToGrade = {
+  I: 'Grade 1',
+  II: 'Grade 2',
+  III: 'Grade 3',
+  IV: 'Grade 4',
+  V: 'Grade 5',
+  VI: 'Grade 6',
+};
+
+// Map actual grade string to Roman numeral
+const gradeToRoman = {
+  'Grade 1': 'I',
+  'Grade 2': 'II',
+  'Grade 3': 'III',
+  'Grade 4': 'IV',
+  'Grade 5': 'V',
+  'Grade 6': 'VI',
 };
 
 const CORE_VALUES = [
@@ -80,53 +94,127 @@ export default function Form137() {
   const { data: studentsRaw, loading: studentsLoading } = useOptimizedFetch('/students');
   const students = studentsRaw || [];
 
+  // ── subjects ──
+  const [subjects, setSubjects] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
+  const [gradesLoading, setGradesLoading] = useState(false); // for fetching student grades
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const res = await API.get('/subjects');
+        setSubjects(res.data);
+      } catch (err) {
+        console.error('Failed to fetch subjects', err);
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+    fetchSubjects();
+  }, []);
+
+  // Group subjects by grade level
+  const subjectsByGrade = useMemo(() => {
+    const grouped = {};
+    subjects.forEach(sub => {
+      const grade = sub.gradeLevel;
+      if (!grouped[grade]) grouped[grade] = [];
+      grouped[grade].push(sub.subjectName);
+    });
+    // Sort alphabetically within each grade
+    Object.keys(grouped).forEach(grade => {
+      grouped[grade].sort();
+    });
+    return grouped;
+  }, [subjects]);
+
   const handleSearch = (query) => {
-  setSearchQuery(query);
-  if (!query.trim()) { setSearchResults([]); setShowDropdown(false); return; }
-  const q = query.toLowerCase();
-  const results = students.filter(s => {
-    const full = `${s.lastName} ${s.firstName} ${s.enrollment?.middleName || ''} ${s.lrn || ''}`.toLowerCase();
-    return full.includes(q);
-  }).slice(0, 8);
-  setSearchResults(results);
-  setShowDropdown(true);
-};
+    setSearchQuery(query);
+    if (!query.trim()) { setSearchResults([]); setShowDropdown(false); return; }
+    const q = query.toLowerCase();
+    const results = students.filter(s => {
+      const full = `${s.lastName} ${s.firstName} ${s.enrollment?.middleName || ''} ${s.lrn || ''}`.toLowerCase();
+      return full.includes(q);
+    }).slice(0, 8);
+    setSearchResults(results);
+    setShowDropdown(true);
+  };
 
-  const handleSelectStudent = (s) => {
-  const dob = s.enrollment?.dateOfBirth || '';
-  const dobParts = dob ? dob.split('-') : [];
+  const handleSelectStudent = async (s) => {
+    const dob = s.enrollment?.dateOfBirth || '';
+    const dobParts = dob ? dob.split('-') : [];
 
-  // Prefer father info, fallback to mother
-  const parentName       = s.enrollment?.fatherName        || s.enrollment?.motherName        || '';
-  const parentAddress    = s.enrollment?.fatherAddress      || s.enrollment?.motherAddress      || '';
-  const parentOccupation = s.enrollment?.fatherOccupation   || s.enrollment?.motherOccupation   || '';
+    // Prefer father info, fallback to mother
+    const parentName       = s.enrollment?.fatherName        || s.enrollment?.motherName        || '';
+    const parentAddress    = s.enrollment?.fatherAddress      || s.enrollment?.motherAddress      || '';
+    const parentOccupation = s.enrollment?.fatherOccupation   || s.enrollment?.motherOccupation   || '';
 
-  setStudent({
-    lastName:         s.lastName                              || '',
-    firstName:        s.firstName                             || '',
-    middleInitial:    s.enrollment?.middleName
+    setStudent({
+      lastName:         s.lastName                              || '',
+      firstName:        s.firstName                             || '',
+      middleInitial:    s.enrollment?.middleName
                         ? s.enrollment.middleName.charAt(0) + '.'
                         : '',
-    division:         s.section?.name                         || '',
-    lrn:              s.lrn                                   || '',
-    sex:              s.enrollment?.gender                    || '',
-    birthMonth:       dobParts[1]                             || '',
-    birthDay:         dobParts[2]                             || '',
-    birthYear:        dobParts[0]                             || '',
-    placeOfBirth:     '',
-    entranceMonth:    '',
-    entranceDay:      '',
-    entranceYear:     '',
-    parentName,
-    parentAddress,
-    parentOccupation,
-  });
+      division:         s.section?.name                         || '',
+      lrn:              s.lrn                                   || '',
+      sex:              s.enrollment?.gender                    || '',
+      birthMonth:       dobParts[1]                             || '',
+      birthDay:         dobParts[2]                             || '',
+      birthYear:        dobParts[0]                             || '',
+      placeOfBirth:     '',
+      entranceMonth:    '',
+      entranceDay:      '',
+      entranceYear:     '',
+      parentName,
+      parentAddress,
+      parentOccupation,
+    });
 
-  setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
-  setShowDropdown(false);
-};
+    // Reset grade data before loading new grades
+    setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
 
+    // Determine the student's current grade level (e.g., "Grade 3")
+    const studentGradeLevel = s.gradeLevel;
+    const gradeRoman = gradeToRoman[studentGradeLevel];
+    if (gradeRoman) {
+      // Pre-fill school and school year for that grade level
+      setGradeField(gradeRoman, 'school', s.section?.name || '');
+      setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
+    }
 
+    // Fetch grades for this student
+    setGradesLoading(true);
+    try {
+      const res = await API.get(`/admin/grades?student_id=${s.id}`);
+      const gradesData = res.data.data || []; // paginated data
+      const newGradeData = { ...gradeData };
+      // Process each grade
+      gradesData.forEach(grade => {
+        const subjectName = grade.subject?.subjectName;
+        const quarter = grade.quarter; // e.g., "Q1"
+        const score = grade.score;
+        const remarks = grade.remarks || '';
+        // Determine the grade level of this grade from the subject's grade level
+        // For now, we'll place grades in the student's current grade level only.
+        if (gradeRoman) {
+          const gData = newGradeData[gradeRoman];
+          if (!gData.subjects[subjectName]) {
+            gData.subjects[subjectName] = {};
+          }
+          gData.subjects[subjectName][quarter.toLowerCase()] = score;
+          if (remarks) gData.subjects[subjectName].remarks = remarks;
+        }
+      });
+      setGradeData(newGradeData);
+    } catch (err) {
+      console.error('Error fetching grades', err);
+    } finally {
+      setGradesLoading(false);
+    }
+
+    setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
+    setShowDropdown(false);
+  };
 
   const [student, setStudent] = useState({
     lastName: '', firstName: '', middleInitial: '',
@@ -160,7 +248,8 @@ export default function Form137() {
   const handlePrint = () => {
 
     const buildGradeTable = (g) => {
-      const subjects = SUBJECTS_BY_GRADE[g];
+      const gradeKey = romanToGrade[g];
+      const subjects = subjectsByGrade[gradeKey] || [];
       const data = gradeData[g];
       const rows = subjects.map(s => {
         const sd = data.subjects[s] || {};
@@ -189,15 +278,10 @@ export default function Form137() {
           </div>
           <table class="grade-table">
             <thead>
-              <tr>
-                <th class="area-col" rowspan="2">LEARNING AREAS</th>
-                <th colspan="4">Periodic Rating</th>
-                <th class="rem-col" rowspan="2">Remarks</th>
+              <tr><th class="area-col" rowspan="2">LEARNING AREAS</th>
+                <th colspan="4">Periodic Rating</th><th class="rem-col" rowspan="2">Remarks</th>
               </tr>
-              <tr>
-                <th class="q-col">1</th><th class="q-col">2</th>
-                <th class="q-col">3</th><th class="q-col">4</th>
-              </tr>
+              <tr><th class="q-col">1</th><th class="q-col">2</th><th class="q-col">3</th><th class="q-col">4</th></tr>
             </thead>
             <tbody>
               ${rows}
@@ -206,14 +290,10 @@ export default function Form137() {
                 <td colspan="4" style="font-weight:bold;">${avg}</td>
                 <td></td>
               </tr>
-              <tr>
-                <td colspan="6" class="eligible-row">
-                  Eligible for Admission to:
-                  <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">
-                    &nbsp;${data.eligible}&nbsp;
-                  </span>
-                </td>
-              </tr>
+              <tr><td colspan="6" class="eligible-row">
+                Eligible for Admission to:
+                <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;${data.eligible}&nbsp;</span>
+              </td></tr>
             </tbody>
           </table>
         </div>`;
@@ -239,11 +319,7 @@ export default function Form137() {
 
       return `<table class="obs-table">
         <thead>
-          <tr>
-            <th class="cv-col" rowspan="3">Core Values</th>
-            <th class="beh-col" rowspan="3">Behavior Statements</th>
-            ${headerCells}
-          </tr>
+          <tr><th class="cv-col" rowspan="3">Core Values</th><th class="beh-col" rowspan="3">Behavior Statements</th>${headerCells}</tr>
           <tr>${grades.map(() => '<th colspan="4" class="hdr-sub">Quarter</th>').join('')}</tr>
           <tr>${qtrHeaders}</tr>
         </thead>
@@ -255,8 +331,12 @@ export default function Form137() {
       const a = attendance[g];
       return `<tr>
         <td>${g}</td>
-        <td>${a.schoolDays||''}</td><td>${a.absent||''}</td><td>${a.cause1||''}</td>
-        <td>${a.tardy||''}</td><td>${a.cause2||''}</td><td>${a.present||''}</td>
+        <td>${a.schoolDays||''}</td>
+        <td>${a.absent||''}</td>
+        <td>${a.cause1||''}</td>
+        <td>${a.tardy||''}</td>
+        <td>${a.cause2||''}</td>
+        <td>${a.present||''}</td>
       </tr>`;
     }).join('');
 
@@ -276,13 +356,10 @@ export default function Form137() {
   .school-address{font-size:8.5pt;}
   .form-title{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;text-decoration:underline;margin:6px 0 8px;letter-spacing:1px;}
 
-  /* ── Student info ── */
   .info-section{border:1px solid #000;padding:6px 8px;margin-bottom:10px;font-size:8.5pt;}
   .info-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
   .info-table td{padding:1px 3px;vertical-align:bottom;font-size:8.5pt;}
   td.info-lbl{font-weight:bold;white-space:nowrap;padding-right:2px;vertical-align:bottom;width:1%;padding-bottom:14px;}
-  /* KEY FIX: display:block so the underline stretches full cell width,
-     text sits ON TOP of the border, sub-label appears BELOW it */
   .info-val{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;text-align:center;}
   .info-vals{display:block;border-bottom:1px solid #000;min-width:30px;min-height:14px;padding:0 3px;margin-bottom:14px;text-align:center;}
   .info-sub{display:block;font-size:6.5pt;color:#333;text-align:center;line-height:1.6;}
@@ -338,97 +415,49 @@ export default function Form137() {
 <div class="form-title">Grade School Permanent Record</div>
 
 <div class="info-section">
-
   <!-- Row 1: Name / Division / LRN -->
   <table class="info-table">
-    <tr>
-      <td class="info-lbl">NAME:</td>
-      <td style="width:22%">
-        <div class="info-val">${student.lastName}</div>
-        <div class="info-sub">LAST</div>
-      </td>
-      <td style="width:18%">
-        <div class="info-val">${student.firstName}</div>
-        <div class="info-sub">FIRST NAME</div>
-      </td>
-      <td style="width:7%">
-        <div class="info-val">${student.middleInitial}</div>
-        <div class="info-sub">M.I.</div>
-      </td>
-      <td class="info-lbl" style="padding-left:8px;">DIVISION:</td>
-      <td style="width:13%"><div class="info-vals">${student.division}</div></td>
-      <td class="info-lbl" style="padding-left:8px;">LRN:</td>
-      <td style="width:13%"><div class="info-vals">${student.lrn}</div></td>
-    </tr>
+     <tr><td class="info-lbl">NAME:</td>
+       <td style="width:22%"><div class="info-val">${student.lastName}</div><div class="info-sub">LAST</div></td>
+       <td style="width:18%"><div class="info-val">${student.firstName}</div><div class="info-sub">FIRST NAME</div></td>
+       <td style="width:7%"><div class="info-val">${student.middleInitial}</div><div class="info-sub">M.I.</div></td>
+       <td class="info-lbl" style="padding-left:8px;">DIVISION:</td>
+       <td style="width:13%"><div class="info-vals">${student.division}</div></td>
+       <td class="info-lbl" style="padding-left:8px;">LRN:</td>
+       <td style="width:13%"><div class="info-vals">${student.lrn}</div></td>
+     </tr>
   </table>
-
   <!-- Row 2: Sex / DOB / Place -->
   <table class="info-table">
-    <tr>
-      <td class="info-lbl">SEX:</td>
-      <td style="width:6%"><div class="info-vals">${student.sex}</div></td>
-      <td class="info-lbl" style="padding-left:8px;">DATE OF BIRTH:</td>
-      <td style="width:6%">
-        <div class="info-val">${student.birthMonth}</div>
-        <div class="info-sub">M</div>
-      </td>
-      <td style="width:6%">
-        <div class="info-val">${student.birthDay}</div>
-        <div class="info-sub">D</div>
-      </td>
-      <td style="width:8%">
-        <div class="info-val">${student.birthYear}</div>
-        <div class="info-sub">Y</div>
-      </td>
-      <td class="info-lbl" style="padding-left:8px;">PLACE:</td>
-      <td style="width:38%">
-        <div class="info-val">${student.placeOfBirth}</div>
-        <div class="info-sub">(BRGY / Town / City / Province)</div>
-      </td>
-    </tr>
+     <tr><td class="info-lbl">SEX:</td>
+       <td style="width:6%"><div class="info-vals">${student.sex}</div></td>
+       <td class="info-lbl" style="padding-left:8px;">DATE OF BIRTH:</td>
+       <td style="width:6%"><div class="info-val">${student.birthMonth}</div><div class="info-sub">M</div></td>
+       <td style="width:6%"><div class="info-val">${student.birthDay}</div><div class="info-sub">D</div></td>
+       <td style="width:8%"><div class="info-val">${student.birthYear}</div><div class="info-sub">Y</div></td>
+       <td class="info-lbl" style="padding-left:8px;">PLACE:</td>
+       <td style="width:38%"><div class="info-val">${student.placeOfBirth}</div><div class="info-sub">(BRGY / Town / City / Province)</div></td>
+     </tr>
   </table>
-
   <!-- Row 3: Date of Entrance -->
   <table class="info-table">
-    <tr>
-      <td class="info-lbl">DATE OF ENTRANCE:</td>
-      <td style="width:6%">
-        <div class="info-val">${student.entranceMonth}</div>
-        <div class="info-sub">M</div>
-      </td>
-      <td style="width:6%">
-        <div class="info-val">${student.entranceDay}</div>
-        <div class="info-sub">D</div>
-      </td>
-      <td style="width:8%">
-        <div class="info-val">${student.entranceYear}</div>
-        <div class="info-sub">Y</div>
-      </td>
-      <td></td>
-    </tr>
+     <tr><td class="info-lbl">DATE OF ENTRANCE:</td>
+       <td style="width:6%"><div class="info-val">${student.entranceMonth}</div><div class="info-sub">M</div></td>
+       <td style="width:6%"><div class="info-val">${student.entranceDay}</div><div class="info-sub">D</div></td>
+       <td style="width:8%"><div class="info-val">${student.entranceYear}</div><div class="info-sub">Y</div></td>
+       <td></td>
+     </tr>
   </table>
-
   <!-- Row 4: Parent / Guardian -->
   <table class="info-table">
-    <tr>
-      <td class="info-lbl">PARENT / GUARDIAN:</td>
-      <td style="width:20%">
-        <div class="info-val">${student.parentName}</div>
-        <div class="info-sub">(Name)</div>
-      </td>
-      <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
-      <td style="width:28%">
-        <div class="info-val">${student.parentAddress}</div>
-        <div class="info-sub">(Address)</div>
-      </td>
-      <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
-      <td style="width:18%">
-        <div class="info-val">${student.parentOccupation}</div>
-        <div class="info-sub">(Occupation)</div>
-      </td>
-    </tr>
+     <tr><td class="info-lbl">PARENT / GUARDIAN:</td>
+       <td style="width:20%"><div class="info-val">${student.parentName}</div><div class="info-sub">(Name)</div></td>
+       <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
+       <td style="width:28%"><div class="info-val">${student.parentAddress}</div><div class="info-sub">(Address)</div></td>
+       <td style="padding:0 4px;vertical-align:middle;width:1%;">/</td>
+       <td style="width:18%"><div class="info-val">${student.parentOccupation}</div><div class="info-sub">(Occupation)</div></td>
+     </tr>
   </table>
-
 </div>
 
 <div class="section-title">Elementary School Progress</div>
@@ -437,18 +466,11 @@ export default function Form137() {
 </div>
 
 <table class="legend-table" style="margin-top:10px;">
-  <tr>
-    <td><strong>Legend: &nbsp;Outstanding (O)</strong></td><td>90–100%</td>
-    <td><strong>Fairly Satisfactory (FS)</strong></td><td>75–79%</td>
-  </tr>
-  <tr>
-    <td><strong>Very Satisfactory (VS)</strong></td><td>85–89%</td>
-    <td><strong>Did Not Meet Expectation (DE)</strong></td><td>74% and below</td>
-  </tr>
-  <tr>
-    <td><strong>Satisfactory (S)</strong></td><td>80–84%</td>
-    <td colspan="2"></td>
-  </tr>
+  <tr><td><strong>Legend: &nbsp;Outstanding (O)</strong></td><td>90–100%</td>
+      <td><strong>Fairly Satisfactory (FS)</strong></td><td>75–79%</td></tr>
+  <tr><td><strong>Very Satisfactory (VS)</strong></td><td>85–89%</td>
+      <td><strong>Did Not Meet Expectation (DE)</strong></td><td>74% and below</td></tr>
+  <tr><td><strong>Satisfactory (S)</strong></td><td>80–84%</td><td colspan="2"></td></tr>
 </table>
 
 <div class="divider"></div>
@@ -465,17 +487,15 @@ ${buildObsTable(['I','II','III'])}
 
 <div class="att-title">Attendance Record</div>
 <table class="att-table">
-  <thead>
-    <tr class="att-hdr">
-      <th style="width:8%;">Grade</th>
-      <th style="width:12%;">No. of School Days</th>
-      <th style="width:14%;">No. of Days Absent</th>
-      <th style="width:22%;">Cause</th>
-      <th style="width:12%;">No. of Times Tardy</th>
-      <th style="width:22%;">Cause</th>
-      <th style="width:12%;">No. of Days Present</th>
-    </tr>
-  </thead>
+  <thead><tr class="att-hdr">
+    <th style="width:8%;">Grade</th>
+    <th style="width:12%;">No. of School Days</th>
+    <th style="width:14%;">No. of Days Absent</th>
+    <th style="width:22%;">Cause</th>
+    <th style="width:12%;">No. of Times Tardy</th>
+    <th style="width:22%;">Cause</th>
+    <th style="width:12%;">No. of Days Present</th>
+  </tr></thead>
   <tbody>${attRows}</tbody>
 </table>
 
@@ -520,6 +540,11 @@ ${buildObsTable(['I','II','III'])}
   ];
 
   return (
+    <div className="dashboard-layout">
+  <SideBar  />
+  <div className="main-content">
+    <TopBar />
+    <div className="content-scroll-area">
     <div style={styles.page}>
 
       <div style={styles.pageHeader}>
@@ -551,7 +576,7 @@ ${buildObsTable(['I','II','III'])}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Student Information</h2>
 
-            {/* ── Search bar ── */}
+            {/* Search bar */}
             <div style={styles.searchWrapper}>
               <div style={styles.searchBox}>
                 <span style={styles.searchIcon}>🔍</span>
@@ -571,12 +596,9 @@ ${buildObsTable(['I','II','III'])}
                   >✕</button>
                 )}
               </div>
-              
               {studentsLoading && searchQuery ? (
                 <div style={styles.dropdown}>
-                  <div style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>
-                    Loading students...
-                  </div>
+                  <div style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>Loading students...</div>
                 </div>
               ) : showDropdown && searchResults.length > 0 && (
                 <div style={styles.dropdown}>
@@ -641,58 +663,66 @@ ${buildObsTable(['I','II','III'])}
                 </button>
               ))}
             </div>
-            {(() => {
-              const g = activeGrade;
-              const data = gradeData[g];
-              return (
-                <div style={styles.gradePanel}>
-                  <div style={styles.row}>
-                    <Field label="School Name"             value={data.school}     onChange={v => setGradeField(g, 'school', v)}     className="flex-3" />
-                    <Field label="School Year"             value={data.schoolYear} onChange={v => setGradeField(g, 'schoolYear', v)} className="flex-1" />
-                    <Field label="Eligible for Admission to" value={data.eligible} onChange={v => setGradeField(g, 'eligible', v)}   className="flex-2" />
-                  </div>
-                  <table style={styles.subjectTable}>
-                    <thead>
-                      <tr>
-                        <th style={styles.th}>Learning Area</th>
-                        <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
-                        <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
-                        <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
-                        <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
-                        <th style={{ ...styles.th, width: '120px' }}>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {SUBJECTS_BY_GRADE[g].map(s => {
-                        const sd = data.subjects[s] || {};
-                        return (
-                          <tr key={s} style={isMapehSub(s) ? styles.mapehRow : {}}>
-                            <td style={styles.td}>
-                              {isMapehSub(s) && <span style={{ color: '#aaa', marginRight: 4 }}>↳</span>}
-                              {s}
-                            </td>
-                            {['q1','q2','q3','q4'].map(q => (
-                              <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                                <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, s, q, v)} />
+            {subjectsLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Loading subjects...</div>
+            ) : gradesLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>Loading grades...</div>
+            ) : (
+              (() => {
+                const g = activeGrade;
+                const data = gradeData[g];
+                const gradeKey = romanToGrade[g];
+                const subjectsForGrade = subjectsByGrade[gradeKey] || [];
+                return (
+                  <div style={styles.gradePanel}>
+                    <div style={styles.row}>
+                      <Field label="School Name"             value={data.school}     onChange={v => setGradeField(g, 'school', v)}     className="flex-3" />
+                      <Field label="School Year"             value={data.schoolYear} onChange={v => setGradeField(g, 'schoolYear', v)} className="flex-1" />
+                      <Field label="Eligible for Admission to" value={data.eligible} onChange={v => setGradeField(g, 'eligible', v)}   className="flex-2" />
+                    </div>
+                    <table style={styles.subjectTable}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>Learning Area</th>
+                          <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
+                          <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
+                          <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
+                          <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
+                          <th style={{ ...styles.th, width: '120px' }}>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjectsForGrade.map(s => {
+                          const sd = data.subjects[s] || {};
+                          return (
+                            <tr key={s} style={isMapehSub(s) ? styles.mapehRow : {}}>
+                              <td style={styles.td}>
+                                {isMapehSub(s) && <span style={{ color: '#aaa', marginRight: 4 }}>↳</span>}
+                                {s}
                               </td>
-                            ))}
-                            <td style={styles.td}>
-                              <input
-                                type="text"
-                                value={sd.remarks || ''}
-                                onChange={e => setSubjectRemarks(g, s, e.target.value)}
-                                style={styles.remarksInput}
-                                placeholder="—"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
+                              {['q1','q2','q3','q4'].map(q => (
+                                <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
+                                  <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, s, q, v)} />
+                                </td>
+                              ))}
+                              <td style={styles.td}>
+                                <input
+                                  type="text"
+                                  value={sd.remarks || ''}
+                                  onChange={e => setSubjectRemarks(g, s, e.target.value)}
+                                  style={styles.remarksInput}
+                                  placeholder="—"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()
+            )}
           </div>
         )}
 
@@ -785,6 +815,9 @@ ${buildObsTable(['I','II','III'])}
 
       </div>
     </div>
+    </div>
+  </div>
+  </div>
   );
 }
 

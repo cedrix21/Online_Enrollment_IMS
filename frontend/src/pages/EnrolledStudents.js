@@ -29,8 +29,17 @@ const EnrolledStudents = () => {
     return years;
   };
 
-  const pastSchoolYears = getPastSchoolYears();
+  function getNextSchoolYear() {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    const currentStart = month >= 6 ? year : year - 1;
+    return `${currentStart + 1}-${currentStart + 2}`;
+  }
 
+
+  
+  const pastSchoolYears = getPastSchoolYears();
+  const nextSchoolYear = getNextSchoolYear();
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -187,12 +196,29 @@ const EnrolledStudents = () => {
     return levels.sort((a, b) => (order[a] || 99) - (order[b] || 99));
   }, [students]);
 
-  // All available school years (from records + past years list)
-  const schoolYears = useMemo(() => {
-    const yearsFromRecords = [...new Set(students.map(s => s.schoolYear))].filter(Boolean);
-    const allYears = new Set([...yearsFromRecords, ...pastSchoolYears, currentSchoolYear]);
-    return Array.from(allYears).sort().reverse(); // most recent first
-  }, [students, pastSchoolYears, currentSchoolYear]);
+ 
+    const schoolYears = useMemo(() => {
+  // Collect years from records (trim each)
+  const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
+  
+  // Trim static lists
+  const trimmedPastYears = pastSchoolYears.map(y => y.trim());
+  const trimmedCurrent = currentSchoolYear.trim();
+  const trimmedNext = nextSchoolYear.trim();
+
+  // Combine and deduplicate using a Set
+  const allYears = new Set([
+    ...yearsFromRecords,
+    ...trimmedPastYears,
+    trimmedCurrent,
+    trimmedNext,
+  ]);
+
+  // Convert to array, sort descending (most recent first)
+  return Array.from(allYears).sort().reverse();
+}, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
+
+
 
   // Filtered and sorted students (already scoped to selected school year, but also by grade and search)
   const filteredStudents = useMemo(() => {
@@ -421,7 +447,7 @@ const EnrolledStudents = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label>LRN (Optional)</label>
+                <label>LRN </label>
                 <input
                   type="text"
                   name="lrn"
@@ -476,7 +502,7 @@ const EnrolledStudents = () => {
               <label>Student: {selectedStudent.lastName}, {selectedStudent.firstName}</label>
             </div>
             <div className="form-group">
-              <label>LRN (Optional)</label>
+              <label>LRN </label>
               <input
                 type="text"
                 value={lrnInput}

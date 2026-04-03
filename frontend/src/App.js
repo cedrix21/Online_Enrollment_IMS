@@ -58,6 +58,9 @@ function App() {
         {/* Public route */}
         <Route path="/login" element={<Login />} />
 
+        {/* Redirect root to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
         {/* Protected routes */}
         <Route
           path="/dashboard"
@@ -148,8 +151,7 @@ function App() {
           }
         />
 
-        {/* Catch-all route for any other invalid URLs */}
-        <Route path="*" element={<NotFound />} />
+        
 
         <Route
           path="/admin/billing"
@@ -194,7 +196,8 @@ function App() {
           }
         />
 
-
+          {/* Catch-all route for any other invalid URLs */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

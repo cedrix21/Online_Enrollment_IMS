@@ -10,7 +10,7 @@ class TuitionFeeSeeder extends Seeder
 {
     public function run(): void
     {
-        $schoolYear = '2026-2027';
+        $schoolYear = '2025-2026';
 
         $data = [
             'Nursery' => [

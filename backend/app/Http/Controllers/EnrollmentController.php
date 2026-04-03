@@ -80,21 +80,39 @@ class EnrollmentController extends Controller
 
 
     public function index()
-    {
-        try {
-            $enrollments = Enrollment::with(
+{
+    try {
+        $enrollments = Enrollment::with([
             'siblings', 
             'payments',
             'student', 
-            'student.section')->orderBy('created_at', 'desc')->get();
-            return response()->json($enrollments, 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error fetching enrollments',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+            'student.section'
+        ])->orderBy('created_at', 'desc')->get();
+
+        // TRANSFORM the data to include full URLs for receipts
+        $enrollments->transform(function ($enrollment) {
+            $enrollment->payments->transform(function ($payment) {
+                if ($payment->receipt_path) {
+                    // Check if it's already a full URL (like from Supabase)
+                    if (!filter_var($payment->receipt_path, FILTER_VALIDATE_URL)) {
+                        // If it's a local path, clean it and wrap it in asset()
+                        $cleanPath = ltrim(str_replace('public/', '', $payment->receipt_path), '/');
+                        $payment->receipt_path = asset('storage/' . $cleanPath);
+                    }
+                }
+                return $payment;
+            });
+            return $enrollment;
+        });
+
+        return response()->json($enrollments, 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error fetching enrollments',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function submit(Request $request)
     {
@@ -230,7 +248,7 @@ class EnrollmentController extends Controller
     {
         $month = (int) date('n');
         $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}–" . ($year + 1) : ($year - 1) . "–{$year}";
+        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
 
