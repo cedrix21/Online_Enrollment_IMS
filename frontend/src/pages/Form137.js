@@ -61,29 +61,32 @@ const isMapehSub = (s) => MAPEH_SUBS.includes(s);
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-const Field = ({ label, value, onChange, placeholder = '', className = '', type = 'text', small = false }) => (
-  <div className={`field-group ${className}`}>
-    {label && <label className="field-label">{label}</label>}
+const Field = ({ label, value, onChange, placeholder = '', className = '', type = 'text', small = false, style = {} }) => (
+  <div className={`field-group ${className}`} style={{ display: 'flex', flexDirection: 'column', ...style }}>
+    {label && <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '4px', display: 'block' }}>{label}</label>}
     <input
       type={type}
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`field-input ${small ? 'field-input--small' : ''}`}
+      style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #b8860b', borderRadius: '6px', fontSize: '0.875rem', outline: 'none', background: '#fff', color: '#1e293b', boxSizing: 'border-box' }}
     />
   </div>
 );
 
-const GradeRatingInput = ({ value, onChange }) => (
-  <input
-    type="text"
-    maxLength={3}
-    value={value || ''}
-    onChange={e => onChange(e.target.value)}
-    className="rating-input"
-    placeholder="—"
-  />
-);
+const GradeRatingInput = ({ value, onChange }) => {
+  const displayValue = value ? Math.round(parseFloat(value)) : '';
+  return (
+    <input
+      type="text"
+      maxLength={3}
+      value={displayValue}
+      onChange={e => onChange(e.target.value)}
+      className="rating-input"
+      placeholder="—"
+    />
+  );
+};
 
 // ─── main component ───────────────────────────────────────────────────────────
 
@@ -176,10 +179,16 @@ export default function Form137() {
     // Determine the student's current grade level (e.g., "Grade 3")
     const studentGradeLevel = s.gradeLevel;
     const gradeRoman = gradeToRoman[studentGradeLevel];
+    
+    console.log(`👤 Student selected: ${s.firstName} ${s.lastName}`);
+    console.log(`📌 Grade level: ${studentGradeLevel} → Roman: ${gradeRoman}`);
+    
     if (gradeRoman) {
       // Pre-fill school and school year for that grade level
       setGradeField(gradeRoman, 'school', s.section?.name || '');
       setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
+    } else {
+      console.warn(`⚠️ Could not map student grade level "${studentGradeLevel}" to Roman numeral`);
     }
 
     // Fetch grades for this student
@@ -187,27 +196,48 @@ export default function Form137() {
     try {
       const res = await API.get(`/admin/grades?student_id=${s.id}`);
       const gradesData = res.data.data || []; // paginated data
-      const newGradeData = { ...gradeData };
-      // Process each grade
+      
+      // Deep copy the gradeData structure to avoid mutations
+      const newGradeData = Object.fromEntries(
+        GRADES.map(g => [g, {
+          school: gradeData[g].school,
+          schoolYear: gradeData[g].schoolYear,
+          subjects: { ...gradeData[g].subjects },
+          eligible: gradeData[g].eligible,
+        }])
+      );
+
+      // Process each grade returned from API
       gradesData.forEach(grade => {
         const subjectName = grade.subject?.subjectName;
-        const quarter = grade.quarter; // e.g., "Q1"
         const score = grade.score;
         const remarks = grade.remarks || '';
-        // Determine the grade level of this grade from the subject's grade level
-        // For now, we'll place grades in the student's current grade level only.
-        if (gradeRoman) {
+        
+        // Normalize quarter format: handle "Q1", "1", "quarter1", etc.
+        let quarter = grade.quarter ? String(grade.quarter).toLowerCase() : '';
+        if (quarter === '1' || quarter === 'quarter1' || quarter === 'q1') quarter = 'q1';
+        else if (quarter === '2' || quarter === 'quarter2' || quarter === 'q2') quarter = 'q2';
+        else if (quarter === '3' || quarter === 'quarter3' || quarter === 'q3') quarter = 'q3';
+        else if (quarter === '4' || quarter === 'quarter4' || quarter === 'q4') quarter = 'q4';
+        
+        // Place grade in the student's current grade level
+        if (gradeRoman && subjectName && quarter) {
           const gData = newGradeData[gradeRoman];
           if (!gData.subjects[subjectName]) {
-            gData.subjects[subjectName] = {};
+            gData.subjects[subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
           }
-          gData.subjects[subjectName][quarter.toLowerCase()] = score;
+          gData.subjects[subjectName][quarter] = score;
           if (remarks) gData.subjects[subjectName].remarks = remarks;
+          console.log(`📊 Loaded grade: ${subjectName} ${quarter}=${score}`);
+        } else {
+          console.warn(`⚠️ Skipped grade: missing subject, quarter, or grade level`, { subjectName, quarter, gradeRoman });
         }
       });
+      
+      console.log('✅ Grades loaded successfully:', newGradeData);
       setGradeData(newGradeData);
     } catch (err) {
-      console.error('Error fetching grades', err);
+      console.error('❌ Error fetching grades:', err);
     } finally {
       setGradesLoading(false);
     }
@@ -254,9 +284,13 @@ export default function Form137() {
       const rows = subjects.map(s => {
         const sd = data.subjects[s] || {};
         const indent = isMapehSub(s) ? '&nbsp;&nbsp;' : '';
+        const q1 = sd.q1 ? Math.round(parseFloat(sd.q1)) : '';
+        const q2 = sd.q2 ? Math.round(parseFloat(sd.q2)) : '';
+        const q3 = sd.q3 ? Math.round(parseFloat(sd.q3)) : '';
+        const q4 = sd.q4 ? Math.round(parseFloat(sd.q4)) : '';
         return `<tr>
           <td class="area-col">${indent}${s}</td>
-          <td>${sd.q1||''}</td><td>${sd.q2||''}</td><td>${sd.q3||''}</td><td>${sd.q4||''}</td>
+          <td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>
           <td>${sd.remarks||''}</td>
         </tr>`;
       }).join('');
@@ -265,7 +299,7 @@ export default function Form137() {
         const sd = gradeData[g].subjects[s] || {};
         return [sd.q1, sd.q2, sd.q3, sd.q4].filter(v => v && !isNaN(parseFloat(v))).map(parseFloat);
       });
-      const avg = allRatings.length ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2) : '';
+      const avg = allRatings.length ? Math.round(allRatings.reduce((a, b) => a + b, 0) / allRatings.length) : '';
 
       return `
         <div class="grade-block">
@@ -309,7 +343,11 @@ export default function Form137() {
       const bodyRows = CORE_VALUES.map(cv => {
         const cells = grades.map(g => {
           const d = observed[g][cv.key] || {};
-          return `<td>${d.q1||''}</td><td>${d.q2||''}</td><td>${d.q3||''}</td><td>${d.q4||''}</td>`;
+          const q1 = d.q1 ? Math.round(parseFloat(d.q1)) : '';
+          const q2 = d.q2 ? Math.round(parseFloat(d.q2)) : '';
+          const q3 = d.q3 ? Math.round(parseFloat(d.q3)) : '';
+          const q4 = d.q4 ? Math.round(parseFloat(d.q4)) : '';
+          return `<td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>`;
         }).join('');
         const rowspan    = cv.key === 'makabansa1' ? ' rowspan="2"' : '';
         const labelCell  = cv.key === 'makabansa2' ? '' :
@@ -627,23 +665,41 @@ ${buildObsTable(['I','II','III'])}
               )}
             </div>
 
-            <div style={styles.gridContainer}>
-              <Field label="Last Name"          value={student.lastName}          onChange={v => setStudentField('lastName', v)} />
-              <Field label="First Name"         value={student.firstName}         onChange={v => setStudentField('firstName', v)} />
-              <Field label="M.I."               value={student.middleInitial}     onChange={v => setStudentField('middleInitial', v)} />
-              <Field label="Division"           value={student.division}          onChange={v => setStudentField('division', v)} />
-              <Field label="LRN"                value={student.lrn}               onChange={v => setStudentField('lrn', v)} />
-              <Field label="Sex"                value={student.sex}               onChange={v => setStudentField('sex', v)} />
-              <Field label="Birth Month"        value={student.birthMonth}        onChange={v => setStudentField('birthMonth', v)} />
-              <Field label="Birth Day"          value={student.birthDay}          onChange={v => setStudentField('birthDay', v)} />
-              <Field label="Birth Year"         value={student.birthYear}         onChange={v => setStudentField('birthYear', v)} />
-              <Field label="Place of Birth"     value={student.placeOfBirth}      onChange={v => setStudentField('placeOfBirth', v)} style={{ gridColumn: 'span 3' }} />
-              <Field label="Entrance Month"     value={student.entranceMonth}     onChange={v => setStudentField('entranceMonth', v)} />
-              <Field label="Entrance Day"       value={student.entranceDay}       onChange={v => setStudentField('entranceDay', v)} />
-              <Field label="Entrance Year"      value={student.entranceYear}      onChange={v => setStudentField('entranceYear', v)} />
-              <Field label="Parent Name"        value={student.parentName}        onChange={v => setStudentField('parentName', v)} />
-              <Field label="Parent Address"     value={student.parentAddress}     onChange={v => setStudentField('parentAddress', v)} />
-              <Field label="Parent Occupation"  value={student.parentOccupation}  onChange={v => setStudentField('parentOccupation', v)} />
+            <div style={styles.fieldRows}>
+              {/* Row 1: Name */}
+              <div style={styles.fieldRow}>
+                <Field label="Last Name"    value={student.lastName}       onChange={v => setStudentField('lastName', v)}       style={{ flex: 3 }} />
+                <Field label="First Name"   value={student.firstName}      onChange={v => setStudentField('firstName', v)}      style={{ flex: 3 }} />
+                <Field label="M.I."         value={student.middleInitial}  onChange={v => setStudentField('middleInitial', v)}  style={{ flex: 1 }} />
+              </div>
+              {/* Row 2: Division / LRN / Sex */}
+              <div style={styles.fieldRow}>
+                <Field label="Division"     value={student.division}       onChange={v => setStudentField('division', v)}       style={{ flex: 2 }} />
+                <Field label="LRN"          value={student.lrn}            onChange={v => setStudentField('lrn', v)}            style={{ flex: 2 }} />
+                <Field label="Sex"          value={student.sex}            onChange={v => setStudentField('sex', v)}            style={{ flex: 1 }} />
+              </div>
+              {/* Row 3: Date of Birth */}
+              <div style={styles.fieldRow}>
+                <Field label="Birth Month"  value={student.birthMonth}     onChange={v => setStudentField('birthMonth', v)}     style={{ flex: 1 }} />
+                <Field label="Birth Day"    value={student.birthDay}       onChange={v => setStudentField('birthDay', v)}       style={{ flex: 1 }} />
+                <Field label="Birth Year"   value={student.birthYear}      onChange={v => setStudentField('birthYear', v)}      style={{ flex: 1 }} />
+              </div>
+              {/* Row 4: Place of Birth (full width) */}
+              <div style={styles.fieldRow}>
+                <Field label="Place of Birth" value={student.placeOfBirth} onChange={v => setStudentField('placeOfBirth', v)}  style={{ flex: 1 }} />
+              </div>
+              {/* Row 5: Date of Entrance */}
+              <div style={styles.fieldRow}>
+                <Field label="Entrance Month" value={student.entranceMonth} onChange={v => setStudentField('entranceMonth', v)} style={{ flex: 1 }} />
+                <Field label="Entrance Day"   value={student.entranceDay}   onChange={v => setStudentField('entranceDay', v)}   style={{ flex: 1 }} />
+                <Field label="Entrance Year"  value={student.entranceYear}  onChange={v => setStudentField('entranceYear', v)}  style={{ flex: 1 }} />
+              </div>
+              {/* Row 6: Parent / Guardian */}
+              <div style={styles.fieldRow}>
+                <Field label="Parent / Guardian Name"    value={student.parentName}       onChange={v => setStudentField('parentName', v)}       style={{ flex: 2 }} />
+                <Field label="Parent Address"            value={student.parentAddress}    onChange={v => setStudentField('parentAddress', v)}    style={{ flex: 3 }} />
+                <Field label="Parent Occupation"         value={student.parentOccupation} onChange={v => setStudentField('parentOccupation', v)} style={{ flex: 2 }} />
+              </div>
             </div>
           </div>
         )}
@@ -985,12 +1041,6 @@ const styles = {
     outline: 'none',
     background: 'transparent',
   },
-  gridContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: '16px',
-    marginTop: '8px',
-  },
   searchWrapper: {
     position: 'relative',
     marginBottom: '20px',
@@ -999,7 +1049,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     background: '#f8fafc',
-    border: '1.5px solid #e2e8f0',
+    border: '1.5px solid #b8860b',
     borderRadius: '10px',
     padding: '0 12px',
     gap: '8px',
@@ -1056,5 +1106,16 @@ const styles = {
     fontSize: '0.78rem',
     color: '#94a3b8',
     marginTop: '2px',
+  },
+  fieldRows: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '8px',
+  },
+  fieldRow: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
   },
 };

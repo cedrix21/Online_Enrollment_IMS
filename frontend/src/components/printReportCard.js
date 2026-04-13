@@ -81,32 +81,36 @@ const printReportCard = ({
     /* ── Print: A4 landscape ──────────────────────────── */
     @page {
       size: A4 landscape;
-      margin: 10mm 12mm;
+      margin: 0mm;
+      padding: 0;
     }
     @media print {
-      body { background: #fff; }
+      body { 
+        background: #fff;
+        margin: 0;
+        padding: 0;
+      }
     }
 
     /* ── Page wrapper ─────────────────────────────────── */
     .page {
       width: 277mm;   /* A4 landscape: 297mm - 20mm margins */
       min-height: 190mm;
-      margin: 0 auto;
+      margin: 10mm 12mm;
       display: flex;
       gap: 10mm;
     }
 
     /* ── Columns ──────────────────────────────────────── */
     .left-col {
-      width: 42%;
+      width: 50%;
       flex-shrink: 0;
-      border-right: 1px dashed #999;
       padding-right: 10mm;
       display: flex;
       flex-direction: column;
     }
     .right-col {
-      flex: 1;
+      width: 50%;
       display: flex;
       flex-direction: column;
     }

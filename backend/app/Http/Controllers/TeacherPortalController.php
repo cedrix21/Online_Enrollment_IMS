@@ -63,10 +63,10 @@ class TeacherPortalController extends Controller
                         ->get()
                     : [],
                 'subjects' => !empty($gradeLevels)
-                    ? Subject::select('id', 'subjectName', 'subjectCode', 'gradeLevel')
-                        ->whereIn('gradeLevel', $gradeLevels)
-                        ->orderBy('gradeLevel')
-                        ->orderBy('subjectName')
+                    ? $teacher->subjects()
+                        ->select('subjects.id', 'subjects.subjectName', 'subjects.subjectCode', 'subjects.gradeLevel')
+                        ->orderBy('subjects.gradeLevel')
+                        ->orderBy('subjects.subjectName')
                         ->get()
                     : [],
                 'grades' => !empty($gradeLevels)
