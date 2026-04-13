@@ -4,16 +4,13 @@ import "./EvaluationManagement.css";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import { useNavigate } from "react-router-dom";
-import { FaSyncAlt, FaSearch, FaPrint, FaFilePdf } from "react-icons/fa";
+import { FaSyncAlt, FaSearch, FaPrint } from "react-icons/fa";
 import printReportCard from "../components/printReportCard";
 
-// GPA calculation helper (kept outside)
+// GPA calculation – simple average of all grades
 const calculateGPA = (grades) => {
   if (!grades || grades.length === 0) return "N/A";
-  
-  let sum = 0;
-  let count = 0;
-  
+  let sum = 0, count = 0;
   grades.forEach(g => {
     const score = parseFloat(g.score);
     if (!isNaN(score)) {
@@ -21,9 +18,31 @@ const calculateGPA = (grades) => {
       count++;
     }
   });
-  
-  if (count === 0) return "N/A";
-  return (sum / count).toFixed(2);
+  return count === 0 ? "N/A" : (sum / count).toFixed(2);
+};
+
+// Helper to check if a subject is a MAPEH component
+const isMapehComponent = (subjectCode) => {
+  const code = subjectCode?.toUpperCase() || "";
+  return code.includes("MUSIC") || code.includes("ARTS") || code.includes("PE") || code.includes("HEALTH");
+};
+
+// Extract base component name from subject code (e.g., "G4-MUSIC" -> "Music")
+const getComponentName = (subjectCode) => {
+  const code = subjectCode?.toUpperCase() || "";
+  if (code.includes("MUSIC")) return "Music";
+  if (code.includes("ARTS")) return "Arts";
+  if (code.includes("PE")) return "Physical Education";
+  if (code.includes("HEALTH")) return "Health";
+  return subjectCode;
+};
+
+// MAPEH component sort order
+const mapehComponentOrder = ['MUSIC', 'ARTS', 'PHYSICAL EDUCATION', 'HEALTH'];
+const getMapehSortIndex = (subjectCode) => {
+  const code = subjectCode?.toUpperCase() || '';
+  const index = mapehComponentOrder.findIndex(m => code.includes(m));
+  return index >= 0 ? index : mapehComponentOrder.length;
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -49,17 +68,11 @@ const GradeLevelFilter = memo(({ gradeLevels, selected, onSelect }) => (
 const StudentCard = memo(({ student, onClick }) => (
   <div className="student-card" onClick={onClick}>
     <div className="student-card-header">
-      <h4>
-        {student.firstName} {student.lastName}
-      </h4>
+      <h4>{student.firstName} {student.lastName}</h4>
     </div>
     <div className="student-card-body">
-      <p>
-        <strong>ID:</strong> {student.studentId || "N/A"}
-      </p>
-      <p>
-        <strong>Section:</strong> {student.section?.name || "N/A"}
-      </p>
+      <p><strong>ID:</strong> {student.studentId || "N/A"}</p>
+      <p><strong>Section:</strong> {student.section?.name || "N/A"}</p>
       <p className="click-hint">Click to view grades</p>
     </div>
   </div>
@@ -71,16 +84,10 @@ const StudentsList = memo(({ students, onSelectStudent }) => (
     <div className="students-grid">
       {students.length > 0 ? (
         students.map((student) => (
-          <StudentCard
-            key={student.id}
-            student={student}
-            onClick={() => onSelectStudent(student)}
-          />
+          <StudentCard key={student.id} student={student} onClick={() => onSelectStudent(student)} />
         ))
       ) : (
-        <div className="no-students">
-          <p>No students found.</p>
-        </div>
+        <div className="no-students"><p>No students found.</p></div>
       )}
     </div>
   </div>
@@ -99,35 +106,68 @@ const GradeModal = memo(({
   editData,
   onEditChange,
   onPrintReportCard,
-  onPrintForm137
 }) => {
   const [showGPA, setShowGPA] = useState(false);
+  const [expandedMapeh, setExpandedMapeh] = useState(false);
   const currentGrades = grades[quarter] || [];
-  
-  const calculateGPA = useCallback((gradeArray) => {
-    if (!gradeArray || gradeArray.length === 0) return "N/A";
-    let sum = 0, count = 0;
-    gradeArray.forEach(g => {
-      const score = parseFloat(g.score);
-      if (!isNaN(score)) {
-        sum += score;
-        count++;
+
+  // Group grades: separate MAPEH components from regular subjects
+  const { regularSubjects, mapehComponents } = useMemo(() => {
+    const regular = [];
+    const components = [];
+    currentGrades.forEach(grade => {
+      if (isMapehComponent(grade.subject?.subjectCode)) {
+        components.push(grade);
+      } else {
+        regular.push(grade);
       }
     });
-    return count === 0 ? "N/A" : (sum / count).toFixed(2);
-  }, []);
+    // Sort MAPEH components by custom order: Music, Arts, PE, Health
+    components.sort((a, b) => {
+      const indexA = getMapehSortIndex(a.subject?.subjectCode);
+      const indexB = getMapehSortIndex(b.subject?.subjectCode);
+      return indexA - indexB;
+    });
+    return { regularSubjects: regular, mapehComponents: components };
+  }, [currentGrades]);
+
+  // Calculate MAPEH average from component scores (only those with scores)
+  const mapehAverage = useMemo(() => {
+    const scores = mapehComponents
+      .map(g => parseFloat(g.score))
+      .filter(s => !isNaN(s));
+    if (scores.length === 0) return null;
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }, [mapehComponents]);
+
+  // Calculate consolidated remark for MAPEH
+  const mapehRemark = useMemo(() => {
+    const remarks = mapehComponents.map(g => g.remarks?.toLowerCase() || '');
+    // Check if any component remark contains "pass" or "passed"
+    if (remarks.some(r => r.includes('pass') || r.includes('passed'))) {
+      return 'Passed';
+    }
+    return ''; // or 'Pending' / 'Incomplete'
+  }, [mapehComponents]);
 
   const quarterGPA = calculateGPA(currentGrades);
   const allGrades = useMemo(() => Object.values(grades).flat(), [grades]);
   const overallGPA = calculateGPA(allGrades);
 
+  // Synthetic grade object for MAPEH row
+  const mapehSyntheticGrade = mapehComponents.length > 0 ? {
+    id: 'mapeh-synthetic',
+    subject: { subjectName: 'MAPEH', subjectCode: 'MAPEH' },
+    score: mapehAverage,
+    teacher: { firstName: 'Multiple', lastName: 'Teachers' },
+    remarks: mapehRemark,
+  } : null;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="grade-management-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>
-            Grade Management: {student.firstName} {student.lastName}
-          </h2>
+          <h2>Grade Management: {student.firstName} {student.lastName}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -149,107 +189,131 @@ const GradeModal = memo(({
         <div className="modal-grades-table">
           <table className="grades-table">
             <thead>
-              <tr>
-                <th>Subject</th>
-                <th>Teacher</th>
-                <th>Score</th>
-                <th>Remarks</th>
-                <th>Action</th>
-              </tr>
+              <tr><th>Subject</th><th>Teacher</th><th>Score</th><th>Remarks</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {currentGrades.length > 0 ? (
-                currentGrades.map((grade) => (
-                  <tr key={grade.id} className={editingId === grade.id ? "editing" : ""}>
-                    <td>{grade.subject?.subjectName}</td>
+              {/* Regular subjects */}
+              {regularSubjects.map((grade) => (
+                <tr key={grade.id} className={editingId === grade.id ? "editing" : ""}>
+                  <td>{grade.subject?.subjectName}</td>
+                  <td>{grade.teacher ? `${grade.teacher.firstName} ${grade.teacher.lastName}` : "N/A"}</td>
+                  <td className="center">
+                    {editingId === grade.id ? (
+                      <input type="number" min="0" max="100" value={editData.score} onChange={(e) => onEditChange("score", e.target.value)} className="edit-input" />
+                    ) : (
+                      <span className={`score-badge ${getScoreBadgeClass(grade.score)}`}>{grade.score}</span>
+                    )}
+                  </td>
+                  <td>
+                    {editingId === grade.id ? (
+                      <input type="text" value={editData.remarks} onChange={(e) => onEditChange("remarks", e.target.value)} className="edit-input" placeholder="Remarks" />
+                    ) : (
+                      <span className="remarks-text">{grade.remarks || "-"}</span>
+                    )}
+                  </td>
+                  <td className="action-cell">
+                    {editingId === grade.id ? (
+                      <div className="action-buttons"><button className="btn-save" onClick={() => onSave(grade.id)}>Save</button><button className="btn-cancel" onClick={onCancel}>Cancel</button></div>
+                    ) : (
+                      <button className="btn-edit" onClick={() => onEditStart(grade)}>Edit</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+
+              {/* MAPEH group */}
+              {mapehComponents.length > 0 && (
+                <>
+                  {/* Main MAPEH row */}
+                  <tr className="mapeh-main-row">
                     <td>
-                      {grade.teacher
-                        ? `${grade.teacher.firstName} ${grade.teacher.lastName}`
-                        : grade.subject?.teacher
-                        ? `${grade.subject.teacher.firstName} ${grade.subject.teacher.lastName}`
-                        : "N/A"}
+                      <div className="subject-name-container">
+                        <span>MAPEH</span>
+                        <button className="mapeh-expand-btn" onClick={() => setExpandedMapeh(!expandedMapeh)} title={expandedMapeh ? "Collapse" : "Expand"}>
+                          {expandedMapeh ? "▼" : "▶"}
+                        </button>
+                      </div>
+                      {!expandedMapeh && (
+                        <div className="mapeh-components-label">
+                          {mapehComponents.map(g => getComponentName(g.subject?.subjectCode)).join(" • ")}
+                        </div>
+                      )}
                     </td>
+                    <td>Multiple Teachers</td>
                     <td className="center">
-                      {editingId === grade.id ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={editData.score}
-                          onChange={(e) => onEditChange("score", e.target.value)}
-                          className="edit-input"
-                        />
-                      ) : (
-                        <span className={`score-badge ${getScoreBadgeClass(grade.score)}`}>
-                          {grade.score}
-                        </span>
-                      )}
+                      <span className={`score-badge ${getScoreBadgeClass(mapehAverage)}`}>
+                        {mapehAverage !== null ? mapehAverage : "--"}
+                      </span>
                     </td>
-                    <td>
-                      {editingId === grade.id ? (
-                        <input
-                          type="text"
-                          value={editData.remarks}
-                          onChange={(e) => onEditChange("remarks", e.target.value)}
-                          className="edit-input"
-                          placeholder="Remarks"
-                        />
-                      ) : (
-                        <span className="remarks-text">{grade.remarks || "-"}</span>
-                      )}
+                    <td className="remarks-text">
+                      {mapehRemark || "-"}
                     </td>
                     <td className="action-cell">
-                      {editingId === grade.id ? (
-                        <div className="action-buttons">
-                          <button className="btn-save" onClick={() => onSave(grade.id)}>Save</button>
-                          <button className="btn-cancel" onClick={onCancel}>Cancel</button>
-                        </div>
-                      ) : (
-                        <button className="btn-edit" onClick={() => onEditStart(grade)}>Edit</button>
-                      )}
+                      <button className="btn-edit-disabled" disabled title="Edit components individually">Group</button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr className="no-data">
-                  <td colSpan="5">No grades for {quarter}</td>
-                </tr>
+
+                  {/* Expanded component rows */}
+                  {expandedMapeh && mapehComponents.map((grade) => (
+                    <tr key={grade.id} className="mapeh-component-row">
+                      <td className="mapeh-component-indent">
+                        <div className="component-name">{getComponentName(grade.subject?.subjectCode)}</div>
+                      </td>
+                      <td>{grade.teacher ? `${grade.teacher.firstName} ${grade.teacher.lastName}` : "N/A"}</td>
+                      <td className="center">
+                        {editingId === grade.id ? (
+                          <input type="number" min="0" max="100" value={editData.score} onChange={(e) => onEditChange("score", e.target.value)} className="edit-input" />
+                        ) : (
+                          <span className={`score-badge ${getScoreBadgeClass(grade.score)}`}>{grade.score}</span>
+                        )}
+                       </td>
+                      <td>
+                        {editingId === grade.id ? (
+                          <input type="text" value={editData.remarks} onChange={(e) => onEditChange("remarks", e.target.value)} className="edit-input" placeholder="Remarks" />
+                        ) : (
+                          <span className="remarks-text">{grade.remarks || "-"}</span>
+                        )}
+                       </td>
+                      <td className="action-cell">
+                        {editingId === grade.id ? (
+                          <div className="action-buttons"><button className="btn-save" onClick={() => onSave(grade.id)}>Save</button><button className="btn-cancel" onClick={onCancel}>Cancel</button></div>
+                        ) : (
+                          <button className="btn-edit" onClick={() => onEditStart(grade)}>Edit</button>
+                        )}
+                       </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+
+              {currentGrades.length === 0 && (
+                <tr className="no-data"><td colSpan="5">No grades for {quarter}</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         <div className="gpa-section">
-          <button 
-            className="btn-gpa-toggle" 
-            onClick={() => setShowGPA(!showGPA)}
-          >
+          <button className="btn-gpa-toggle" onClick={() => setShowGPA(!showGPA)}>
             {showGPA ? "Hide GPA" : "Show GPA"}
           </button>
           {showGPA && (
             <div className="gpa-summary">
-              <div className="gpa-box">
-                <span className="gpa-label">Quarter GPA:</span>
-                <span className="gpa-value">{quarterGPA}</span>
-              </div>
-              <div className="gpa-box">
-                <span className="gpa-label">Overall GPA:</span>
-                <span className="gpa-value">{overallGPA}</span>
-              </div>
+              <div className="gpa-box"><span className="gpa-label">Quarter GPA:</span><span className="gpa-value">{quarterGPA}</span></div>
+              <div className="gpa-box"><span className="gpa-label">Overall GPA:</span><span className="gpa-value">{overallGPA}</span></div>
             </div>
           )}
         </div>
 
         <div className="modal-footer">
-          <button className="btn-print" onClick={onPrintReportCard}>
-            <FaPrint /> Report Card
-          </button>
+          <button className="btn-print" onClick={onPrintReportCard}><FaPrint /> Report Card</button>
           <button className="btn-close-modal" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
   );
 });
+
 
 // ──────────────────────────────────────────────────────────────
 // Main Component

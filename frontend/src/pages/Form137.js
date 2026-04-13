@@ -10,7 +10,6 @@ import TopBar from '../components/TopBar';
 
 const GRADES = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
-// Map Roman numeral to actual grade string
 const romanToGrade = {
   I: 'Grade 1',
   II: 'Grade 2',
@@ -20,7 +19,6 @@ const romanToGrade = {
   VI: 'Grade 6',
 };
 
-// Map actual grade string to Roman numeral
 const gradeToRoman = {
   'Grade 1': 'I',
   'Grade 2': 'II',
@@ -38,8 +36,6 @@ const CORE_VALUES = [
   { key: 'makabansa2',     label: '',                  statement: 'Demonstrates appropriate behavior in carrying out activities in the school, community, and country' },
 ];
 
-// ─── initial state factories ──────────────────────────────────────────────────
-
 const makeGradeData = () => ({
   school: '', schoolYear: '', subjects: {}, eligible: '',
 });
@@ -52,12 +48,21 @@ const makeObserved = () =>
     GRADES.map(g => [g, Object.fromEntries(CORE_VALUES.map(cv => [cv.key, { q1: '', q2: '', q3: '', q4: '' }]))])
   );
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
 const gradeLabel = (g) => ({ I: 'Grade I', II: 'Grade II', III: 'Grade III', IV: 'Grade IV', V: 'Grade V', VI: 'Grade VI' }[g]);
 
-const MAPEH_SUBS = ['Music', 'Art', 'Physical Education', 'Health'];
-const isMapehSub = (s) => MAPEH_SUBS.includes(s);
+// ─── Helper to detect MAPEH components (based on subject code) ─────────────
+const isMapehComponent = (subjectCode) => {
+  const code = subjectCode?.toUpperCase() || '';
+  return code.includes('MUSIC') || code.includes('ARTS') || code.includes('PE') || code.includes('HEALTH');
+};
+
+// ─── MAPEH component sort order ──────────────────────────────────────────────
+const mapehComponentOrder = ['MUSIC', 'ARTS', 'PHYSICAL EDUCATION', 'HEALTH'];
+const getMapehSortIndex = (subjectName) => {
+  const name = subjectName?.toUpperCase() || '';
+  const index = mapehComponentOrder.findIndex(m => name.includes(m));
+  return index >= 0 ? index : mapehComponentOrder.length;
+};
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -74,8 +79,11 @@ const Field = ({ label, value, onChange, placeholder = '', className = '', type 
   </div>
 );
 
-const GradeRatingInput = ({ value, onChange }) => {
-  const displayValue = value ? Math.round(parseFloat(value)) : '';
+const GradeRatingInput = ({ value, onChange, isObserved = false }) => {
+  let displayValue = value || '';
+  if (!isObserved && value && !isNaN(parseFloat(value))) {
+    displayValue = Math.round(parseFloat(value));
+  }
   return (
     <input
       type="text"
@@ -100,7 +108,7 @@ export default function Form137() {
   // ── subjects ──
   const [subjects, setSubjects] = useState([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
-  const [gradesLoading, setGradesLoading] = useState(false); // for fetching student grades
+  const [gradesLoading, setGradesLoading] = useState(false);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -116,17 +124,27 @@ export default function Form137() {
     fetchSubjects();
   }, []);
 
-  // Group subjects by grade level
+  // Group subjects by grade level with MAPEH separated
   const subjectsByGrade = useMemo(() => {
     const grouped = {};
     subjects.forEach(sub => {
       const grade = sub.gradeLevel;
       if (!grouped[grade]) grouped[grade] = [];
-      grouped[grade].push(sub.subjectName);
+      grouped[grade].push(sub);
     });
-    // Sort alphabetically within each grade
+    // Sort each grade's subjects: regular subjects first, then MAPEH components
     Object.keys(grouped).forEach(grade => {
-      grouped[grade].sort();
+      const all = grouped[grade];
+      const regular = all.filter(s => !isMapehComponent(s.subjectCode));
+      const mapeh = all.filter(s => isMapehComponent(s.subjectCode));
+      // Sort each group
+      regular.sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+      mapeh.sort((a, b) => {
+        const indexA = getMapehSortIndex(a.subjectName);
+        const indexB = getMapehSortIndex(b.subjectName);
+        return indexA - indexB;
+      });
+      grouped[grade] = { regular, mapeh };
     });
     return grouped;
   }, [subjects]);
@@ -147,7 +165,6 @@ export default function Form137() {
     const dob = s.enrollment?.dateOfBirth || '';
     const dobParts = dob ? dob.split('-') : [];
 
-    // Prefer father info, fallback to mother
     const parentName       = s.enrollment?.fatherName        || s.enrollment?.motherName        || '';
     const parentAddress    = s.enrollment?.fatherAddress      || s.enrollment?.motherAddress      || '';
     const parentOccupation = s.enrollment?.fatherOccupation   || s.enrollment?.motherOccupation   || '';
@@ -155,9 +172,7 @@ export default function Form137() {
     setStudent({
       lastName:         s.lastName                              || '',
       firstName:        s.firstName                             || '',
-      middleInitial:    s.enrollment?.middleName
-                        ? s.enrollment.middleName.charAt(0) + '.'
-                        : '',
+      middleInitial:    s.enrollment?.middleName ? s.enrollment.middleName.charAt(0) + '.' : '',
       division:         s.section?.name                         || '',
       lrn:              s.lrn                                   || '',
       sex:              s.enrollment?.gender                    || '',
@@ -173,31 +188,23 @@ export default function Form137() {
       parentOccupation,
     });
 
-    // Reset grade data before loading new grades
     setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
 
-    // Determine the student's current grade level (e.g., "Grade 3")
     const studentGradeLevel = s.gradeLevel;
     const gradeRoman = gradeToRoman[studentGradeLevel];
-    
     console.log(`👤 Student selected: ${s.firstName} ${s.lastName}`);
     console.log(`📌 Grade level: ${studentGradeLevel} → Roman: ${gradeRoman}`);
-    
+
     if (gradeRoman) {
-      // Pre-fill school and school year for that grade level
       setGradeField(gradeRoman, 'school', s.section?.name || '');
       setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
-    } else {
-      console.warn(`⚠️ Could not map student grade level "${studentGradeLevel}" to Roman numeral`);
     }
 
-    // Fetch grades for this student
     setGradesLoading(true);
     try {
       const res = await API.get(`/admin/grades?student_id=${s.id}`);
-      const gradesData = res.data.data || []; // paginated data
-      
-      // Deep copy the gradeData structure to avoid mutations
+      const gradesData = res.data.data || [];
+
       const newGradeData = Object.fromEntries(
         GRADES.map(g => [g, {
           school: gradeData[g].school,
@@ -207,20 +214,16 @@ export default function Form137() {
         }])
       );
 
-      // Process each grade returned from API
       gradesData.forEach(grade => {
         const subjectName = grade.subject?.subjectName;
         const score = grade.score;
         const remarks = grade.remarks || '';
-        
-        // Normalize quarter format: handle "Q1", "1", "quarter1", etc.
         let quarter = grade.quarter ? String(grade.quarter).toLowerCase() : '';
         if (quarter === '1' || quarter === 'quarter1' || quarter === 'q1') quarter = 'q1';
         else if (quarter === '2' || quarter === 'quarter2' || quarter === 'q2') quarter = 'q2';
         else if (quarter === '3' || quarter === 'quarter3' || quarter === 'q3') quarter = 'q3';
         else if (quarter === '4' || quarter === 'quarter4' || quarter === 'q4') quarter = 'q4';
-        
-        // Place grade in the student's current grade level
+
         if (gradeRoman && subjectName && quarter) {
           const gData = newGradeData[gradeRoman];
           if (!gData.subjects[subjectName]) {
@@ -229,11 +232,9 @@ export default function Form137() {
           gData.subjects[subjectName][quarter] = score;
           if (remarks) gData.subjects[subjectName].remarks = remarks;
           console.log(`📊 Loaded grade: ${subjectName} ${quarter}=${score}`);
-        } else {
-          console.warn(`⚠️ Skipped grade: missing subject, quarter, or grade level`, { subjectName, quarter, gradeRoman });
         }
       });
-      
+
       console.log('✅ Grades loaded successfully:', newGradeData);
       setGradeData(newGradeData);
     } catch (err) {
@@ -261,8 +262,6 @@ export default function Form137() {
   const [activeTab,   setActiveTab]   = useState('student');
   const [activeGrade, setActiveGrade] = useState('I');
 
-  // ─── updaters ────────────────────────────────────────────────────────────────
-
   const setStudentField  = useCallback((field, value) => setStudent(p => ({ ...p, [field]: value })), []);
   const setGradeField    = useCallback((grade, field, value) => setGradeData(p => ({ ...p, [grade]: { ...p[grade], [field]: value } })), []);
   const setSubjectGrade  = useCallback((grade, subject, qtr, value) =>
@@ -273,42 +272,73 @@ export default function Form137() {
   const setObsField      = useCallback((grade, key, qtr, value) =>
     setObserved(p => ({ ...p, [grade]: { ...p[grade], [key]: { ...p[grade][key], [qtr]: value } } })), []);
 
-  // ─── print ────────────────────────────────────────────────────────────────────
-
+  // ─── print (unchanged, but uses the new subjectsByGrade structure) ─────────
   const handlePrint = () => {
 
     const buildGradeTable = (g) => {
       const gradeKey = romanToGrade[g];
-      const subjects = subjectsByGrade[gradeKey] || [];
-      const data = gradeData[g];
-      const rows = subjects.map(s => {
-        const sd = data.subjects[s] || {};
-        const indent = isMapehSub(s) ? '&nbsp;&nbsp;' : '';
+      const gradeDataObj = gradeData[g];
+      const subjectsForGrade = subjectsByGrade[gradeKey] || { regular: [], mapeh: [] };
+      
+      // Helper to render a single subject row
+      const renderSubjectRow = (subjectName, isMapehComponent = false) => {
+        const sd = gradeDataObj.subjects[subjectName] || {};
+        const indent = isMapehComponent ? '&nbsp;&nbsp;' : '';
         const q1 = sd.q1 ? Math.round(parseFloat(sd.q1)) : '';
         const q2 = sd.q2 ? Math.round(parseFloat(sd.q2)) : '';
         const q3 = sd.q3 ? Math.round(parseFloat(sd.q3)) : '';
         const q4 = sd.q4 ? Math.round(parseFloat(sd.q4)) : '';
         return `<tr>
-          <td class="area-col">${indent}${s}</td>
+          <td class="area-col">${indent}${subjectName}</td>
           <td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>
           <td>${sd.remarks||''}</td>
         </tr>`;
-      }).join('');
+      };
 
-      const allRatings = subjects.flatMap(s => {
-        const sd = gradeData[g].subjects[s] || {};
+      // Build rows: regular subjects first
+      let rows = subjectsForGrade.regular.map(sub => renderSubjectRow(sub.subjectName, false)).join('');
+      
+      // If there are MAPEH components, add a heading row with per-quarter averages
+      if (subjectsForGrade.mapeh.length > 0) {
+        // Calculate per-quarter averages for MAPEH
+        const quarterAverages = {};
+        ['q1', 'q2', 'q3', 'q4'].forEach(q => {
+          const quarterScores = subjectsForGrade.mapeh
+            .map(sub => {
+              const sd = gradeDataObj.subjects[sub.subjectName] || {};
+              const score = sd[q];
+              return score && !isNaN(parseFloat(score)) ? parseFloat(score) : null;
+            })
+            .filter(s => s !== null);
+          quarterAverages[q] = quarterScores.length ? Math.round(quarterScores.reduce((a,b)=>a+b,0)/quarterScores.length) : '';
+        });
+        
+        // MAPEH heading row with per-quarter averages
+        rows += `<tr>
+          <td class="area-col">MAPEH</td>
+          <td>${quarterAverages.q1 || ''}</td><td>${quarterAverages.q2 || ''}</td><td>${quarterAverages.q3 || ''}</td><td>${quarterAverages.q4 || ''}</td>
+          <td></td>
+        </tr>`;
+        // Component rows indented
+        rows += subjectsForGrade.mapeh.map(sub => renderSubjectRow(sub.subjectName, true)).join('');
+      }
+
+      // Compute general average for the whole block (all subjects)
+      const allRatings = [...subjectsForGrade.regular, ...subjectsForGrade.mapeh].flatMap(sub => {
+        const sd = gradeDataObj.subjects[sub.subjectName] || {};
         return [sd.q1, sd.q2, sd.q3, sd.q4].filter(v => v && !isNaN(parseFloat(v))).map(parseFloat);
       });
-      const avg = allRatings.length ? Math.round(allRatings.reduce((a, b) => a + b, 0) / allRatings.length) : '';
+      const generalAvg = allRatings.length ? Math.round(allRatings.reduce((a,b)=>a+b,0)/allRatings.length) : '';
 
-      return `
+
+     return `
         <div class="grade-block">
           <div class="grade-block-header">${gradeLabel(g)} – School:
-            <span style="border-bottom:1px solid #000;display:inline-block;min-width:110px;">&nbsp;${data.school}&nbsp;</span>
+            <span style="border-bottom:1px solid #000;display:inline-block;min-width:110px;">&nbsp;${gradeDataObj.school}&nbsp;</span>
           </div>
           <div class="grade-info-line">
             <span class="lbl">School Year:</span>
-            <span class="ln">&nbsp;${data.schoolYear}&nbsp;</span>
+            <span class="ln">&nbsp;${gradeDataObj.schoolYear}&nbsp;</span>
           </div>
           <table class="grade-table">
             <thead>
@@ -321,12 +351,12 @@ export default function Form137() {
               ${rows}
               <tr class="bold-row">
                 <td class="area-col"><strong>General Average</strong></td>
-                <td colspan="4" style="font-weight:bold;">${avg}</td>
+                <td colspan="4" style="font-weight:bold;">${generalAvg}</td>
                 <td></td>
               </tr>
               <tr><td colspan="6" class="eligible-row">
                 Eligible for Admission to:
-                <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;${data.eligible}&nbsp;</span>
+                <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;${gradeDataObj.eligible}&nbsp;</span>
               </td></tr>
             </tbody>
           </table>
@@ -343,10 +373,11 @@ export default function Form137() {
       const bodyRows = CORE_VALUES.map(cv => {
         const cells = grades.map(g => {
           const d = observed[g][cv.key] || {};
-          const q1 = d.q1 ? Math.round(parseFloat(d.q1)) : '';
-          const q2 = d.q2 ? Math.round(parseFloat(d.q2)) : '';
-          const q3 = d.q3 ? Math.round(parseFloat(d.q3)) : '';
-          const q4 = d.q4 ? Math.round(parseFloat(d.q4)) : '';
+          // For observed values, check if it's numeric; if not, use text as-is (AO, SO, RO, NO, etc.)
+          const q1 = d.q1 && !isNaN(parseFloat(d.q1)) ? Math.round(parseFloat(d.q1)) : (d.q1 || '');
+          const q2 = d.q2 && !isNaN(parseFloat(d.q2)) ? Math.round(parseFloat(d.q2)) : (d.q2 || '');
+          const q3 = d.q3 && !isNaN(parseFloat(d.q3)) ? Math.round(parseFloat(d.q3)) : (d.q3 || '');
+          const q4 = d.q4 && !isNaN(parseFloat(d.q4)) ? Math.round(parseFloat(d.q4)) : (d.q4 || '');
           return `<td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>`;
         }).join('');
         const rowspan    = cv.key === 'makabansa1' ? ' rowspan="2"' : '';
@@ -579,33 +610,32 @@ ${buildObsTable(['I','II','III'])}
 
   return (
     <div className="dashboard-layout">
-  <SideBar  />
-  <div className="main-content">
-    <TopBar />
-    <div className="content-scroll-area">
-    <div style={styles.page}>
+      <SideBar  />
+      <div className="main-content">
+        <TopBar />
+        <div className="content-scroll-area">
+          <div style={styles.page}>
+            <div style={styles.pageHeader}>
+              <div>
+                <h1 style={styles.pageTitle}>Form 137</h1>
+                <p style={styles.pageSubtitle}>Grade School Permanent Record</p>
+              </div>
+              <button style={styles.printBtn} onClick={handlePrint}>
+                🖨️ Print Form 137
+              </button>
+            </div>
 
-      <div style={styles.pageHeader}>
-        <div>
-          <h1 style={styles.pageTitle}>Form 137</h1>
-          <p style={styles.pageSubtitle}>Grade School Permanent Record</p>
-        </div>
-        <button style={styles.printBtn} onClick={handlePrint}>
-          🖨️ Print Form 137
-        </button>
-      </div>
-
-      <div style={styles.tabBar}>
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            style={{ ...styles.tab, ...(activeTab === t.id ? styles.tabActive : {}) }}
-            onClick={() => setActiveTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            <div style={styles.tabBar}>
+              {tabs.map(t => (
+                <button
+                  key={t.id}
+                  style={{ ...styles.tab, ...(activeTab === t.id ? styles.tabActive : {}) }}
+                  onClick={() => setActiveTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
       <div style={styles.panel}>
 
@@ -706,81 +736,121 @@ ${buildObsTable(['I','II','III'])}
 
         {/* ════ GRADES ════ */}
         {activeTab === 'grades' && (
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Elementary School Progress</h2>
-            <div style={styles.gradeTabBar}>
-              {GRADES.map(g => (
-                <button
-                  key={g}
-                  style={{ ...styles.gradeTab, ...(activeGrade === g ? styles.gradeTabActive : {}) }}
-                  onClick={() => setActiveGrade(g)}
-                >
-                  Grade {g}
-                </button>
-              ))}
-            </div>
-            {subjectsLoading ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>Loading subjects...</div>
-            ) : gradesLoading ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>Loading grades...</div>
-            ) : (
-              (() => {
-                const g = activeGrade;
-                const data = gradeData[g];
-                const gradeKey = romanToGrade[g];
-                const subjectsForGrade = subjectsByGrade[gradeKey] || [];
-                return (
-                  <div style={styles.gradePanel}>
-                    <div style={styles.row}>
-                      <Field label="School Name"             value={data.school}     onChange={v => setGradeField(g, 'school', v)}     className="flex-3" />
-                      <Field label="School Year"             value={data.schoolYear} onChange={v => setGradeField(g, 'schoolYear', v)} className="flex-1" />
-                      <Field label="Eligible for Admission to" value={data.eligible} onChange={v => setGradeField(g, 'eligible', v)}   className="flex-2" />
-                    </div>
-                    <table style={styles.subjectTable}>
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>Learning Area</th>
-                          <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
-                          <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
-                          <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
-                          <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
-                          <th style={{ ...styles.th, width: '120px' }}>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subjectsForGrade.map(s => {
-                          const sd = data.subjects[s] || {};
-                          return (
-                            <tr key={s} style={isMapehSub(s) ? styles.mapehRow : {}}>
-                              <td style={styles.td}>
-                                {isMapehSub(s) && <span style={{ color: '#aaa', marginRight: 4 }}>↳</span>}
-                                {s}
-                              </td>
-                              {['q1','q2','q3','q4'].map(q => (
-                                <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                                  <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, s, q, v)} />
-                                </td>
-                              ))}
-                              <td style={styles.td}>
-                                <input
-                                  type="text"
-                                  value={sd.remarks || ''}
-                                  onChange={e => setSubjectRemarks(g, s, e.target.value)}
-                                  style={styles.remarksInput}
-                                  placeholder="—"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                <div style={styles.section}>
+                  <h2 style={styles.sectionTitle}>Elementary School Progress</h2>
+                  <div style={styles.gradeTabBar}>
+                    {GRADES.map(g => (
+                      <button
+                        key={g}
+                        style={{ ...styles.gradeTab, ...(activeGrade === g ? styles.gradeTabActive : {}) }}
+                        onClick={() => setActiveGrade(g)}
+                      >
+                        Grade {g}
+                      </button>
+                    ))}
                   </div>
-                );
-              })()
-            )}
-          </div>
-        )}
+                  {subjectsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>Loading subjects...</div>
+                  ) : gradesLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>Loading grades...</div>
+                  ) : (
+                    (() => {
+                      const g = activeGrade;
+                      const data = gradeData[g];
+                      const gradeKey = romanToGrade[g];
+                      const subjectsForGrade = subjectsByGrade[gradeKey] || { regular: [], mapeh: [] };
+                      const { regular, mapeh } = subjectsForGrade;
+
+                      // Calculate per‑quarter averages for MAPEH components
+                      const quarters = ['q1', 'q2', 'q3', 'q4'];
+                      const mapehQuarterAverages = quarters.map(quarter => {
+                        const scores = mapeh
+                          .map(sub => {
+                            const sd = data.subjects[sub.subjectName] || {};
+                            const val = sd[quarter];
+                            return val && !isNaN(parseFloat(val)) ? parseFloat(val) : null;
+                          })
+                          .filter(v => v !== null);
+                        return scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : '';
+                      });
+
+                      return (
+                        <div style={styles.gradePanel}>
+                          <div style={styles.row}>
+                            <Field label="School Name" value={data.school} onChange={v => setGradeField(g, 'school', v)} className="flex-3" />
+                            <Field label="School Year" value={data.schoolYear} onChange={v => setGradeField(g, 'schoolYear', v)} className="flex-1" />
+                            <Field label="Eligible for Admission to" value={data.eligible} onChange={v => setGradeField(g, 'eligible', v)} className="flex-2" />
+                          </div>
+                          <table style={styles.subjectTable}>
+                            <thead>
+                              <tr>
+                                <th style={styles.th}>Learning Area</th>
+                                <th style={{ ...styles.th, ...styles.thQ }}>Q1</th>
+                                <th style={{ ...styles.th, ...styles.thQ }}>Q2</th>
+                                <th style={{ ...styles.th, ...styles.thQ }}>Q3</th>
+                                <th style={{ ...styles.th, ...styles.thQ }}>Q4</th>
+                                <th style={{ ...styles.th, width: '120px' }}>Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* Regular subjects */}
+                              {regular.map(sub => {
+                                const sd = data.subjects[sub.subjectName] || {};
+                                return (
+                                  <tr key={sub.subjectName}>
+                                    <td style={styles.td}>{sub.subjectName}</td>
+                                    {quarters.map(q => (
+                                      <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
+                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)} />
+                                      </td>
+                                    ))}
+                                    <td style={styles.td}>
+                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—" />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+
+                              {/* MAPEH heading row (if there are components) */}
+                              {mapeh.length > 0 && (
+                                <tr style={{ background: '#fafbfd' }}>
+                                  <td style={styles.td}>MAPEH</td>
+                                  {mapehQuarterAverages.map((avg, idx) => (
+                                    <td key={idx} style={{ ...styles.td, textAlign: 'center' }}>
+                                      {avg || '—'}
+                                    </td>
+                                  ))}
+                                  <td style={styles.td}>—</td>
+                                </tr>
+                              )}
+
+                              {/* MAPEH component rows (indented) */}
+                              {mapeh.map(sub => {
+                                const sd = data.subjects[sub.subjectName] || {};
+                                return (
+                                  <tr key={sub.subjectName} style={styles.mapehRow}>
+                                    <td style={styles.td}>
+                                      <span style={{ marginLeft: '20px', color: '#888' }}>↳</span> {sub.subjectName}
+                                    </td>
+                                    {quarters.map(q => (
+                                      <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
+                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)} />
+                                      </td>
+                                    ))}
+                                    <td style={styles.td}>
+                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—" />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
 
         {/* ════ OBSERVED VALUES ════ */}
         {activeTab === 'values' && (
@@ -818,7 +888,7 @@ ${buildObsTable(['I','II','III'])}
                       <td style={{ ...styles.td, fontSize: '0.82rem', color: '#475569' }}>{cv.statement}</td>
                       {['q1','q2','q3','q4'].map(q => (
                         <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                          <GradeRatingInput value={d[q]} onChange={v => setObsField(activeGrade, cv.key, q, v)} />
+                          <GradeRatingInput isObserved={true} value={d[q]} onChange={v => setObsField(activeGrade, cv.key, q, v)} />
                         </td>
                       ))}
                     </tr>

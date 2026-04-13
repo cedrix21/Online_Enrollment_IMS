@@ -131,6 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher/grades', [GradeController::class, 'getGrades']);
         Route::get('/teacher/grades/subject/{subjectId}', [GradeController::class, 'getSubjectGrades']);
         Route::post('/teacher/grades', [GradeController::class, 'submitGrade']);
+        Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
+        Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
     });
 
     // ──────────────────────────────────────────────────────────────
@@ -152,13 +154,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payment Reports
         Route::get('/admin/payments', [BillingController::class, 'index']);
     });
-
-    // ──────────────────────────────────────────────────────────────
-    // TEACHER DASHBOARD & BULK GRADE SAVE (accessible by teachers)
-    // ──────────────────────────────────────────────────────────────
-    Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
-    Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
-
 
     Route::get('/enrollments/{id}/requirements', [EnrollmentRequirementController::class, 'index']);
     Route::put('/requirements/{id}/status',[EnrollmentRequirementController::class, 'updateStatus']);

@@ -143,75 +143,67 @@ class GradeController extends Controller
     /**
      * Store or update a grade
      */
-    public function submitGrade(Request $request)
-    {
-        $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'subject_id' => 'required|exists:subjects,id',
-            'score' => 'required|numeric|min:0|max:100',
-            'remarks' => 'nullable|string',
-            'quarter' => 'required|string|in:Q1,Q2,Q3,Q4',
-        ]);
+public function submitGrade(Request $request)
+{
+    $request->validate([
+        'student_id' => 'required|exists:students,id',
+        'subject_id' => 'required|exists:subjects,id',
+        'score' => 'required|numeric|min:0|max:100',
+        'remarks' => 'nullable|string',
+        'quarter' => 'required|string|in:Q1,Q2,Q3,Q4',
+        'component' => 'nullable|string|in:music,arts,pe,health',
+    ]);
 
-        $teacher = Auth::user()->teacher;
-        
-        if (!$teacher) {
-            return response()->json(['message' => 'Teacher record not found'], 404);
-        }
-
-        // Verify teacher is assigned to teach this subject
-        $hasAssignment = SubjectAssignment::where([
-            'teacher_id' => $teacher->id,
-            'subject_id' => $request->subject_id
-        ])->exists();
-
-        if (!$hasAssignment) {
-            return response()->json([
-                'message' => 'You are not assigned to teach this subject'
-            ], 403);
-        }
-
-        // Verify student is in a grade level this teacher handles
-        $student = Student::findOrFail($request->student_id);
-        $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
-            ->pluck('gradeLevel');
-
-        if (!$teacherGradeLevels->contains($student->gradeLevel)) {
-            return response()->json([
-                'message' => 'This student is not in any grade level you teach'
-            ], 403);
-        }
-
-        // Check if grade already exists (using teacher_id is optional here)
-        $grade = Grade::where('student_id', $request->student_id)
-            ->where('subject_id', $request->subject_id)
-            ->where('quarter', $request->quarter)
-            ->first();
-
-        if ($grade) {
-            // Update existing grade
-            $grade->update([
-                'score' => $request->score,
-                'remarks' => $request->remarks,
-                'teacher_id' => $teacher->id // Update teacher_id if needed
-            ]);
-        } else {
-            // Create new grade
-            $grade = Grade::create([
-                'teacher_id' => $teacher->id,
-                'student_id' => $request->student_id,
-                'subject_id' => $request->subject_id,
-                'score' => $request->score,
-                'remarks' => $request->remarks,
-                'quarter' => $request->quarter,
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'Grade saved successfully',
-            'grade' => $grade->load(['student', 'subject'])
-        ]);
+    $teacher = Auth::user()->teacher;
+    
+    if (!$teacher) {
+        return response()->json(['message' => 'Teacher record not found'], 404);
     }
+
+    // Verify teacher is assigned to teach this subject
+    $hasAssignment = SubjectAssignment::where([
+        'teacher_id' => $teacher->id,
+        'subject_id' => $request->subject_id
+    ])->exists();
+
+    if (!$hasAssignment) {
+        return response()->json([
+            'message' => 'You are not assigned to teach this subject'
+        ], 403);
+    }
+
+    // Verify student is in a grade level this teacher handles
+    $student = Student::findOrFail($request->student_id);
+    $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+        ->pluck('gradeLevel');
+
+    if (!$teacherGradeLevels->contains($student->gradeLevel)) {
+        return response()->json([
+            'message' => 'This student is not in any grade level you teach'
+        ], 403);
+    }
+
+    // Use updateOrCreate to handle both creation and update,
+    // including the component field for MAPEH components.
+    $grade = Grade::updateOrCreate(
+        [
+            'student_id' => $request->student_id,
+            'subject_id' => $request->subject_id,
+            'quarter' => $request->quarter,
+            'component' => $request->component, // Important for MAPEH
+        ],
+        [
+            'teacher_id' => $teacher->id,
+            'score' => $request->score,
+            'remarks' => $request->remarks,
+        ]
+    );
+
+    return response()->json([
+        'message' => 'Grade saved successfully',
+        'grade' => $grade->load(['student', 'subject'])
+    ]);
+}
 
     /**
      * Get grades for all students in a specific subject

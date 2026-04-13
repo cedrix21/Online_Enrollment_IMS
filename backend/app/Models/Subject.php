@@ -9,7 +9,8 @@ class Subject extends Model
     protected $fillable = [
     'subjectCode', 
     'subjectName', 
-    'gradeLevel', // The "Class" this subject belongs to
+    'gradeLevel',
+    'school_year',
 ];
 
     /**

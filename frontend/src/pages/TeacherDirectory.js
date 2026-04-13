@@ -213,6 +213,7 @@ export default function TeacherDirectory() {
   const [newTeacher, setNewTeacher] = useState(INITIAL_TEACHER_FORM);
   const [editTeacherForm, setEditTeacherForm] = useState(INITIAL_TEACHER_FORM);
   const [assignmentForm, setAssignmentForm] = useState(INITIAL_ASSIGNMENT_FORM);
+  const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // PERFORMANCE: Cache invalidation helper
@@ -351,50 +352,70 @@ export default function TeacherDirectory() {
   const openAssignModal = useCallback((teacher) => {
     setSelectedTeacherForAssign(teacher);
     setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+    setSelectedSubjectsForBulk([]);
     setShowAssignModal(true);
   }, []);
 
   const handleAssignSubject = useCallback(async (e) => {
     e.preventDefault();
     
-    if (!assignmentForm.subject_id || !assignmentForm.gradeLevel) {
-      alert("Please select both subject and grade level");
+    // Check if bulk selection or single selection
+    const subjectsToAssign = selectedSubjectsForBulk.length > 0 
+      ? selectedSubjectsForBulk 
+      : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
+
+    if (subjectsToAssign.length === 0) {
+      alert("Please select at least one subject");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const res = await API.post(
-        `/teachers/${selectedTeacherForAssign.id}/assign-subject`,
-        assignmentForm
-      );
+      // Find subject details for each selection
+      const assignmentPromises = subjectsToAssign.map((subjectId) => {
+        const subject = availableSubjects.find(s => s.id === parseInt(subjectId));
+        return API.post(
+          `/teachers/${selectedTeacherForAssign.id}/assign-subject`,
+          {
+            subject_id: subjectId,
+            gradeLevel: subject?.gradeLevel || "",
+            schedule: "",
+          }
+        );
+      });
+
+      const responses = await Promise.all(assignmentPromises);
       
-      // Optimistic updates – update teacher's assignments (no need to resort as advisory unchanged)
+      // Optimistic updates – update teacher's assignments
       setTeachers(prev => prev.map(teacher => {
         if (teacher.id === selectedTeacherForAssign.id) {
+          const newAssignments = responses.map(res => res.data.assignment);
           return {
             ...teacher,
-            assignments: [...(teacher.assignments || []), res.data.assignment]
+            assignments: [...(teacher.assignments || []), ...newAssignments]
           };
         }
         return teacher;
       }));
       
-      setTeacherLoad(prev => [...prev, res.data.assignment]);
+      setTeacherLoad(prev => [...prev, ...responses.map(res => res.data.assignment)]);
       
       // Invalidate cache
       invalidateCache();
       
-      setShowAssignModal(false);
-      alert("Subject assigned successfully!");
+      // Reset forms
+      setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+      setSelectedSubjectsForBulk([]);
+      
+      alert(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
     } catch (err) {
       console.error("Assignment Error:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to assign subject");
+      alert(err.response?.data?.message || "Failed to assign subjects");
     } finally {
       setIsSubmitting(false);
     }
-  }, [assignmentForm, selectedTeacherForAssign, invalidateCache]);
+  }, [assignmentForm, selectedSubjectsForBulk, selectedTeacherForAssign, availableSubjects, invalidateCache]);
 
   const handleRemoveAssignment = useCallback(async (assignmentId) => {
     if (!window.confirm("Remove this subject assignment?")) return;
@@ -588,10 +609,15 @@ export default function TeacherDirectory() {
             assignmentForm={assignmentForm}
             onSubjectChange={handleSubjectChange}
             onSubmit={handleAssignSubject}
-            onClose={() => setShowAssignModal(false)}
+            onClose={() => {
+              setShowAssignModal(false);
+              setSelectedSubjectsForBulk([]);
+            }}
             isSubmitting={isSubmitting}
             selectedTeacher={selectedTeacherForAssign}
             availableSubjects={availableSubjectsForAssignment}
+            selectedSubjectsForBulk={selectedSubjectsForBulk}
+            setSelectedSubjectsForBulk={setSelectedSubjectsForBulk}
           />
         )}
       </div>
@@ -851,58 +877,246 @@ const AssignSubjectModal = memo(({
   onClose, 
   isSubmitting,
   selectedTeacher,
-  availableSubjects 
-}) => (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <div className="modal-header">
-        <h3>
-          Assign Subject to {selectedTeacher?.firstName}{" "}
-          {selectedTeacher?.lastName}
-        </h3>
-        <FaTimes className="close-icon" onClick={onClose} />
-      </div>
+  availableSubjects,
+  selectedSubjectsForBulk,
+  setSelectedSubjectsForBulk,
+}) => {
+  const [assignMode, setAssignMode] = useState("single"); // "single" or "bulk"
 
-      <form onSubmit={onSubmit}>
-        <div className="form-group">
-          <label>Select Subject</label>
-          <select
-            value={assignmentForm.subject_id}
-            onChange={(e) => onSubjectChange(e.target.value)}
-            required
-          >
-            <option value="">-- Choose Subject --</option>
-            {availableSubjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
-                {subject.subjectCode} - {subject.subjectName} (
-                {subject.gradeLevel})
-              </option>
-            ))}
-          </select>
+  const handleCheckboxChange = (subjectId) => {
+    setSelectedSubjectsForBulk(prev =>
+      prev.includes(subjectId)
+        ? prev.filter(id => id !== subjectId)
+        : [...prev, subjectId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedSubjectsForBulk.length === availableSubjects.length) {
+      setSelectedSubjectsForBulk([]);
+    } else {
+      setSelectedSubjectsForBulk(availableSubjects.map(s => s.id));
+    }
+  };
+
+  const handleBulkSubmit = (e) => {
+    e.preventDefault();
+    if (selectedSubjectsForBulk.length === 0) {
+      alert("Please select at least one subject");
+      return;
+    }
+    // Call parent onSubmit, will be handled by the modified handleAssignSubject
+    onSubmit(e);
+  };
+
+  const handleSingleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(e);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: "600px" }}>
+        <div className="modal-header">
+          <h3>
+            Assign Subjects to {selectedTeacher?.firstName}{" "}
+            {selectedTeacher?.lastName}
+          </h3>
+          <FaTimes className="close-icon" onClick={onClose} />
         </div>
 
-        <div className="form-group">
-          <label>Detected Grade Level</label>
-          <input
-            type="text"
-            value={assignmentForm.gradeLevel}
-            placeholder="Select a subject to detect grade..."
-            readOnly
+        {/* Mode Tabs */}
+        <div style={{ display: "flex", borderBottom: "2px solid #e0d8b0", marginBottom: "20px" }}>
+          <button
+            type="button"
             style={{
-              backgroundColor: "#f0f0f0",
-              cursor: "not-allowed",
+              flex: 1,
+              padding: "12px",
+              background: assignMode === "single" ? "#f7e14b" : "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: assignMode === "single" ? "#333" : "#999",
+              borderBottom: assignMode === "single" ? "3px solid #b8860b" : "none",
+              transition: "all 0.2s",
             }}
-          />
+            onClick={() => {
+              setAssignMode("single");
+              setSelectedSubjectsForBulk([]);
+            }}
+          >
+            📌 Single Subject
+          </button>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              padding: "12px",
+              background: assignMode === "bulk" ? "#f7e14b" : "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: assignMode === "bulk" ? "#333" : "#999",
+              borderBottom: assignMode === "bulk" ? "3px solid #b8860b" : "none",
+              transition: "all 0.2s",
+            }}
+            onClick={() => setAssignMode("bulk")}
+          >
+            ✓ Bulk ({selectedSubjectsForBulk.length})
+          </button>
         </div>
+
+        {/* Single Subject Mode */}
+        {assignMode === "single" ? (
+          <form onSubmit={handleSingleSubmit}>
+            <div className="form-group">
+              <label>Select Subject</label>
+              <select
+                value={assignmentForm.subject_id}
+                onChange={(e) => onSubjectChange(e.target.value)}
+                required
+                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "2px solid #e0d8b0" }}
+              >
+                <option value="">-- Choose Subject --</option>
+                {availableSubjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.subjectCode} - {subject.subjectName} ({subject.gradeLevel})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Detected Grade Level</label>
+              <input
+                type="text"
+                value={assignmentForm.gradeLevel}
+                placeholder="Select a subject to detect grade..."
+                readOnly
+                style={{
+                  backgroundColor: "#f0f0f0",
+                  cursor: "not-allowed",
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "2px solid #e0d8b0",
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="submit-btn"
+              disabled={!assignmentForm.subject_id || isSubmitting}
+              style={{ opacity: isSubmitting ? 0.7 : 1 }}
+            >
+              {isSubmitting ? "Assigning..." : "Assign Subject"}
+            </button>
+          </form>
+        ) : (
+          /* Bulk Assignment Mode */
+          <form onSubmit={handleBulkSubmit}>
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                <h4 style={{ margin: 0 }}>Choose Subjects</h4>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#f7e14b",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {selectedSubjectsForBulk.length === availableSubjects.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+
+              <div
+                style={{
+                  maxHeight: "300px",
+                  overflowY: "auto",
+                  border: "2px solid #e0d8b0",
+                  borderRadius: "6px",
+                  padding: "10px",
+                }}
+              >
+                {availableSubjects.length > 0 ? (
+                  availableSubjects.map((subject) => (
+                    <label
+                      key={subject.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "10px",
+                        marginBottom: "8px",
+                        background: selectedSubjectsForBulk.includes(subject.id) ? "#fffef8" : "transparent",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        border: selectedSubjectsForBulk.includes(subject.id) ? "1px solid #f7e14b" : "none",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSubjectsForBulk.includes(subject.id)}
+                        onChange={() => handleCheckboxChange(subject.id)}
+                        style={{ marginRight: "12px", cursor: "pointer", width: "18px", height: "18px" }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <strong>{subject.subjectCode}</strong> - {subject.subjectName}
+                        <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                          {subject.gradeLevel}
+                        </div>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <p style={{ textAlign: "center", color: "#999", margin: "20px 0" }}>
+                    No subjects available for assignment
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "15px", padding: "10px", background: "#f0f0f0", borderRadius: "6px" }}>
+              <strong>{selectedSubjectsForBulk.length}</strong> subject(s) selected
+            </div>
+
+            <button
+              type="submit"
+              className="submit-btn"
+              disabled={selectedSubjectsForBulk.length === 0 || isSubmitting}
+              style={{ opacity: isSubmitting || selectedSubjectsForBulk.length === 0 ? 0.7 : 1 }}
+            >
+              {isSubmitting ? "Assigning..." : `Assign ${selectedSubjectsForBulk.length} Subject(s)`}
+            </button>
+          </form>
+        )}
+
         <button
-          type="submit"
-          className="submit-btn"
-          disabled={!assignmentForm.subject_id || isSubmitting}
-          style={{ opacity: isSubmitting ? 0.7 : 1 }}
+          type="button"
+          onClick={onClose}
+          style={{
+            marginTop: "10px",
+            width: "100%",
+            padding: "10px",
+            background: "#f0f0f0",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: 600,
+            color: "#333",
+          }}
         >
-          {isSubmitting ? "Assigning..." : "Confirm Assignment"}
+          Close
         </button>
-      </form>
+      </div>
     </div>
-  </div>
-));
+  );
+});

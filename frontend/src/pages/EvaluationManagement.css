@@ -761,6 +761,108 @@
   }
 }
 
+/* MAPEH Grades Display */
+.mapeh-subject-cell {
+  background-color: rgba(247, 225, 75, 0.2);
+  font-weight: bold;
+}
+
+.mapeh-label {
+  padding: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapeh-component-cell {
+  background-color: rgba(255, 250, 205, 0.5);
+  font-size: 0.95rem;
+}
+
+.mapeh-component-header {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b8860b;
+  margin-bottom: 6px;
+  padding: 4px 0;
+}
+
+.mapeh-component-cell .score-badge {
+  margin-top: 6px;
+  display: inline-block;
+}
+
+/* Uniform MAPEH Components Label */
+.mapeh-components-label {
+  font-size: 0.85rem;
+  color: #b8860b;
+  font-weight: 500;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(184, 134, 11, 0.3);
+}
+
+/* MAPEH Expand/Collapse */
+.subject-name-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mapeh-expand-btn {
+  background: none;
+  border: none;
+  color: #b8860b;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mapeh-expand-btn:hover {
+  color: #d4a520;
+}
+
+/* MAPEH Main Row */
+.mapeh-main-row {
+  font-weight: 500;
+  background-color: rgba(247, 225, 75, 0.08);
+}
+
+.mapeh-main-row:hover {
+  background-color: rgba(247, 225, 75, 0.15);
+}
+
+/* MAPEH Component Rows (expanded details) */
+.mapeh-component-row {
+  background-color: rgba(247, 225, 75, 0.04);
+  font-size: 0.95rem;
+}
+
+.mapeh-component-row:hover {
+  background-color: rgba(247, 225, 75, 0.1);
+}
+
+.mapeh-component-indent {
+  padding-left: 60px !important;
+}
+
+.component-name {
+  color: #b8860b;
+  font-weight: 500;
+  padding: 6px 8px;
+  background: rgba(247, 225, 75, 0.15);
+  border-radius: 4px;
+  display: inline-block;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .students-grid {

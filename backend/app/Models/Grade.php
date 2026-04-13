@@ -12,7 +12,8 @@ class Grade extends Model
         'subject_id',
         'score',
         'remarks',
-        'quarter'  // Q1, Q2, Q3, Q4
+        'quarter',  // Q1, Q2, Q3, Q4
+        'component' // For MAPEH: music, arts, pe, health
     ];
 
     public function teacher()

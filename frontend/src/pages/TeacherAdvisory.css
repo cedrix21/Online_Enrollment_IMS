@@ -1,3 +1,4 @@
+
 /* Container */
 .teacher-advisory-container {
   display: flex;
@@ -899,4 +900,124 @@
 @keyframes shimmer {
   0% { background-position: -1000px 0; }
   100% { background-position: 1000px 0; }
+}
+
+/* MAPEH Subject Row - Expandable */
+.mapeh-row {
+  background-color: #fffef5;
+  border-left: 4px solid #b8860b;
+}
+
+.mapeh-row .subject-name {
+  display: flex;
+  align-items: center;
+}
+
+.subject-name-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.mapeh-toggle-btn {
+  background: none;
+  border: none;
+  color: #b8860b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapeh-toggle-btn:hover {
+  background-color: rgba(184, 134, 11, 0.1);
+  transform: scale(1.15);
+}
+
+.mapeh-average-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.average-badge {
+  background-color: #b8860b;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.average-placeholder {
+  color: #ccc;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* MAPEH Components Container - Expanded Row */
+.mapeh-components-container {
+  background-color: #f5f5f5;
+  border-left: 4px solid #b8860b;
+  padding: 16px 20px;
+}
+
+.mapeh-components-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 0;
+}
+
+.mapeh-component-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mapeh-component-input-group .component-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b8860b;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.mapeh-component-input {
+  padding: 8px 10px;
+  border: 2px solid #e0d8b0;
+  border-radius: 6px;
+  font-size: 13px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mapeh-component-input:hover {
+  border-color: #b8860b;
+  background-color: #fffef8;
+}
+
+.mapeh-component-input:focus {
+  outline: none;
+  border-color: #b8860b;
+  background-color: #fffef8;
+  box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.1);
+}
+
+/* Responsive: Stack components on smaller screens */
+@media (max-width: 1400px) {
+  .mapeh-components-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

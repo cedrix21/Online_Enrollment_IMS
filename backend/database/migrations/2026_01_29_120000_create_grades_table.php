@@ -19,10 +19,11 @@ return new class extends Migration
             $table->decimal('score', 5, 2)->nullable();
             $table->string('remarks')->nullable();
             $table->string('quarter')->default('Q1'); // Q1, Q2, Q3, Q4
+            $table->string('component')->nullable(); // For MAPEH: music, arts, pe, health
             $table->timestamps();
             
-            // Add unique constraint to prevent duplicate grades for same student, subject, and quarter
-            $table->unique(['teacher_id', 'student_id', 'subject_id', 'quarter']);
+            // Add unique constraint to prevent duplicate grades for same student, subject, quarter, and component
+            $table->unique(['student_id', 'subject_id', 'quarter', 'component']);
         });
     }
 

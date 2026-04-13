@@ -19,9 +19,11 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             RoomSeeder::class,
             TimeSlotSeeder::class,
-            SubjectSeeder::class,
-            TuitionFeeSeeder::class,    
-    
+            //SubjectSeeder::class,
+            TuitionFeeSeeder::class,
+            // TeacherSeeder::class,
+            // StudentSeeder::class,
+            
         ]);
     }
 }

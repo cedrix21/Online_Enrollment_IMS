@@ -70,7 +70,7 @@ class TeacherPortalController extends Controller
                         ->get()
                     : [],
                 'grades' => !empty($gradeLevels)
-                    ? Grade::select('id', 'student_id', 'subject_id', 'score', 'remarks', 'quarter', 'teacher_id')
+                    ? Grade::select('id', 'student_id', 'subject_id', 'score', 'remarks', 'quarter', 'teacher_id','component')
                         ->whereHas('student', function ($q) use ($gradeLevels) {
                             $q->whereIn('gradeLevel', $gradeLevels);
                         })
@@ -109,6 +109,7 @@ class TeacherPortalController extends Controller
                 'grades.*.score' => 'required|numeric|min:0|max:100',
                 'grades.*.remarks' => 'nullable|string',
                 'grades.*.quarter' => 'required|in:Q1,Q2,Q3,Q4',
+                'grades.*.component' => 'nullable|string|in:music,arts,pe,health',
             ]);
 
             $saved = 0;
@@ -118,6 +119,7 @@ class TeacherPortalController extends Controller
                         'student_id' => $gradeData['student_id'],
                         'subject_id' => $gradeData['subject_id'],
                         'quarter' => $gradeData['quarter'],
+                        'component' => $gradeData['component'] ?? null,
                         'teacher_id' => $teacher->id,
                     ],
                     [
