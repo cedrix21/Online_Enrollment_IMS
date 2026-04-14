@@ -12,9 +12,23 @@ import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 
 // ── Requirements Checklist Component ─────────────────────────────────────────
-const RequirementsChecklist = ({ enrollmentId }) => {
+const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Map backend type to display label
+  const getDisplayLabel = (type) => {
+    const labels = {
+      'id_picture': 'ID Pictures (1x1 & 2x2)',
+      '1x1_picture': 'ID Pictures (1x1 & 2x2)',
+      '2x2_picture': 'ID Pictures (1x1 & 2x2)',
+      'kids_note': "Kid's Note App Installed",
+      'psa_birth_certificate': 'PSA Birth Certificate',
+      'good_moral': 'Good Moral',
+      'report_card': 'Report Card',
+    };
+    return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
 
   useEffect(() => {
     API.get(`/enrollments/${enrollmentId}/requirements`)
@@ -23,12 +37,21 @@ const RequirementsChecklist = ({ enrollmentId }) => {
       .finally(() => setLoading(false));
   }, [enrollmentId]);
 
-  const handleStatusChange = async (reqId, status) => {
+  const handleStatusChange = async (req, status) => {
+    const type = req.type;
+    const displayLabel = getDisplayLabel(type);
+    
+    console.log('Changing status:', { type, displayLabel, status });
+
     try {
-      await API.put(`/requirements/${reqId}/status`, { status });
+      await API.put(`/requirements/${req.id}/status`, { status });
       setRequirements(prev =>
-        prev.map(r => r.id === reqId ? { ...r, status } : r)
+        prev.map(r => r.id === req.id ? { ...r, status } : r)
       );
+      if (onStatusUpdated) {
+        // Pass both the raw type and display label for flexibility
+        onStatusUpdated(type, displayLabel, status);
+      }
     } catch (err) {
       alert('Failed to update status');
     }
@@ -63,11 +86,10 @@ const RequirementsChecklist = ({ enrollmentId }) => {
           }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
               <div>
-               
                 <a href={req.url} target="_blank" rel="noreferrer">
                   <img
                     src={req.url}
-                    alt={req.type_label}
+                    alt={getDisplayLabel(req.type)}
                     style={{
                       width: '72px', height: '72px', objectFit: 'cover',
                       borderRadius: '6px', border: '2px solid #e2e8f0',
@@ -76,15 +98,12 @@ const RequirementsChecklist = ({ enrollmentId }) => {
                     }}
                     loading="lazy"
                     onError={(e) => {
-                      // If it's a PDF or broken link, hide the img and show the fallback 📄
                       e.target.style.display = 'none';
                       const fallback = e.target.parentElement?.nextSibling;
                       if (fallback) fallback.style.display = 'flex';
                     }}
                   />
                 </a>
-
-                {/* PDF/Fallback Icon */}
                 <div style={{
                   display: 'none', width: '72px', height: '72px',
                   border: '2px solid #e2e8f0', borderRadius: '6px',
@@ -95,30 +114,27 @@ const RequirementsChecklist = ({ enrollmentId }) => {
                     📄
                   </a>
                 </div>
-
                 <a href={req.url} target="_blank" rel="noreferrer"
                   style={{ display: 'block', marginTop: '4px', fontSize: '0.72rem', color: '#b8860b', textDecoration: 'none', textAlign: 'center' }}
                 >
                   👁 Full size
                 </a>
               </div>
-
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{req.type_label}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{getDisplayLabel(req.type)}</div>
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px', wordBreak: 'break-all', maxWidth: '200px' }}>
                   {req.original_name}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: '#b0b8c1', marginTop: '2px' }}>Uploaded: {req.created_at}</div>
               </div>
             </div>
-
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
               <span style={{ ...statusColor(req.status), padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
                 {req.status}
               </span>
               <select
                 value={req.status}
-                onChange={e => handleStatusChange(req.id, e.target.value)}
+                onChange={e => handleStatusChange(req, e.target.value)}
                 style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer', backgroundColor: '#fff' }}
               >
                 <option value="pending">Pending</option>
@@ -132,7 +148,6 @@ const RequirementsChecklist = ({ enrollmentId }) => {
     </div>
   );
 };
-
 
 // ── Memoized table row ────────────────────────────────────────────────────────
 const EnrollmentRow = memo(
@@ -153,7 +168,7 @@ const EnrollmentRow = memo(
           style={{ display: "flex", gap: "8px", fontSize: "1.1rem" }}
         >
           <button
-            title="1x1 Picture"
+            title="ID Pictures (1x1 & 2x2)"
             onClick={() =>
               onUpdateRequirement(
                 enrollment.id,
@@ -438,6 +453,76 @@ export default function EnrollmentManagement() {
     [],
   );
 
+  // Sync requirement status from modal to table row
+ const handleRequirementStatusChange = useCallback(
+  (enrollmentId, type, displayLabel, status) => {
+    if (!type) {
+      console.warn('handleRequirementStatusChange: type is undefined');
+      return;
+    }
+
+    console.log('🔔 Requirement status changed:', { enrollmentId, type, status });
+
+    setEnrollments(prev =>
+      prev.map(e => {
+        if (e.id !== enrollmentId) return e;
+        const updated = { ...e };
+        const isVerified = status === 'verified';
+        const typeLower = type.toLowerCase();
+
+        // Picture requirement (1x1, 2x2, or combined)
+        if (
+          typeLower.includes('picture') ||
+          typeLower.includes('photo') ||
+          typeLower.includes('1x1') ||
+          typeLower.includes('2x2') ||
+          typeLower === 'id_picture'
+        ) {
+          updated.id_picture_received = isVerified;
+        }
+        // Kid's Note App
+        else if (
+          typeLower.includes('kids_note') ||
+          typeLower.includes('kid_note') ||
+          typeLower.includes('app') ||
+          typeLower === 'kids_note_installed'
+        ) {
+          updated.kids_note_installed = isVerified;
+        }
+        // PSA Birth Certificate
+        else if (
+          typeLower.includes('psa') ||
+          typeLower.includes('birth') ||
+          typeLower === 'psa_birth_certificate'
+        ) {
+          updated.psa_received = isVerified;
+        }
+        // Good Moral
+        else if (
+          typeLower.includes('good_moral') ||
+          typeLower === 'good_moral'
+        ) {
+          updated.good_moral_received = isVerified;
+        }
+        // Report Card
+        else if (
+          typeLower.includes('report_card') ||
+          typeLower.includes('form138') ||
+          typeLower === 'report_card'
+        ) {
+          updated.report_card_received = isVerified;
+        }
+        else {
+          console.warn('Unknown requirement type:', type);
+        }
+
+        return updated;
+      })
+    );
+  },
+  []
+);
+
   const isRequirementsComplete = useCallback((enrollment) => {
     if (!enrollment.id_picture_received) return false;
     if (!enrollment.kids_note_installed) return false;
@@ -566,7 +651,7 @@ export default function EnrollmentManagement() {
           head: [["Requirement", "Status"]],
           body: [
             [
-              "1x1 Picture",
+              "ID Pictures (1x1 & 2x2)",
               enrollment.id_picture_received ? "Verified" : "Missing",
             ],
             [
@@ -595,7 +680,7 @@ export default function EnrollmentManagement() {
         Type: e.registrationType,
         Status: e.status,
         "PSA Received": e.psa_received ? "Yes" : "No",
-        "1x1 Photo": e.id_picture_received ? "Yes" : "No",
+        "ID Pictures (1x1 & 2x2)": e.id_picture_received ? "Yes" : "No",
         "App Installed": e.kids_note_installed ? "Yes" : "No",
         "Date Enrolled": e.enrollmentDate,
       }));
@@ -1057,7 +1142,12 @@ export default function EnrollmentManagement() {
                 }}
               >
                 <h3>📁 Submitted Documents</h3>
-                <RequirementsChecklist enrollmentId={selectedEnrollment.id} />
+                <RequirementsChecklist
+                  enrollmentId={selectedEnrollment.id}
+                  onStatusUpdated={(type, displayLabel, newStatus) =>
+                    handleRequirementStatusChange(selectedEnrollment.id, type, displayLabel, newStatus)
+                  }
+                />
               </div>
 
               {/* ── Siblings ── */}
