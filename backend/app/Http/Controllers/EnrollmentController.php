@@ -196,7 +196,7 @@ class EnrollmentController extends Controller
                 'status'            => 'pending',
 
             ]);
-            $requirementTypes = ['psa', 'good_moral', 'report_card', 'picture_2x2', 'picture_1x1'];
+           $requirementTypes = ['psa', 'good_moral', 'report_card', 'picture_2x2', 'picture_1x1'];
 
             foreach ($requirementTypes as $type) {
                 $key = "requirement_{$type}";
@@ -207,6 +207,7 @@ class EnrollmentController extends Controller
                     EnrollmentRequirement::create([
                         'enrollment_id' => $enrollment->id,
                         'type'          => $type,
+                        'type_label'    => $this->getRequirementLabel($type),  // 👈 added
                         'file_path'     => $path,
                         'original_name' => $file->getClientOriginalName(),
                         'status'        => 'pending',
@@ -546,4 +547,17 @@ class EnrollmentController extends Controller
             return "but email failed to send (Check SMTP settings).";
         }
     }
+
+
+    private function getRequirementLabel($type)
+{
+    $labels = [
+        'psa'          => 'PSA Birth Certificate',
+        'good_moral'   => 'Certificate of Good Moral',
+        'report_card'  => 'Report Card',
+        'picture_2x2'  => '2x2 ID Picture',
+        'picture_1x1'  => '1x1 ID Picture',
+    ];
+    return $labels[$type] ?? ucfirst(str_replace('_', ' ', $type));
+}
 };

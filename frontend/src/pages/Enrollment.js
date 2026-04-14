@@ -126,8 +126,8 @@ export default function Enrollment() {
 
   // ── GCash handler ─────────────────────────────────────────────
   const handleGCashPayment = async () => {
-    if (!amountPaid || parseFloat(amountPaid) < 500) {
-      alert("Please enter a valid payment amount (Minimum ₱500)");
+    if (!amountPaid || parseFloat(amountPaid) < 5000) {
+      alert("Please enter a valid payment amount (Minimum ₱5000)");
       return;
     }
     setProcessingPayment(true);
@@ -148,18 +148,44 @@ export default function Enrollment() {
       dataToSend.append('amount_paid', parseFloat(amountPaid));
       dataToSend.append('payment_status', 'pending');
 
-      const response = await API.post('/payment/initialize-gcash-enrollment', dataToSend);
-      const { checkout_url } = response.data;
+
+      Object.entries(requirementFiles).forEach(([key, file]) => {
+    if (file && file instanceof File) {
+        dataToSend.append(`requirement_${key}`, file);
+    }
+});
+
+
+      const response = await API.post('/payment/initialize-gcash-enrollment', dataToSend, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
+      const { checkout_url, enrollment_id } = response.data;
       if (checkout_url) {
+        const enrollmentData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        email: formData.email,
+        enrollment_id: enrollment_id
+      };
+      sessionStorage.setItem('gcashEnrollmentData', JSON.stringify(enrollmentData));
+
         window.location.href = checkout_url;
       } else {
         throw new Error("Checkout URL not received");
       }
     } catch (err) {
-      console.error("GCash Initialization Error:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to initiate payment.");
-      setProcessingPayment(false);
+    console.error("Full error:", err);
+    console.error("Response data:", err.response?.data);
+    // Show detailed validation errors
+    if (err.response?.data?.errors) {
+        alert(JSON.stringify(err.response.data.errors, null, 2));
+    } else {
+        alert(err.response?.data?.message || "Failed to initiate payment.");
     }
+    setProcessingPayment(false);
+}
   };
 
   // ── Submit ────────────────────────────────────────────────────

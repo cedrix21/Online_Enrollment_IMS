@@ -19,7 +19,7 @@ const BASE_SUBJECTS = [
   { code: "MATH", name: "Mathematics",       description: "Numbers, operations, problem solving" },
   { code: "SCI",  name: "Science",           description: "Scientific inquiry and concepts" },
   { code: "AP",   name: "Araling Panlipunan",description: "Social studies and history" },
-  { code: "ESP",  name: "Edukasyon sa Pagpapakatao", description: "Values education" },
+  { code: "ESP",  name: "Edukasyon sa Pagpapakatao/Values", description: "Values education" },
   { code: "TLE",  name: "Technology and Livelihood Education", description: "Home economics and ICT" },
   { code: "HELE", name: "Home Economics and Livelihood Education", description: "Practical skills" },
   { code: "KOREAN", name: "Korean Language", description: "Basic Korean language" },

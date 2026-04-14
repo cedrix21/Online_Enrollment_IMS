@@ -28,6 +28,7 @@ import PaymentReports from "./pages/PaymentReports";
 import EnrolledStudents from "./pages/EnrolledStudents";
 import Form137 from "./pages/Form137";
 import TuitionFeeManagement from "./pages/TuitionFeeManagement";  
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 
 function App() {
@@ -195,6 +196,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
 
           {/* Catch-all route for any other invalid URLs */}
         <Route path="*" element={<NotFound />} />

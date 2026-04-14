@@ -151,6 +151,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/grades/{gradeId}', [GradeController::class, 'updateGrade']);
         Route::get('/admin/grades/statistics', [GradeController::class, 'getGradeStatistics']);
 
+        // Subject Management
+        Route::get('/admin/subjects', [SubjectController::class, 'index']);
+
         // Payment Reports
         Route::get('/admin/payments', [BillingController::class, 'index']);
     });

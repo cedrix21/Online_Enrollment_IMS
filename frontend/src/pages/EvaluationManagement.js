@@ -324,6 +324,7 @@ const EvaluationManagement = () => {
 
   // Data states
   const [allGrades, setAllGrades] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -357,6 +358,7 @@ const EvaluationManagement = () => {
       return;
     }
     fetchAllGrades();
+    fetchAllSubjects();
   }, []);
 
   const fetchAllGrades = async (showRefreshing = false) => {
@@ -395,6 +397,18 @@ const EvaluationManagement = () => {
   };
 
   const handleRefresh = () => fetchAllGrades(true);
+
+  const fetchAllSubjects = async () => {
+    try {
+      const res = await API.get("/admin/subjects");
+      const subjectsData = res.data || [];
+      setAllSubjects(subjectsData);
+      console.log('✅ Subjects fetched:', subjectsData);
+    } catch (err) {
+      console.error("Error fetching subjects:", err);
+      setAllSubjects([]);
+    }
+  };
 
   // ────────────────────────────────────────────────────────────
   // Memoized derived data
@@ -523,13 +537,15 @@ const EvaluationManagement = () => {
   }, [editData, selectedQuarter]);
 
   const handlePrintReportCard = useCallback(() => {
-  printReportCard({
-    student: selectedStudent,
-    teacherName: teacherName,
-    principalName: "GERRY C. DAYON", 
-    schoolYear: selectedStudent?.school_year || "2025-2026"
-  });
-}, [selectedStudent, teacherName]);
+    printReportCard({
+      student: selectedStudent,
+      teacherName: teacherName,
+      principalName: "GERRY C. DAYON",
+      schoolYear: selectedStudent?.school_year || "2025-2026",
+      gradesData: studentGrades,
+      subjects: allSubjects
+    });
+  }, [selectedStudent, teacherName, studentGrades, allSubjects]);
 
   // ────────────────────────────────────────────────────────────
   // Render
