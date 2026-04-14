@@ -11,11 +11,12 @@ import {
   FaPlus,
   FaTrash,
   FaEdit,
+  FaSyncAlt,
 } from "react-icons/fa";
 import "./TeacherDirectory.css";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// CONSTANTS - Outside component (prevents recreation on every render)
+// CONSTANTS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const GRADE_LEVELS = [
   "Nursery",
@@ -49,7 +50,7 @@ const INITIAL_ASSIGNMENT_FORM = {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HELPER: Sort teachers by advisory grade (K1 → G6)
+// HELPER: Sort teachers by advisory grade
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const sortTeachersByAdvisory = (teachers) => {
   const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
@@ -60,22 +61,17 @@ const sortTeachersByAdvisory = (teachers) => {
   return [...teachers].sort((a, b) => {
     const aGrade = a.advisory_grade;
     const bGrade = b.advisory_grade;
-    
-    // Both have advisory grades → sort by order defined in GRADE_LEVELS
     if (aGrade && bGrade) {
       return (gradeOrder[aGrade] ?? Infinity) - (gradeOrder[bGrade] ?? Infinity);
     }
-    // Only a has advisory → a comes first
     if (aGrade && !bGrade) return -1;
-    // Only b has advisory → b comes first
     if (!aGrade && bGrade) return 1;
-    // Neither has advisory → sort by last name (or ID)
     return (a.lastName || '').localeCompare(b.lastName || '');
   });
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MEMOIZED COMPONENTS - Prevent unnecessary re-renders
+// MEMOIZED COMPONENTS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const TeacherCard = memo(({ 
   teacher, 
@@ -116,7 +112,6 @@ const TeacherCard = memo(({
           Specialization: <strong>{teacher.specialization}</strong>
         </p>
 
-        {/* SUBJECT ASSIGNMENTS LIST */}
         {isExpanded && (
           <div className="teacher-load-dropdown">
             <div
@@ -216,56 +211,46 @@ export default function TeacherDirectory() {
   const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PERFORMANCE: Cache invalidation helper
+  // Cache helpers
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const invalidateCache = useCallback(() => {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(`${CACHE_KEY}_time`);
   }, []);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PERFORMANCE: Cached data fetching (5 min cache)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const fetchData = useCallback(async (force = false) => {
     try {
       setLoading(true);
 
-      // Check cache first (unless forced refresh)
       if (!force) {
         const cached = localStorage.getItem(CACHE_KEY);
         const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
-        
         if (cached && cacheTime) {
           const age = Date.now() - parseInt(cacheTime);
           if (age < CACHE_DURATION) {
             const data = JSON.parse(cached);
-            // Apply sorting to cached data as well
             setTeachers(sortTeachersByAdvisory(data.teachers));
             setAvailableSubjects(data.subjects);
             setTeacherLoad(data.load);
             setLoading(false);
-            return; // ⚡ Use cached data - instant load!
+            return;
           }
         }
       }
 
-      // Fetch fresh data
       const [teacherRes, subjectRes, loadRes] = await Promise.all([
         API.get("/teachers"),
         API.get("/subjects"),
         API.get("/teacher-load"),
       ]);
 
-      // Sort teachers by advisory grade
       const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
-
       const data = {
         teachers: sortedTeachers,
         subjects: subjectRes.data,
         load: loadRes.data,
       };
 
-      // Cache the data
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
 
@@ -283,11 +268,7 @@ export default function TeacherDirectory() {
     fetchData();
   }, [fetchData]);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PERFORMANCE: Memoized Maps for O(1) lookups
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  
-  // Map for advisory assignments (grade -> teacher)
+  // Memoized Maps
   const advisoryMap = useMemo(() => {
     const map = new Map();
     teachers.forEach((t) => {
@@ -298,31 +279,22 @@ export default function TeacherDirectory() {
     return map;
   }, [teachers]);
 
-  // Set for faster lookup of assigned subject IDs
   const assignedSubjectIds = useMemo(() => {
     return new Set(teacherLoad.map(a => Number(a.subject_id)));
   }, [teacherLoad]);
 
-  // Memoized available subjects (unassigned only)
   const availableSubjectsForAssignment = useMemo(() => {
     return availableSubjects.filter(
       (subject) => !assignedSubjectIds.has(subject.id)
     );
   }, [availableSubjects, assignedSubjectIds]);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PERFORMANCE: Memoized helper functions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const getTeacherWithAdvisory = useCallback((gradeLevel) => {
     return advisoryMap.get(gradeLevel);
   }, [advisoryMap]);
 
-  const getAssignedTeacher = useCallback((subjectId) => {
-    return teacherLoad.find((a) => Number(a.subject_id) === Number(subjectId));
-  }, [teacherLoad]);
-
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PERFORMANCE: useCallback for all event handlers
+  // Event Handlers
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleAddTeacher = useCallback(async (e) => {
     e.preventDefault();
@@ -330,14 +302,8 @@ export default function TeacherDirectory() {
 
     try {
       const res = await API.post("/teachers", newTeacher);
-      
-      // Optimistic update – add new teacher and resort
       setTeachers(prev => sortTeachersByAdvisory([...prev, res.data.teacher]));
-      
-      // Invalidate cache
       invalidateCache();
-      
-      // Reset form
       setNewTeacher(INITIAL_TEACHER_FORM);
       setShowModal(false);
       alert("Teacher added successfully!");
@@ -358,8 +324,6 @@ export default function TeacherDirectory() {
 
   const handleAssignSubject = useCallback(async (e) => {
     e.preventDefault();
-    
-    // Check if bulk selection or single selection
     const subjectsToAssign = selectedSubjectsForBulk.length > 0 
       ? selectedSubjectsForBulk 
       : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
@@ -372,7 +336,6 @@ export default function TeacherDirectory() {
     setIsSubmitting(true);
 
     try {
-      // Find subject details for each selection
       const assignmentPromises = subjectsToAssign.map((subjectId) => {
         const subject = availableSubjects.find(s => s.id === parseInt(subjectId));
         return API.post(
@@ -387,7 +350,6 @@ export default function TeacherDirectory() {
 
       const responses = await Promise.all(assignmentPromises);
       
-      // Optimistic updates – update teacher's assignments
       setTeachers(prev => prev.map(teacher => {
         if (teacher.id === selectedTeacherForAssign.id) {
           const newAssignments = responses.map(res => res.data.assignment);
@@ -400,14 +362,9 @@ export default function TeacherDirectory() {
       }));
       
       setTeacherLoad(prev => [...prev, ...responses.map(res => res.data.assignment)]);
-      
-      // Invalidate cache
       invalidateCache();
-      
-      // Reset forms
       setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
       setSelectedSubjectsForBulk([]);
-      
       alert(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
     } catch (err) {
       console.error("Assignment Error:", err.response?.data);
@@ -421,9 +378,7 @@ export default function TeacherDirectory() {
     if (!window.confirm("Remove this subject assignment?")) return;
 
     try {
-      await API.delete(`/subject-assignments/${assignmentId}`);
-      
-      // Optimistic updates – remove assignment from teacher (no need to resort)
+      await API.delete(`/teachers/subject-assignments/${assignmentId}`); 
       setTeachers(prev => prev.map(teacher => {
         if (teacher.assignments) {
           return {
@@ -433,12 +388,8 @@ export default function TeacherDirectory() {
         }
         return teacher;
       }));
-      
       setTeacherLoad(prev => prev.filter(a => a.id !== assignmentId));
-      
-      // Invalidate cache
       invalidateCache();
-      
       alert("Assignment removed successfully!");
     } catch (err) {
       console.error("Remove Error:", err.response?.data);
@@ -448,7 +399,6 @@ export default function TeacherDirectory() {
 
   const handleSubjectChange = useCallback((subjectId) => {
     const selectedSub = availableSubjects.find((s) => s.id === parseInt(subjectId));
-
     setAssignmentForm(prev => ({
       ...prev,
       subject_id: subjectId,
@@ -475,12 +425,7 @@ export default function TeacherDirectory() {
     setIsSubmitting(true);
 
     try {
-      const res = await API.put(
-        `/teachers/${selectedTeacherForEdit.id}`,
-        editTeacherForm
-      );
-
-      // Optimistic update – update teacher and resort (advisory may have changed)
+      const res = await API.put(`/teachers/${selectedTeacherForEdit.id}`, editTeacherForm);
       setTeachers(prev => {
         const updated = prev.map((teacher) => 
           teacher.id === selectedTeacherForEdit.id 
@@ -489,10 +434,7 @@ export default function TeacherDirectory() {
         );
         return sortTeachersByAdvisory(updated);
       });
-      
-      // Invalidate cache
       invalidateCache();
-      
       setShowEditModal(false);
       alert("Teacher updated successfully!");
     } catch (err) {
@@ -505,6 +447,29 @@ export default function TeacherDirectory() {
 
   const toggleExpandTeacher = useCallback((teacherId) => {
     setExpandedTeacher(prev => prev === teacherId ? null : teacherId);
+  }, []);
+
+  const refreshSubjects = useCallback(async () => {
+    // Force refresh the subject list without closing modal
+    try {
+      const subjectRes = await API.get("/subjects");
+      const loadRes = await API.get("/teacher-load");
+      setAvailableSubjects(subjectRes.data);
+      setTeacherLoad(loadRes.data);
+      // Update cache
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const data = JSON.parse(cachedData);
+        data.subjects = subjectRes.data;
+        data.load = loadRes.data;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
+      }
+      alert("✅ Subject list refreshed!");
+    } catch (err) {
+      console.error("Refresh failed", err);
+      alert("Failed to refresh subjects. Please try again.");
+    }
   }, []);
 
   return (
@@ -540,26 +505,9 @@ export default function TeacherDirectory() {
                 textAlign: "center"
               }}>
                 <div>
-                  <div style={{
-                    fontSize: "3rem",
-                    marginBottom: "20px",
-                    color: "#b8860b"
-                  }}>
-                    ⏳
-                  </div>
-                  <h3 style={{ 
-                    color: "#333", 
-                    fontWeight: 600,
-                    marginBottom: "10px"
-                  }}>
-                    Loading Faculty
-                  </h3>
-                  <p style={{ 
-                    color: "#666", 
-                    fontSize: "0.95rem" 
-                  }}>
-                    Fetching faculty directory...
-                  </p>
+                  <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
+                  <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Faculty</h3>
+                  <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching faculty directory...</p>
                 </div>
               </div>
             ) : (
@@ -580,7 +528,6 @@ export default function TeacherDirectory() {
           </div>
         </div>
 
-        {/* MODALS - Only render when needed */}
         {showModal && (
           <AddTeacherModal
             newTeacher={newTeacher}
@@ -618,6 +565,7 @@ export default function TeacherDirectory() {
             availableSubjects={availableSubjectsForAssignment}
             selectedSubjectsForBulk={selectedSubjectsForBulk}
             setSelectedSubjectsForBulk={setSelectedSubjectsForBulk}
+            onRefreshSubjects={refreshSubjects}
           />
         )}
       </div>
@@ -625,7 +573,9 @@ export default function TeacherDirectory() {
   );
 }
 
-// Separate modal components to reduce re-renders
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODAL COMPONENTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const AddTeacherModal = memo(({ 
   newTeacher, 
   setNewTeacher, 
@@ -831,7 +781,6 @@ const EditTeacherModal = memo(({
             {GRADE_LEVELS.map((grade) => {
               const assignedTeacher = getTeacherWithAdvisory(grade);
               const isCurrentTeacher = assignedTeacher?.id === selectedTeacher?.id;
-              
               return (
                 <option 
                   key={grade} 
@@ -880,8 +829,10 @@ const AssignSubjectModal = memo(({
   availableSubjects,
   selectedSubjectsForBulk,
   setSelectedSubjectsForBulk,
+  onRefreshSubjects,
 }) => {
-  const [assignMode, setAssignMode] = useState("single"); // "single" or "bulk"
+  const [assignMode, setAssignMode] = useState("single");
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCheckboxChange = (subjectId) => {
     setSelectedSubjectsForBulk(prev =>
@@ -899,13 +850,18 @@ const AssignSubjectModal = memo(({
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await onRefreshSubjects();
+    setRefreshing(false);
+  };
+
   const handleBulkSubmit = (e) => {
     e.preventDefault();
     if (selectedSubjectsForBulk.length === 0) {
       alert("Please select at least one subject");
       return;
     }
-    // Call parent onSubmit, will be handled by the modified handleAssignSubject
     onSubmit(e);
   };
 
@@ -922,7 +878,26 @@ const AssignSubjectModal = memo(({
             Assign Subjects to {selectedTeacher?.firstName}{" "}
             {selectedTeacher?.lastName}
           </h3>
-          <FaTimes className="close-icon" onClick={onClose} />
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "1.2rem",
+                padding: "5px",
+                borderRadius: "4px",
+                transition: "all 0.2s",
+              }}
+              title="Refresh subject list"
+            >
+              <FaSyncAlt className={refreshing ? "spinning" : ""} />
+            </button>
+            <FaTimes className="close-icon" onClick={onClose} />
+          </div>
         </div>
 
         {/* Mode Tabs */}
@@ -938,7 +913,6 @@ const AssignSubjectModal = memo(({
               fontWeight: 600,
               color: assignMode === "single" ? "#333" : "#999",
               borderBottom: assignMode === "single" ? "3px solid #b8860b" : "none",
-              transition: "all 0.2s",
             }}
             onClick={() => {
               setAssignMode("single");
@@ -958,7 +932,6 @@ const AssignSubjectModal = memo(({
               fontWeight: 600,
               color: assignMode === "bulk" ? "#333" : "#999",
               borderBottom: assignMode === "bulk" ? "3px solid #b8860b" : "none",
-              transition: "all 0.2s",
             }}
             onClick={() => setAssignMode("bulk")}
           >
@@ -1030,7 +1003,6 @@ const AssignSubjectModal = memo(({
                     cursor: "pointer",
                     fontWeight: 600,
                     fontSize: "0.85rem",
-                    transition: "all 0.2s",
                   }}
                 >
                   {selectedSubjectsForBulk.length === availableSubjects.length ? "Deselect All" : "Select All"}
@@ -1059,7 +1031,6 @@ const AssignSubjectModal = memo(({
                         borderRadius: "4px",
                         cursor: "pointer",
                         border: selectedSubjectsForBulk.includes(subject.id) ? "1px solid #f7e14b" : "none",
-                        transition: "all 0.2s",
                       }}
                     >
                       <input
