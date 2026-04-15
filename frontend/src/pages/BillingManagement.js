@@ -13,6 +13,7 @@ const BillingManagement = ({ user }) => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [studentsLoading, setStudentsLoading] = useState(false);
     const [ledgerLoading, setLedgerLoading] = useState(false);
     const [totalTuition, setTotalTuition] = useState(25000);
     const [booksSummary, setBooksSummary] = useState({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
@@ -20,6 +21,11 @@ const BillingManagement = ({ user }) => {
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+});
 
     // Define tuition rates
     const rates = {
@@ -35,7 +41,14 @@ const BillingManagement = ({ user }) => {
 
     useEffect(() => {
         fetchStudents();
-    }, []);
+    }, [selectedSchoolYear]);
+
+    useEffect(() => {
+    if (selectedStudent && !students.find(s => s.id === selectedStudent.id)) {
+        setSelectedStudent(null);
+        setPayments([]);
+    }
+}, [students, selectedStudent]);
 
     useEffect(() => {
         if (location.state?.paymentFilter) {
@@ -44,38 +57,50 @@ const BillingManagement = ({ user }) => {
     }, [location.state]);
 
     const fetchStudents = async () => {
-        try {
-            const res = await API.get('/students');
-            setStudents(res.data);
-            setLoading(false);
-        } catch (err) {
-            console.error("Error fetching students", err);
-        }
-    };
+    setStudentsLoading(true);
+    try {
+        const res = await API.get('/students', {
+            params: { school_year: selectedSchoolYear }
+        });
+        setStudents(res.data);
+    } catch (err) {
+        console.error("Error fetching students", err);
+    } finally {
+        setStudentsLoading(false);
+        setLoading(false); // turn off initial loading after first fetch
+    }
+};
 
     const handleSelectStudent = async (student) => {
-        // If clicking the same student, deselect
-        if (selectedStudent?.id === student.id) {
-            setSelectedStudent(null);
-            setPayments([]);
-            setTotalTuition(25000);
-            setBooksSummary({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
-            return;
-        }
+  if (selectedStudent?.id === student.id) {
+    setSelectedStudent(null);
+    setPayments([]);
+    setTotalTuition(25000);
+    setBooksSummary({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
+    return;
+  }
 
-        setSelectedStudent(student);
-        setLedgerLoading(true);
-        try {
-            const res = await API.get(`/admin/billing/student/${student.id}`);
-            setPayments(res.data.ledger || []);
-            setTotalTuition(res.data.summary.total_tuition);
-            setBooksSummary(res.data.summary.books);
-        } catch (err) {
-            console.error("Error fetching ledger", err);
-        } finally {
-            setLedgerLoading(false);
-        }
-    };
+  setSelectedStudent(student);
+  setLedgerLoading(true);
+  try {
+    const res = await API.get(`/admin/billing/student/${student.id}`, {
+      params: { school_year: selectedSchoolYear }
+    });
+    setPayments(res.data.ledger || []);
+    setTotalTuition(res.data.summary.total_tuition);
+    setBooksSummary(res.data.summary.books);
+  } catch (err) {
+    console.error("Error fetching ledger", err);
+  } finally {
+    setLedgerLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (selectedStudent) {
+    handleSelectStudent(selectedStudent);
+  }
+}, [selectedSchoolYear]);
 
     const handlePaymentAdded = async () => {
         if (!selectedStudent) return;
@@ -119,16 +144,16 @@ const BillingManagement = ({ user }) => {
                         {/* Student List Column */}
                         <div className="student-list-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <h3>Enrolled Students</h3>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    {filterPaymentStatus === 'unpaid' && (
-                                        <span style={{ padding: '4px 8px', backgroundColor: '#ff9800', color: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                            Unpaid Only
-                                        </span>
-                                    )}
-                                </div>
+                            <h3>Enrolled Students</h3>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {filterPaymentStatus === 'unpaid' && (
+                                <span style={{ padding: '4px 8px', backgroundColor: '#ff9800', color: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                Unpaid Only
+                                </span>
+                            )}
                             </div>
-                            
+                        </div>
+                         {/* Search Bar */}
                             <div className="student-search-wrapper">
                                 <input 
                                     type="text"
@@ -139,21 +164,36 @@ const BillingManagement = ({ user }) => {
                                 />
                                 <i className="fas fa-search search-icon"></i>
                             </div>
-
-                            <div style={{ marginBottom: '15px' }}>
-                                <select
-                                    value={filterPaymentStatus}
-                                    onChange={(e) => setFilterPaymentStatus(e.target.value)}
-                                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
-                                >
-                                    <option value="all">All Students</option>
-                                    <option value="unpaid">Unpaid Balance Only</option>
-                                </select>
-                            </div>
+                        
+                        <div style={{ marginBottom: '15px', display: 'flex', gap: '10px' }}>
+                            <select
+                            value={selectedSchoolYear}
+                            onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                            style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                            >
+                            {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                            </select>
+                            <select
+                            value={filterPaymentStatus}
+                            onChange={(e) => setFilterPaymentStatus(e.target.value)}
+                            style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                            >
+                            <option value="all">All Students</option>
+                            <option value="unpaid">Unpaid Balance Only</option>
+                            </select>
+                        </div>
 
                             <div className="student-scroll-area">
-                                {loading ? (
-                                    <p className="student-loading">Loading...</p>
+                                {studentsLoading ? (
+                                    // Skeleton rows while loading
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <div key={i} className="student-item skeleton">
+                                            <div className="skeleton-line" style={{ width: '70%', height: '16px', marginBottom: '6px' }}></div>
+                                            <div className="skeleton-line" style={{ width: '40%', height: '14px' }}></div>
+                                        </div>
+                                    ))
                                 ) : filteredStudents.length > 0 ? (
                                     filteredStudents.map(s => (
                                         <div 
@@ -191,6 +231,7 @@ const BillingManagement = ({ user }) => {
                                         totalTuition={totalTuition}
                                         books={booksSummary}
                                         loading={ledgerLoading}
+                                         selectedSchoolYear={selectedSchoolYear} 
                                     />
                                 </>
                             ) : (

@@ -37,6 +37,7 @@ const getComponentName = (subjectCode) => {
   return subjectCode;
 };
 
+
 // MAPEH component sort order
 const mapehComponentOrder = ['MUSIC', 'ARTS', 'PHYSICAL EDUCATION', 'HEALTH'];
 const getMapehSortIndex = (subjectCode) => {
@@ -342,9 +343,16 @@ const EvaluationManagement = () => {
   const [editingGradeId, setEditingGradeId] = useState(null);
   const [editData, setEditData] = useState({});
 
+  
   // Teacher name state (dynamic)
   const [teacherName, setTeacherName] = useState('');
 
+  // 🆕 School year filter
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  });
   // ────────────────────────────────────────────────────────────
   // Data fetching
   // ────────────────────────────────────────────────────────────
@@ -362,39 +370,44 @@ const EvaluationManagement = () => {
   }, []);
 
   const fetchAllGrades = async (showRefreshing = false) => {
-    try {
-      if (showRefreshing) {
-        setRefreshing(true);
-        setSuccess("Refreshing data...");
-      } else {
-        setLoading(true);
-      }
+  try {
+    if (showRefreshing) {
+      setRefreshing(true);
+      setSuccess("Refreshing data...");
+    } else {
+      setLoading(true);
+    }
 
-      const res = await API.get("/admin/grades");
-      const gradesData = res.data.data || [];
-      setAllGrades(gradesData);
+    const res = await API.get("/admin/grades", {
+      params: { school_year: selectedSchoolYear }
+    });
+    const gradesData = res.data.data || [];
+    setAllGrades(gradesData);
 
-      setError("");
+    setError("");
+    if (showRefreshing) {
+      setSuccess("Data refreshed successfully!");
+      setTimeout(() => setSuccess(""), 2000);
+    }
+  } catch (err) {
+    console.error("Error fetching grades:", err);
+    if (err.response?.status === 404 || err.response?.data?.message?.includes("No grades found")) {
+      setAllGrades([]);
       if (showRefreshing) {
-        setSuccess("Data refreshed successfully!");
+        setSuccess("No grades available yet");
         setTimeout(() => setSuccess(""), 2000);
       }
-    } catch (err) {
-      console.error("Error fetching grades:", err);
-      if (err.response?.status === 404 || err.response?.data?.message?.includes("No grades found")) {
-        setAllGrades([]);
-        if (showRefreshing) {
-          setSuccess("No grades available yet");
-          setTimeout(() => setSuccess(""), 2000);
-        }
-      } else if (err.response?.status !== 401) {
-        setError("Failed to fetch grades: " + (err.response?.data?.message || err.message));
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    } else if (err.response?.status !== 401) {
+      setError("Failed to fetch grades: " + (err.response?.data?.message || err.message));
     }
-  };
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+useEffect(() => {
+  fetchAllGrades();
+}, [selectedSchoolYear]);
 
   const handleRefresh = () => fetchAllGrades(true);
 
@@ -613,19 +626,37 @@ const EvaluationManagement = () => {
         <div className="content-scroll-area" style={{ padding: "20px" }}>
           <div className="evaluation-container">
             <div className="evaluation-header">
-              <div>
-                <h1>Student Grade Evaluation</h1>
-                <p>Select a grade level and student to manage grades</p>
-              </div>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="refresh-btn"
-              >
-                <FaSyncAlt className={refreshing ? "spinning" : ""} />
-                {refreshing ? " Refreshing..." : " Refresh"}
-              </button>
-            </div>
+  <div>
+    <h1>Student Grade Evaluation</h1>
+    <p>Select a grade level and student to manage grades</p>
+  </div>
+  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+    <select
+      value={selectedSchoolYear}
+      onChange={(e) => setSelectedSchoolYear(e.target.value)}
+      style={{
+        padding: '8px 16px',
+        borderRadius: '6px',
+        border: '1px solid #b8860b',
+        background: '#fff',
+        fontSize: '0.9rem',
+        cursor: 'pointer'
+      }}
+    >
+      {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+        <option key={y} value={y}>{y}</option>
+      ))}
+    </select>
+    <button
+      onClick={handleRefresh}
+      disabled={refreshing}
+      className="refresh-btn"
+    >
+      <FaSyncAlt className={refreshing ? "spinning" : ""} />
+      {refreshing ? " Refreshing..." : " Refresh"}
+    </button>
+  </div>
+</div>
 
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}

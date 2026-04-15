@@ -252,38 +252,38 @@ public function getAllGrades(Request $request)
 {
     $query = Grade::query();
 
-    // Filter by teacher
     if ($request->has('teacher_id')) {
         $query->where('teacher_id', $request->teacher_id);
     }
 
-    // Filter by student
     if ($request->has('student_id')) {
         $query->where('student_id', $request->student_id);
     }
 
-    // Filter by subject
     if ($request->has('subject_id')) {
         $query->where('subject_id', $request->subject_id);
     }
 
-    // Filter by quarter
     if ($request->has('quarter')) {
         $query->where('quarter', $request->quarter);
     }
 
-    // Filter by grade level
     if ($request->has('gradeLevel')) {
         $query->whereHas('student', function ($q) {
             $q->where('gradeLevel', request('gradeLevel'))->where('status', 'active');
         });
     }
 
-    // Only show grades for active (approved) students
+    // 🆕 Filter by school year (via enrollment relationship)
+    if ($request->has('school_year')) {
+        $query->whereHas('student.enrollments', function ($q) use ($request) {
+            $q->where('school_year', $request->school_year);
+        });
+    }
+
     $grades = $query->whereHas('student', function ($q) {
         $q->where('status', 'active');
     })
-    // ❌ Remove 'student.enrollment' – it no longer exists
     ->with(['student', 'subject', 'student.section.advisor', 'teacher'])
     ->orderBy('created_at', 'desc')
     ->paginate(50);

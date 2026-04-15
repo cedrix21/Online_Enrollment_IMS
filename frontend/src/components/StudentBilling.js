@@ -61,7 +61,7 @@ const isPastGracePeriod = () => {
 
 
 // --- Modal Component (unchanged) ---
-const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
+const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose,schoolYear  }) => {
     const [loading, setLoading] = useState(false);
     const [baseAmount, setBaseAmount] = useState('');
     const [bookAmount, setBookAmount] = useState('');
@@ -97,7 +97,8 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
             const monthlyPayload = {
                 ...paymentData,
                 amount_paid: monthlyTotal.toFixed(2),
-                payment_type: applyPenalty ? 'Monthly w/ penalty' : 'Monthly Installment'
+                payment_type: applyPenalty ? 'Monthly w/ penalty' : 'Monthly Installment',
+                 school_year: schoolYear
             };
             promises.push(API.post(`/admin/billing/student/${studentId}/pay`, monthlyPayload));
         }
@@ -106,7 +107,8 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
             const booksPayload = {
                 ...paymentData,
                 amount_paid: books.toFixed(2),
-                payment_type: 'Books'
+                payment_type: 'Books',
+                 school_year: schoolYear
             };
             promises.push(API.post(`/admin/billing/student/${studentId}/pay`, booksPayload));
         }
@@ -238,7 +240,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose }) => {
 
 
 // --- MAIN COMPONENT ---
-const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPaymentAdded, loading = false }) => {
+const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPaymentAdded, loading = false,  selectedSchoolYear  }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
@@ -357,6 +359,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPa
                     studentId={studentId}
                     onClose={() => setIsModalOpen(false)}
                     onPaymentSuccess={onPaymentAdded}
+                    schoolYear={selectedSchoolYear} 
                 />
             )}
         </div>

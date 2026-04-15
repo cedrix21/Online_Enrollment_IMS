@@ -154,39 +154,43 @@ export default function Form137() {
     if (!query.trim()) { setSearchResults([]); setShowDropdown(false); return; }
     const q = query.toLowerCase();
     const results = students.filter(s => {
-      const full = `${s.lastName} ${s.firstName} ${s.enrollment?.middleName || ''} ${s.lrn || ''}`.toLowerCase();
-      return full.includes(q);
+    const full = `${s.lastName} ${s.firstName} ${s.middleName || ''} ${s.lrn || ''}`.toLowerCase();      return full.includes(q);
     }).slice(0, 8);
     setSearchResults(results);
     setShowDropdown(true);
   };
 
-  const handleSelectStudent = async (s) => {
-    const dob = s.enrollment?.dateOfBirth || '';
-    const dobParts = dob ? dob.split('-') : [];
+ const handleSelectStudent = async (s) => {
+  const currentEnrollment = s.current_enrollment || s.currentEnrollment || {};
 
-    const parentName       = s.enrollment?.fatherName        || s.enrollment?.motherName        || '';
-    const parentAddress    = s.enrollment?.fatherAddress      || s.enrollment?.motherAddress      || '';
-    const parentOccupation = s.enrollment?.fatherOccupation   || s.enrollment?.motherOccupation   || '';
+  const dob = s.dateOfBirth || currentEnrollment.dateOfBirth || '';
+  const dobParts = dob ? dob.split('-') : [];
+  
+  const gender = s.gender || currentEnrollment.gender || '';
+  const middleName = s.middleName || currentEnrollment.middleName || '';
 
-    setStudent({
-      lastName:         s.lastName                              || '',
-      firstName:        s.firstName                             || '',
-      middleInitial:    s.enrollment?.middleName ? s.enrollment.middleName.charAt(0) + '.' : '',
-      division:         s.section?.name                         || '',
-      lrn:              s.lrn                                   || '',
-      sex:              s.enrollment?.gender                    || '',
-      birthMonth:       dobParts[1]                             || '',
-      birthDay:         dobParts[2]                             || '',
-      birthYear:        dobParts[0]                             || '',
-      placeOfBirth:     '',
-      entranceMonth:    '',
-      entranceDay:      '',
-      entranceYear:     '',
-      parentName,
-      parentAddress,
-      parentOccupation,
-    });
+  const parentName = currentEnrollment.fatherName || currentEnrollment.motherName || '';
+  const parentAddress = currentEnrollment.fatherAddress || currentEnrollment.motherAddress || '';
+  const parentOccupation = currentEnrollment.fatherOccupation || currentEnrollment.motherOccupation || '';
+
+  setStudent({
+    lastName:         s.lastName                              || '',
+    firstName:        s.firstName                             || '',
+    middleInitial:    middleName ? middleName.charAt(0) + '.' : '',
+    division:         s.section?.name                         || '',
+    lrn:              s.lrn                                   || '',
+    sex:              gender,
+    birthMonth:       dobParts[1]                             || '',
+    birthDay:         dobParts[2]                             || '',
+    birthYear:        dobParts[0]                             || '',
+    placeOfBirth:     '',
+    entranceMonth:    '',
+    entranceDay:      '',
+    entranceYear:     '',
+    parentName,
+    parentAddress,
+    parentOccupation,
+  });
 
     setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
 
@@ -201,47 +205,47 @@ export default function Form137() {
     }
 
     setGradesLoading(true);
-    try {
-      const res = await API.get(`/admin/grades?student_id=${s.id}`);
-      const gradesData = res.data.data || [];
+try {
+  const res = await API.get(`/admin/grades?student_id=${s.id}`);
+  const gradesData = res.data.data || [];
 
-      const newGradeData = Object.fromEntries(
-        GRADES.map(g => [g, {
-          school: gradeData[g].school,
-          schoolYear: gradeData[g].schoolYear,
-          subjects: { ...gradeData[g].subjects },
-          eligible: gradeData[g].eligible,
-        }])
-      );
+  setGradeData(prevGradeData => {
+    const newGradeData = Object.fromEntries(
+      GRADES.map(g => [g, {
+        school: prevGradeData[g].school,
+        schoolYear: prevGradeData[g].schoolYear,
+        subjects: { ...prevGradeData[g].subjects },
+        eligible: prevGradeData[g].eligible,
+      }])
+    );
 
-      gradesData.forEach(grade => {
-        const subjectName = grade.subject?.subjectName;
-        const score = grade.score;
-        const remarks = grade.remarks || '';
-        let quarter = grade.quarter ? String(grade.quarter).toLowerCase() : '';
-        if (quarter === '1' || quarter === 'quarter1' || quarter === 'q1') quarter = 'q1';
-        else if (quarter === '2' || quarter === 'quarter2' || quarter === 'q2') quarter = 'q2';
-        else if (quarter === '3' || quarter === 'quarter3' || quarter === 'q3') quarter = 'q3';
-        else if (quarter === '4' || quarter === 'quarter4' || quarter === 'q4') quarter = 'q4';
+    gradesData.forEach(grade => {
+      const subjectName = grade.subject?.subjectName;
+      const score = grade.score;
+      const remarks = grade.remarks || '';
+      let quarter = grade.quarter ? String(grade.quarter).toLowerCase() : '';
+      if (quarter === '1' || quarter === 'quarter1' || quarter === 'q1') quarter = 'q1';
+      else if (quarter === '2' || quarter === 'quarter2' || quarter === 'q2') quarter = 'q2';
+      else if (quarter === '3' || quarter === 'quarter3' || quarter === 'q3') quarter = 'q3';
+      else if (quarter === '4' || quarter === 'quarter4' || quarter === 'q4') quarter = 'q4';
 
-        if (gradeRoman && subjectName && quarter) {
-          const gData = newGradeData[gradeRoman];
-          if (!gData.subjects[subjectName]) {
-            gData.subjects[subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
-          }
-          gData.subjects[subjectName][quarter] = score;
-          if (remarks) gData.subjects[subjectName].remarks = remarks;
-          console.log(`📊 Loaded grade: ${subjectName} ${quarter}=${score}`);
+      if (gradeRoman && subjectName && quarter) {
+        const gData = newGradeData[gradeRoman];
+        if (!gData.subjects[subjectName]) {
+          gData.subjects[subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
         }
-      });
+        gData.subjects[subjectName][quarter] = score;
+        if (remarks) gData.subjects[subjectName].remarks = remarks;
+      }
+    });
 
-      console.log('✅ Grades loaded successfully:', newGradeData);
-      setGradeData(newGradeData);
-    } catch (err) {
-      console.error('❌ Error fetching grades:', err);
-    } finally {
-      setGradesLoading(false);
-    }
+    return newGradeData;
+  });
+} catch (err) {
+  console.error('❌ Error fetching grades:', err);
+} finally {
+  setGradesLoading(false);
+}
 
     setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
     setShowDropdown(false);

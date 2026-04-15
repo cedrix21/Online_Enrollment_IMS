@@ -70,6 +70,7 @@ const sortTeachersByAdvisory = (teachers) => {
   });
 };
 
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MEMOIZED COMPONENTS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -209,6 +210,11 @@ export default function TeacherDirectory() {
   const [editTeacherForm, setEditTeacherForm] = useState(INITIAL_TEACHER_FORM);
   const [assignmentForm, setAssignmentForm] = useState(INITIAL_ASSIGNMENT_FORM);
   const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+});
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Cache helpers
@@ -239,10 +245,10 @@ export default function TeacherDirectory() {
       }
 
       const [teacherRes, subjectRes, loadRes] = await Promise.all([
-        API.get("/teachers"),
-        API.get("/subjects"),
-        API.get("/teacher-load"),
-      ]);
+      API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
+      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+    ]);
 
       const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
       const data = {
@@ -262,11 +268,11 @@ export default function TeacherDirectory() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedSchoolYear]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  fetchData(true); // force refresh when year changes
+}, [selectedSchoolYear]);
 
   // Memoized Maps
   const advisoryMap = useMemo(() => {
@@ -344,6 +350,7 @@ export default function TeacherDirectory() {
             subject_id: subjectId,
             gradeLevel: subject?.gradeLevel || "",
             schedule: "",
+             school_year: selectedSchoolYear, 
           }
         );
       });
@@ -450,27 +457,28 @@ export default function TeacherDirectory() {
   }, []);
 
   const refreshSubjects = useCallback(async () => {
-    // Force refresh the subject list without closing modal
-    try {
-      const subjectRes = await API.get("/subjects");
-      const loadRes = await API.get("/teacher-load");
-      setAvailableSubjects(subjectRes.data);
-      setTeacherLoad(loadRes.data);
-      // Update cache
-      const cachedData = localStorage.getItem(CACHE_KEY);
-      if (cachedData) {
-        const data = JSON.parse(cachedData);
-        data.subjects = subjectRes.data;
-        data.load = loadRes.data;
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-        localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
-      }
-      alert("✅ Subject list refreshed!");
-    } catch (err) {
-      console.error("Refresh failed", err);
-      alert("Failed to refresh subjects. Please try again.");
+  try {
+    const [subjectRes, loadRes] = await Promise.all([
+      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+    ]);
+    setAvailableSubjects(subjectRes.data);
+    setTeacherLoad(loadRes.data);
+    // Update cache
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      const data = JSON.parse(cachedData);
+      data.subjects = subjectRes.data;
+      data.load = loadRes.data;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
     }
-  }, []);
+    alert("✅ Subject list refreshed!");
+  } catch (err) {
+    console.error("Refresh failed", err);
+    alert("Failed to refresh subjects. Please try again.");
+  }
+}, [selectedSchoolYear]);
 
   return (
     <div className="dashboard-layout">
@@ -481,20 +489,38 @@ export default function TeacherDirectory() {
         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
           <div className="directory-container">
             <div className="directory-header">
-              <div className="title-group">
-                <FaChalkboardTeacher
-                  className="title-icon"
-                  style={{ color: "#b8860b", fontSize: "2rem", marginRight: "15px" }}
-                />
-                <div>
-                  <h2>Faculty Directory</h2>
-                  <p>Manage advisory roles and subject assignments</p>
+                <div className="title-group">
+                  <FaChalkboardTeacher
+                    className="title-icon"
+                    style={{ color: "#b8860b", fontSize: "2rem", marginRight: "15px" }}
+                  />
+                  <div>
+                    <h2>Faculty Directory</h2>
+                    <p>Manage advisory roles and subject assignments</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <select
+                    value={selectedSchoolYear}
+                    onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid #b8860b',
+                      background: '#fff',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  <button className="add-teacher-btn" onClick={() => setShowModal(true)}>
+                    <FaUserPlus /> Add Teacher
+                  </button>
                 </div>
               </div>
-              <button className="add-teacher-btn" onClick={() => setShowModal(true)}>
-                <FaUserPlus /> Add Teacher
-              </button>
-            </div>
 
             {loading ? (
               <div style={{ 

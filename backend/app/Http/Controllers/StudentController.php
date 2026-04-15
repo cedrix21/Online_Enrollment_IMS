@@ -5,24 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use App\Models\StudentRecord;
+use App\Models\Enrollment;
 
 class StudentController extends Controller
 {
-    public function index()
-    {
-        // ✅ FIXED: Eagerly load payments, section, and enrollment relationships
-        $students = Student::with([
-            'payments',
-            'section', 
-            'enrollment'
-            
-            ])
+    public function index(Request $request)
+{
+    $query = Student::with(['payments', 'section', 'currentEnrollment']);
 
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        return response()->json($students);
+    // Filter by school year if provided
+    if ($request->has('school_year')) {
+        $query->whereHas('enrollments', function ($q) use ($request) {
+            $q->where('school_year', $request->school_year);
+        });
     }
+
+    $students = $query->orderBy('created_at', 'desc')->get();
+
+    return response()->json($students);
+}
 
    public function store(Request $request)
 {
@@ -97,82 +98,74 @@ public function getCurrentYearList(Request $request)
 {
     $schoolYear = $request->input('school_year');
 
-    // If "all" is requested, fetch all records regardless of school year
-    if ($schoolYear === 'all') {
-        $enrolled = Student::where('status', 'active')
-            ->get()
-            ->map(function($student) {
-                return [
-                    'id' => $student->id,
-                    'firstName' => $student->firstName,
-                    'lastName' => $student->lastName,
-                    'studentId' => $student->studentId,
-                    'gradeLevel' => $student->gradeLevel,
-                    'schoolYear' => $student->school_year,
-                    'lrn' => $student->lrn ?? null,
-                    'contactNumber' => $student->fatherContact ?? $student->motherContact ?? $student->emergencyContact ?? $student->contact_number ??'—',
-                    'source' => 'enrolled',
-                ];
-            });
+    // Helper to format enrollment rows
+    $mapEnrollment = function ($enrollment) {
+        $student = $enrollment->student;
+        return [
+            'id'            => $enrollment->id,               // use enrollment id for uniqueness
+            'firstName'     => $student->firstName ?? '',
+            'lastName'      => $student->lastName ?? '',
+            'studentId'     => $student->studentId ?? '',
+            'gradeLevel'    => $enrollment->gradeLevel,        // from enrollment (historical)
+            'schoolYear'    => $enrollment->school_year,
+            'lrn'           => $student->lrn ?? null,
+            'contactNumber' => $student->contact_number ?? '—',
+            'source'        => 'enrolled',
+        ];
+    };
 
-        $manual = StudentRecord::all()
-            ->map(function($record) {
-                return [
-                    'id' => $record->id,
-                    'firstName' => $record->first_name,
-                    'lastName' => $record->last_name,
-                    'studentId' => $record->student_id,
-                    'gradeLevel' => $record->grade_level,
-                    'schoolYear' => $record->school_year,
-                    'lrn' => $record->lrn,
-                    'contactNumber' => $record->contact_number,
-                    'source' => 'manual',
-                ];
-            });
+    if ($schoolYear === 'all') {
+        // All approved enrollments across all years
+        $enrolled = Enrollment::with('student')
+            ->where('status', 'approved')
+            ->get()
+            ->map($mapEnrollment);
+
+        $manual = StudentRecord::all()->map(function ($record) {
+            return [
+                'id'            => $record->id,
+                'firstName'     => $record->first_name,
+                'lastName'      => $record->last_name,
+                'studentId'     => $record->student_id,
+                'gradeLevel'    => $record->grade_level,
+                'schoolYear'    => $record->school_year,
+                'lrn'           => $record->lrn,
+                'contactNumber' => $record->contact_number,
+                'source'        => 'manual',
+            ];
+        });
     } else {
-        // Otherwise, filter by the specified year (or default to current)
         if (!$schoolYear) {
             $month = (int) date('n');
-            $year = (int) date('Y');
+            $year  = (int) date('Y');
             $schoolYear = ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
         }
 
-        $enrolled = Student::where('school_year', $schoolYear)
-            ->where('status', 'active')
+        // Enrollments for the selected school year
+        $enrolled = Enrollment::with('student')
+            ->where('school_year', $schoolYear)
+            ->where('status', 'approved')
             ->get()
-            ->map(function($student) {
-                return [
-                    'id' => $student->id,
-                    'firstName' => $student->firstName,
-                    'lastName' => $student->lastName,
-                    'studentId' => $student->studentId,
-                    'gradeLevel' => $student->gradeLevel,
-                    'schoolYear' => $student->school_year,
-                    'lrn' => $student->lrn ?? null,
-                    'contactNumber' => $student->contact_number ?? '—',
-                    'source' => 'enrolled',
-                    
-                ];
-            });
+            ->map($mapEnrollment);
 
+        // Manual records for the same year
         $manual = StudentRecord::where('school_year', $schoolYear)
             ->get()
-            ->map(function($record) {
+            ->map(function ($record) {
                 return [
-                    'id' => $record->id,
-                    'firstName' => $record->first_name,
-                    'lastName' => $record->last_name,
-                    'studentId' => $record->student_id,
-                    'gradeLevel' => $record->grade_level,
-                    'schoolYear' => $record->school_year,
-                    'lrn' => $record->lrn,
+                    'id'            => $record->id,
+                    'firstName'     => $record->first_name,
+                    'lastName'      => $record->last_name,
+                    'studentId'     => $record->student_id,
+                    'gradeLevel'    => $record->grade_level,
+                    'schoolYear'    => $record->school_year,
+                    'lrn'           => $record->lrn,
                     'contactNumber' => $record->contact_number,
-                    'source' => 'manual',
+                    'source'        => 'manual',
                 ];
             });
     }
 
-    // Merge and sort by grade level then last name
     $combined = $enrolled->concat($manual)->sortBy([
         ['gradeLevel', 'asc'],
         ['lastName', 'asc'],
@@ -200,17 +193,14 @@ public function updateStudentInfo(Request $request, $id)
 public function searchByEmail(Request $request)
 {
     $email = $request->query('email');
-
-    $student = Student::with('section', 'enrollment')
-        ->whereHas('enrollment', function($q) use ($email) {
-            $q->where('email', $email);
-        })
+    // Email is now directly on Student (from enrollment approval)
+    $student = Student::with(['section', 'currentEnrollment'])
+        ->where('email', $email)
         ->first();
 
     if (!$student) {
         return response()->json(['message' => 'Student not found'], 404);
     }
-
     return response()->json($student);
 }
 

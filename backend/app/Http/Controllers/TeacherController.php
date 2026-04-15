@@ -14,17 +14,27 @@ use Illuminate\Support\Facades\DB;
 class TeacherController extends Controller
 {
     // Get all teachers with their assignments
-    public function index()
-    {
-        $teachers = Teacher::with([
-            'assignments.subject',
-            'assignments' => function($query) {
-                $query->orderBy('gradeLevel');
-            }
-        ])->get();
+    public function index(Request $request)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
-        return response()->json($teachers);
-    }
+    $teachers = Teacher::with([
+        'assignments' => function ($query) use ($schoolYear) {
+            $query->where('school_year', $schoolYear)
+                  ->orderBy('gradeLevel');
+        },
+        'assignments.subject'
+    ])->get();
+
+    return response()->json($teachers);
+}
+
+private function getCurrentSchoolYear(): string
+{
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 
     // Create new teacher, User account, AND Section (if advisory_grade is set)
     public function store(Request $request)
@@ -207,13 +217,17 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
             'gradeLevel' => 'required|string',
-            'schedule' => 'nullable|string'
+            'schedule' => 'nullable|string',
+            'school_year'  => 'nullable|string',
         ]);
+
+        $schoolYear = $validated['school_year'] ?? $this->getCurrentSchoolYear();
 
         $exists = SubjectAssignment::where([
             'teacher_id' => $teacherId,
             'subject_id' => $validated['subject_id'],
-            'gradeLevel' => $validated['gradeLevel']
+            'gradeLevel' => $validated['gradeLevel'],
+            'school_year' => $schoolYear,
         ])->exists();
 
         if ($exists) {
@@ -226,7 +240,8 @@ class TeacherController extends Controller
             'teacher_id' => $teacherId,
             'subject_id' => $validated['subject_id'],
             'gradeLevel' => $validated['gradeLevel'],
-            'schedule' => $validated['schedule'] ?? null
+            'schedule' => $validated['schedule'] ?? null,
+            'school_year' => $schoolYear,
         ]);
 
         return response()->json([
@@ -268,9 +283,14 @@ class TeacherController extends Controller
         }
     }
 
-    public function getAllAssignments()
-    {
-        $assignments = SubjectAssignment::with(['teacher', 'subject'])->get();
-        return response()->json($assignments);
-    }
+    public function getAllAssignments(Request $request)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $assignments = SubjectAssignment::with(['teacher', 'subject'])
+        ->where('school_year', $schoolYear)
+        ->get();
+
+    return response()->json($assignments);
+}
 }

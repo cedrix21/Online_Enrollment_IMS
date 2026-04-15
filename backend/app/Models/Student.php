@@ -10,17 +10,21 @@ class Student extends Model
     use HasFactory;
 
     protected $fillable = [
-        'studentId',
-        'firstName',
-        'lastName',
-        'email',
-        'gradeLevel',
-        'section_id',
-        'status',
-        'school_year',
-        'lrn',
-        'contact_number',
-    ];
+    'studentId',
+    'firstName',
+    'lastName',
+    'middleName',      
+    'nickname',        
+    'email',
+    'gender',          
+    'dateOfBirth',     
+    'gradeLevel',
+    'section_id',
+    'status',
+    'school_year',
+    'lrn',
+    'contact_number',
+];
 
     protected $casts = [
         'created_at' => 'datetime:Y-m-d',
@@ -52,4 +56,8 @@ class Student extends Model
     {
         return $this->hasMany(Grade::class);
     }
+    public function currentEnrollment()
+{
+    return $this->hasOne(Enrollment::class)->latestOfMany();
+}
 }

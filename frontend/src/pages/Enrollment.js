@@ -48,9 +48,10 @@ export default function Enrollment() {
 
   // ── School year ───────────────────────────────────────────────
   const getCurrentSchoolYear = () => {
-    const month = new Date().getMonth() + 1;
-    const year  = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+    return '2026-2027';
+    // const month = new Date().getMonth() + 1;
+    // const year  = new Date().getFullYear();
+    // return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   };
   const [schoolYear] = useState(getCurrentSchoolYear());
 
@@ -148,6 +149,7 @@ export default function Enrollment() {
       dataToSend.append('paymentMethod', 'GCash');
       dataToSend.append('amount_paid', parseFloat(amountPaid));
       dataToSend.append('payment_status', 'pending');
+      dataToSend.append('school_year', schoolYear);
 
 
       Object.entries(requirementFiles).forEach(([key, file]) => {
@@ -260,7 +262,7 @@ const verifyStudentId = async () => {
     if (formData.registrationType === 'Continuing') {
       dataToSend.append('studentId', continuingStudentId);
     }
-
+    dataToSend.append('school_year', schoolYear); 
     dataToSend.append('paymentMethod', paymentMethod);
 
     if (paymentMethod === "Cash") {
@@ -423,9 +425,7 @@ const verifyStudentId = async () => {
                             }}
                             onBlur={verifyStudentId}
                             placeholder="SICS-YYYY-XXXX"
-                            required
-                            pattern="^SICS-\\d{4}-\\d{4}$"
-                            title="Format: SICS-YYYY-XXXX"
+                            required              
                             style={{
                               width: '100%',
                               padding: '8px 12px',

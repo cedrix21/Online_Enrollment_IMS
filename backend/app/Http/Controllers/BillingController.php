@@ -23,10 +23,25 @@ class BillingController extends Controller
             'paymentMethod'    => 'required|string|in:Cash,GCash,Bank Transfer',
             'payment_type'     => 'required|string',
             'reference_number' => 'nullable|string',
+            'school_year'      => 'nullable|string',  
         ]);
 
         try {
             $student = Student::with('payments')->findOrFail($studentId);
+            // Determine the enrollment to link this payment to
+        $schoolYear = $validated['school_year'] ?? $this->getCurrentSchoolYear();
+        $enrollment = $student->enrollments()
+            ->where('school_year', $schoolYear)
+            ->first();
+
+        if (!$enrollment) {
+            // Fallback to the latest enrollment if no matching school year
+            $enrollment = $student->enrollments()->latest()->first();
+        }
+
+        if (!$enrollment) {
+            return response()->json(['message' => 'No enrollment found for this student.'], 400);
+        }
 
             // Define tuition rates
             $rates = [
@@ -45,16 +60,16 @@ class BillingController extends Controller
             $totalPaid = $student->payments->sum('amount_paid') + $validated['amount_paid'];
             $balance = $totalTuition - $totalPaid;
 
-            // Create the new payment record
-            $payment = $student->payments()->create([
-                'enrollment_id'    => $student->enrollment_id,
-                'amount_paid'      => $validated['amount_paid'],
-                'paymentMethod'    => $validated['paymentMethod'],
-                'payment_type'     => $validated['payment_type'],
-                'reference_number' => $validated['reference_number'] ?? 'CASH-' . time(),
-                'payment_date'     => now(),
-                'payment_status'   => 'completed', // This individual payment is completed
-            ]);
+            // Create payment linked to the correct enrollment
+        $payment = $student->payments()->create([
+            'enrollment_id'    => $enrollment->id,   // ✅ Now valid
+            'amount_paid'      => $validated['amount_paid'],
+            'paymentMethod'    => $validated['paymentMethod'],
+            'payment_type'     => $validated['payment_type'],
+            'reference_number' => $validated['reference_number'] ?? 'CASH-' . time(),
+            'payment_date'     => now(),
+            'payment_status'   => 'completed',
+        ]);
 
             // 🔥 KEY PART: Update ALL payment statuses to "paid" if balance is zero or less
             if ($balance <= 0) {
@@ -73,9 +88,28 @@ class BillingController extends Controller
         }
     }
 
-    public function getStudentLedger($studentId)
+    public function getStudentLedger($studentId,  Request $request)
     {
-        $student = Student::with(['payments'])->findOrFail($studentId);
+        $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $student = Student::with(['enrollments', 'payments' => function ($query) use ($schoolYear) {
+        $query->whereHas('enrollment', function ($q) use ($schoolYear) {
+            $q->where('school_year', $schoolYear);
+        });
+    }])->findOrFail($studentId);
+
+    // Find the enrollment for the selected school year
+    $currentEnrollment = $student->enrollments
+        ->where('school_year', $schoolYear)
+        ->first();
+
+    // If no enrollment exists for that year, use the latest one as fallback
+    if (!$currentEnrollment) {
+        $currentEnrollment = $student->enrollments->sortByDesc('school_year')->first();
+    }
+
+    // Use the grade level from that enrollment
+    $gradeLevel = $currentEnrollment ? $currentEnrollment->gradeLevel : $student->gradeLevel;
         
         // Define tuition rates
         $rates = [
@@ -107,33 +141,40 @@ class BillingController extends Controller
                 'Grade 6'        => 5488,
             ];
 
-            $bookFee = $bookFees[$student->gradeLevel] ?? 0;
-            $booksPaid = $student->payments()->where('payment_type', 'Books')->sum('amount_paid');
-            $bookBalance = $bookFee - $booksPaid;
-            $bookStatus = $bookBalance <= 0 ? 'paid' : ($booksPaid > 0 ? 'partial' : 'unpaid');
+            $bookFee = $bookFees[$gradeLevel] ?? 0;
+    $booksPaid = $student->payments()->where('payment_type', 'Books')->sum('amount_paid');
+    $bookBalance = $bookFee - $booksPaid;
+    $bookStatus = $bookBalance <= 0 ? 'paid' : ($booksPaid > 0 ? 'partial' : 'unpaid');
 
-        // Determine overall account status
-        $accountStatus = $balance <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
-        
-        return response()->json([
-            'student' => $student->firstName . ' ' . $student->lastName,
-            'grade_level' => $student->gradeLevel,
-            'ledger' => $student->payments,
-            'summary' => [
-                'total_tuition' => $totalTuition,
-                'total_paid' => $totalPaid,
-                'balance' => $balance,
-                'status' => $accountStatus,    
-                'books' => [
-                    'total'   => $bookFee,
-                    'paid'    => $booksPaid,
-                    'balance' => $bookBalance,
-                    'status'  => $bookStatus,
-            ],          
-            ]
-            
-        ]);
+    $accountStatus = $balance <= 0 ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
+
+    return response()->json([
+        'student' => $student->firstName . ' ' . $student->lastName,
+        'grade_level' => $gradeLevel,
+        'school_year' => $schoolYear,
+        'ledger' => $student->payments,
+        'summary' => [
+            'total_tuition' => $totalTuition,
+            'total_paid' => $totalPaid,
+            'balance' => $balance,
+            'status' => $accountStatus,
+            'books' => [
+                'total'   => $bookFee,
+                'paid'    => $booksPaid,
+                'balance' => $bookBalance,
+                'status'  => $bookStatus,
+            ],
+        ]
+    ]);
     }
+
+    // Helper to get current school year
+private function getCurrentSchoolYear(): string
+{
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 
     public function updatePayment(Request $request, $id)
     {

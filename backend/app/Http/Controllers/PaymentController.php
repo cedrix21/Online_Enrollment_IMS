@@ -70,96 +70,59 @@ class PaymentController extends Controller
 
         return DB::transaction(function () use ($request) {
             try {
-                
-                // 2. Create enrollment record (without files first)
-                $enrollment = Enrollment::create($request->except([
-                    'requirement_psa',
-                    'requirement_good_moral',
-                    'requirement_report_card',
-                    'requirement_picture_2x2',
-                    'requirement_picture_1x1'
-                ]));
+                // Validate all fields (including optional ones)
+                $validated = $request->validate([
+                    'firstName'        => 'required|string',
+                    'lastName'         => 'required|string',
+                    'email'            => 'required|email',
+                    'gradeLevel'       => 'required|string',
+                    'registrationType' => 'required|string',
+                    'emergencyContact' => 'required|string',
+                    'amount_paid'      => 'required|numeric|min:5000',
+                    'middleName'       => 'nullable|string',
+                    'nickname'         => 'nullable|string',
+                    'gender'           => 'nullable|string',
+                    'dateOfBirth'      => 'nullable|date',
+                    'handedness'       => 'nullable|string',
+                    'fatherName'       => 'nullable|string',
+                    'fatherContact'    => 'nullable|string',
+                    'fatherOccupation' => 'nullable|string',
+                    'fatherEmail'      => 'nullable|email',
+                    'fatherAddress'    => 'nullable|string',
+                    'motherName'       => 'nullable|string',
+                    'motherContact'    => 'nullable|string',
+                    'motherOccupation' => 'nullable|string',
+                    'motherEmail'      => 'nullable|email',
+                    'motherAddress'    => 'nullable|string',
+                    'medicalConditions' => 'nullable|string',
+                ]);
 
-                if ($request->hasFile('requirement_psa')) {
-                    $path = $request->file('requirement_psa')->store('requirements/psa', 'public');
-                    $enrollment->psa_path = $path;
-                    
-                    EnrollmentRequirement::create([
-                        'enrollment_id' => $enrollment->id,
-                        'type' => 'psa',
-                        'type_label' => 'PSA Birth Certificate',
-                        'original_name' => $request->file('requirement_psa')->getClientOriginalName(),
-                        'file_path' => $enrollment->psa_path,
-                        'status' => 'pending', // not verified yet
-                    ]);
-                    
-                }
-                if ($request->hasFile('requirement_good_moral')) {
-                    $path = $request->file('requirement_good_moral')->store('requirements/good_moral', 'public');
-                    $enrollment->good_moral_path = $path;      // ✅ added
+                // Build enrollment data (exclude payment-specific fields)
+                $enrollmentData = $validated;
+                unset($enrollmentData['amount_paid']);
 
-                    EnrollmentRequirement::create([
-                        'enrollment_id' => $enrollment->id,
-                        'type' => 'good_moral',
-                        'type_label' => 'Certificate of Good Moral',
-                        'original_name' => $request->file('requirement_good_moral')->getClientOriginalName(),
-                        'file_path' => $enrollment->good_moral_path,
-                        'status' => 'pending',
-                    ]);
-                    
-                }
-                if ($request->hasFile('requirement_report_card')) {
-                    $path = $request->file('requirement_report_card')->store('requirements/report_card', 'public');
-                    $enrollment->report_card_path = $path;     // ✅ added
+                // Add school year
+                $enrollmentData['school_year'] = $request->school_year ?? $this->getSchoolYear();
 
-                    EnrollmentRequirement::create([
-                        'enrollment_id' => $enrollment->id,
-                        'type' => 'report_card',
-                        'type_label' => 'Report Card',
-                        'original_name' => $request->file('requirement_report_card')->getClientOriginalName(),
-                        'file_path' => $enrollment->report_card_path,
-                        'status' => 'pending',
-                    ]);
-                    
-                }
-                if ($request->hasFile('requirement_picture_2x2')) {
-                    $path = $request->file('requirement_picture_2x2')->store('requirements/pictures', 'public');
-                    $enrollment->picture_2x2_path = $path;     // ✅ added
+                // Create enrollment
+                $enrollment = Enrollment::create($enrollmentData);
 
-                   EnrollmentRequirement::create([
-                        'enrollment_id' => $enrollment->id,
-                        'type' => 'picture_2x2',
-                        'type_label' => '2x2 Picture',
-                        'original_name' => $request->file('requirement_picture_2x2')->getClientOriginalName(),
-                        'file_path' => $enrollment->picture_2x2_path,
-                        'status' => 'pending',
-                    ]);
-                    
-                }
-                if ($request->hasFile('requirement_picture_1x1')) {
-                    $path = $request->file('requirement_picture_1x1')->store('requirements/pictures', 'public');
-                    $enrollment->picture_1x1_path = $path;     // ✅ added
-                    
-                    EnrollmentRequirement::create([
-                        'enrollment_id' => $enrollment->id,
-                        'type' => 'picture_1x1',
-                        'type_label' => '1x1 Picture',
-                        'original_name' => $request->file('requirement_picture_1x1')->getClientOriginalName(),
-                        'file_path' => $enrollment->picture_1x1_path,
-                        'status' => 'pending',
-                    ]);
-                   
-                }
-                $enrollment->save();
+                // Handle file uploads (same as before)
+                $this->storeRequirement($request, 'requirement_psa', $enrollment, 'psa', 'PSA Birth Certificate');
+                $this->storeRequirement($request, 'requirement_good_moral', $enrollment, 'good_moral', 'Certificate of Good Moral');
+                $this->storeRequirement($request, 'requirement_report_card', $enrollment, 'report_card', 'Report Card');
+                $this->storeRequirement($request, 'requirement_picture_2x2', $enrollment, 'picture_2x2', '2x2 Picture');
+                $this->storeRequirement($request, 'requirement_picture_1x1', $enrollment, 'picture_1x1', '1x1 Picture');
 
+                // Create payment record
                 $payment = Payment::create([
                     'enrollment_id'   => $enrollment->id,
-                    'paymentMethod'  => 'GCash',
+                    'paymentMethod'   => 'GCash',
                     'amount_paid'     => $request->amount_paid,
-                    'payment_type'    => 'GCash', 
-                    'reference_number'=> null,
+                    'payment_type'    => 'GCash',
+                    'reference_number' => null,
                     'status'          => 'pending',
-                    'payment_date'    => now(),      
+                    'payment_date'    => now(),
                 ]);
 
                 // 3. Create PayMongo Payment Method (GCash)
@@ -240,7 +203,7 @@ class PaymentController extends Controller
 
 
 
-public function initializeBankTransfer(Request $request)
+   public function initializeBankTransfer(Request $request)
 {
     $request->validate([
         'firstName'        => 'required|string',
@@ -257,102 +220,68 @@ public function initializeBankTransfer(Request $request)
         $request->validate(['requirement_psa' => 'file|mimes:jpg,png,pdf|max:2048']);
     }
     if ($request->hasFile('requirement_good_moral')) {
-            $request->validate([
-                'requirement_good_moral' => 'file|mimes:jpg,png,pdf|max:2048',
-            ]);
-        }
-        if ($request->hasFile('requirement_report_card')) {
-            $request->validate([
-                'requirement_report_card' => 'file|mimes:jpg,png,pdf|max:2048',
-            ]);
-        }
-        if ($request->hasFile('requirement_picture_2x2')) {
-            $request->validate([
-                'requirement_picture_2x2' => 'image|mimes:jpg,png|max:2048',
-            ]);
-        }
-        if ($request->hasFile('requirement_picture_1x1')) {
-            $request->validate([
-                'requirement_picture_1x1' => 'image|mimes:jpg,png|max:2048',
-            ]);
-        }
+        $request->validate(['requirement_good_moral' => 'file|mimes:jpg,png,pdf|max:2048']);
+    }
+    if ($request->hasFile('requirement_report_card')) {
+        $request->validate(['requirement_report_card' => 'file|mimes:jpg,png,pdf|max:2048']);
+    }
+    if ($request->hasFile('requirement_picture_2x2')) {
+        $request->validate(['requirement_picture_2x2' => 'image|mimes:jpg,png|max:2048']);
+    }
+    if ($request->hasFile('requirement_picture_1x1')) {
+        $request->validate(['requirement_picture_1x1' => 'image|mimes:jpg,png|max:2048']);
+    }
 
     return DB::transaction(function () use ($request) {
-        // Create enrollment
-        $enrollment = Enrollment::create($request->except([
-            'requirement_psa', 'requirement_good_moral', 'requirement_report_card',
-            'requirement_picture_2x2', 'requirement_picture_1x1'
-        ]));
+        // Validate all enrollment fields (including optional)
+        $validated = $request->validate([
+            'firstName'        => 'required|string',
+            'lastName'         => 'required|string',
+            'email'            => 'required|email',
+            'gradeLevel'       => 'required|string',
+            'registrationType' => 'required|string',
+            'emergencyContact' => 'required|string',
+            'amount_paid'      => 'required|numeric|min:5000',
+            'middleName'       => 'nullable|string',
+            'nickname'         => 'nullable|string',
+            'gender'           => 'nullable|string',
+            'dateOfBirth'      => 'nullable|date',
+            'handedness'       => 'nullable|string',
+            'fatherName'       => 'nullable|string',
+            'fatherContact'    => 'nullable|string',
+            'fatherOccupation' => 'nullable|string',
+            'fatherEmail'      => 'nullable|email',
+            'fatherAddress'    => 'nullable|string',
+            'motherName'       => 'nullable|string',
+            'motherContact'    => 'nullable|string',
+            'motherOccupation' => 'nullable|string',
+            'motherEmail'      => 'nullable|email',
+            'motherAddress'    => 'nullable|string',
+            'medicalConditions' => 'nullable|string',
+        ]);
 
-        // Handle file uploads and create EnrollmentRequirement records (same as GCash)
-        if ($request->hasFile('requirement_psa')) {
-            $path = $request->file('requirement_psa')->store('requirements/psa', 'public');
-            $enrollment->psa_path = $path;
-            EnrollmentRequirement::create([
-                'enrollment_id' => $enrollment->id,
-                'type' => 'psa',
-                'type_label' => 'PSA Birth Certificate',
-                'original_name' => $request->file('requirement_psa')->getClientOriginalName(),
-                'file_path' => $path,
-                'status' => 'pending',
-            ]);
-        }
-        if ($request->hasFile('requirement_good_moral')) {
-            $path = $request->file('requirement_good_moral')->store('requirements/good_moral', 'public');
-            $enrollment->good_moral_path = $path;
-            EnrollmentRequirement::create([
-                'enrollment_id' => $enrollment->id,
-                'type' => 'good_moral',
-                'type_label' => 'Certificate of Good Moral',
-                'original_name' => $request->file('requirement_good_moral')->getClientOriginalName(),
-                'file_path' => $path,
-                'status' => 'pending',
-            ]);
-        }
-        if ($request->hasFile('requirement_report_card')) {
-            $path = $request->file('requirement_report_card')->store('requirements/report_card', 'public');
-            $enrollment->report_card_path = $path;
-            EnrollmentRequirement::create([
-                'enrollment_id' => $enrollment->id,
-                'type' => 'report_card',
-                'type_label' => 'Report Card',
-                'original_name' => $request->file('requirement_report_card')->getClientOriginalName(),
-                'file_path' => $path,
-                'status' => 'pending',
-            ]);
-        }
-        if ($request->hasFile('requirement_picture_2x2')) {
-            $path = $request->file('requirement_picture_2x2')->store('requirements/picture_2x2', 'public');
-            $enrollment->picture_2x2_path = $path;
-            EnrollmentRequirement::create([
-                'enrollment_id' => $enrollment->id,
-                'type' => 'picture_2x2',
-                'type_label' => '2x2 Picture',
-                'original_name' => $request->file('requirement_picture_2x2')->getClientOriginalName(),
-                'file_path' => $path,
-                'status' => 'pending',
-            ]);
-        }
-        if ($request->hasFile('requirement_picture_1x1')) {
-            $path = $request->file('requirement_picture_1x1')->store('requirements/picture_1x1', 'public');
-            $enrollment->picture_1x1_path = $path;
-            EnrollmentRequirement::create([
-                'enrollment_id' => $enrollment->id,
-                'type' => 'picture_1x1',
-                'type_label' => '1x1 Picture',
-                'original_name' => $request->file('requirement_picture_1x1')->getClientOriginalName(),
-                'file_path' => $path,
-                'status' => 'pending',
-            ]);
-        }
+        // Build enrollment data (exclude payment fields)
+        $enrollmentData = $validated;
+        unset($enrollmentData['amount_paid']);
 
-        $enrollment->save();
+        // Add school year
+        $enrollmentData['school_year'] = $request->school_year ?? $this->getSchoolYear();
+
+        // Create enrollment (once)
+        $enrollment = Enrollment::create($enrollmentData);
+
+        // Handle file uploads using helper
+        $this->storeRequirement($request, 'requirement_psa', $enrollment, 'psa', 'PSA Birth Certificate');
+        $this->storeRequirement($request, 'requirement_good_moral', $enrollment, 'good_moral', 'Certificate of Good Moral');
+        $this->storeRequirement($request, 'requirement_report_card', $enrollment, 'report_card', 'Report Card');
+        $this->storeRequirement($request, 'requirement_picture_2x2', $enrollment, 'picture_2x2', '2x2 Picture');
+        $this->storeRequirement($request, 'requirement_picture_1x1', $enrollment, 'picture_1x1', '1x1 Picture');
 
         // Create Checkout Session for bank transfer
         $response = $this->paymongoHttp($this->paymongo_secret_key)
-        ->post($this->base_url . '/checkout_sessions', [
-            'data' => [
-                'attributes' => [
+            ->post($this->base_url . '/checkout_sessions', [
+                'data' => [
+                    'attributes' => [
                         'send_email_receipt' => false,
                         'show_description' => true,
                         'show_line_items' => true,
@@ -391,54 +320,54 @@ public function initializeBankTransfer(Request $request)
 
         // Create payment record
         Payment::create([
-            'enrollment_id' => $enrollment->id,
-            'paymentMethod' => 'Bank Transfer',
-            'amount_paid' => $request->amount_paid,
-            'reference_number' => $sessionId,
-            'payment_type' => 'Downpayment',
-            'payment_date' => now(),
-            'status' => 'pending',
+            'enrollment_id'   => $enrollment->id,
+            'paymentMethod'   => 'Bank Transfer',
+            'amount_paid'     => $request->amount_paid,
+            'reference_number'=> $sessionId,
+            'payment_type'    => 'Downpayment',
+            'payment_date'    => now(),
+            'status'          => 'pending',
         ]);
 
         return response()->json([
-            'success' => true,
-            'checkout_url' => $checkoutUrl,
+            'success'       => true,
+            'checkout_url'  => $checkoutUrl,
             'enrollment_id' => $enrollment->id,
         ]);
     });
 }
 
-   public function handleWebhook(Request $request)
-{
-    $event = $request->all();
-    $eventType = $event['data']['attributes']['type'] ?? '';
+    public function handleWebhook(Request $request)
+    {
+        $event = $request->all();
+        $eventType = $event['data']['attributes']['type'] ?? '';
 
-    // GCash payment via Payment Intent
-    if ($eventType === 'payment.paid') {
-        $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
+        // GCash payment via Payment Intent
+        if ($eventType === 'payment.paid') {
+            $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
 
-        if ($enrollmentId) {
-            Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
-            Payment::where('enrollment_id', $enrollmentId)->update(['status' => 'paid']);
-            Log::info("Enrollment $enrollmentId marked as paid via GCash.");
+            if ($enrollmentId) {
+                Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
+                Payment::where('enrollment_id', $enrollmentId)->update(['status' => 'paid']);
+                Log::info("Enrollment $enrollmentId marked as paid via GCash.");
+            }
         }
-    }
-    
-    // Bank Transfer payment via Checkout Session
-    if ($eventType === 'checkout_session.payment.paid') {
-        $checkoutSessionId = $event['data']['attributes']['data']['id'] ?? null;
-        $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
 
-        if ($enrollmentId && $checkoutSessionId) {
-            Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
-            // Update payment using the checkout session ID as reference_number
-            Payment::where('reference_number', $checkoutSessionId)->update(['status' => 'paid']);
-            Log::info("Enrollment $enrollmentId marked as paid via Bank Transfer (session: $checkoutSessionId).");
+        // Bank Transfer payment via Checkout Session
+        if ($eventType === 'checkout_session.payment.paid') {
+            $checkoutSessionId = $event['data']['attributes']['data']['id'] ?? null;
+            $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
+
+            if ($enrollmentId && $checkoutSessionId) {
+                Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
+                // Update payment using the checkout session ID as reference_number
+                Payment::where('reference_number', $checkoutSessionId)->update(['status' => 'paid']);
+                Log::info("Enrollment $enrollmentId marked as paid via Bank Transfer (session: $checkoutSessionId).");
+            }
         }
-    }
 
-    return response()->json(['success' => true]);
-}
+        return response()->json(['success' => true]);
+    }
 
 
 
@@ -460,4 +389,29 @@ public function initializeBankTransfer(Request $request)
 
         return $http;
     }
+
+    private function getSchoolYear(): string
+    {
+        return '2026-2027';
+        // $month = (int) date('n');
+        // $year  = (int) date('Y');
+        // return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+    }
+
+    private function storeRequirement(Request $request, $field, Enrollment $enrollment, $type, $label)
+{
+    if ($request->hasFile($field)) {
+        $path = $request->file($field)->store("requirements/{$type}", 'public');
+        $enrollment->update(["{$type}_path" => $path]);
+
+        EnrollmentRequirement::create([
+            'enrollment_id' => $enrollment->id,
+            'type'          => $type,
+            'type_label'    => $label,
+            'original_name' => $request->file($field)->getClientOriginalName(),
+            'file_path'     => $path,
+            'status'        => 'pending',
+        ]);
+    }
+}
 }
