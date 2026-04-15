@@ -472,10 +472,11 @@ useEffect(() => {
   // 1. Get existing grades for this student
   const existingGrades = allGrades.filter(g => g.student?.id === student.id);
 
-  // 2. Get subjects for the student's grade level
+  // Filter subjects by grade level AND selected school year
   const gradeLevelSubjects = allSubjects.filter(
-    sub => sub.gradeLevel === student.gradeLevel
+    sub => sub.gradeLevel === student.gradeLevel && sub.school_year === selectedSchoolYear
   );
+
 
   // 3. Build a complete map for all quarters and subjects
   const quarters = ["Q1", "Q2", "Q3", "Q4"];
@@ -520,7 +521,7 @@ useEffect(() => {
   setModalOpen(true);
   setEditingGradeId(null);
   setEditData({});
-}, [allGrades, allSubjects]);
+}, [allGrades, allSubjects,selectedSchoolYear]);
 
 
 

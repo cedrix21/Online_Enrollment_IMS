@@ -282,11 +282,11 @@ public function getAllGrades(Request $request)
     }
 
     // 🆕 Filter by school year (via enrollment relationship)
-    if ($request->has('school_year')) {
-        $query->whereHas('student.enrollments', function ($q) use ($request) {
-            $q->where('school_year', $request->school_year);
-        });
-    }
+    if ($request->has('school_year') && $request->school_year !== 'all') {
+    $query->whereHas('subject', function ($q) use ($request) {
+        $q->where('school_year', $request->school_year);
+    });
+}
 
     $grades = $query->whereHas('student', function ($q) {
         $q->where('status', 'active');
@@ -358,6 +358,7 @@ public function getAllGrades(Request $request)
 
     private function getCurrentSchoolYear(): string
 {
+    // return '2026-2027';
     $month = (int) date('n');
     $year  = (int) date('Y');
     return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";

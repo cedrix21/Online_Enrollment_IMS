@@ -64,6 +64,7 @@ const getMapehSortIndex = (subjectName) => {
   return index >= 0 ? index : mapehComponentOrder.length;
 };
 
+
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 const Field = ({ label, value, onChange, placeholder = '', className = '', type = 'text', small = false, style = {} }) => (
@@ -109,20 +110,25 @@ export default function Form137() {
   const [subjects, setSubjects] = useState([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [gradesLoading, setGradesLoading] = useState(false);
+  const [studentSchoolYear, setStudentSchoolYear] = useState('');
 
-  useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        const res = await API.get('/subjects');
-        setSubjects(res.data);
-      } catch (err) {
-        console.error('Failed to fetch subjects', err);
-      } finally {
-        setSubjectsLoading(false);
+ useEffect(() => {
+  const fetchSubjects = async () => {
+    try {
+      const params = {};
+      if (studentSchoolYear) {
+        params.school_year = studentSchoolYear;
       }
-    };
-    fetchSubjects();
-  }, []);
+      const res = await API.get('/subjects', { params });
+      setSubjects(res.data);
+    } catch (err) {
+      console.error('Failed to fetch subjects', err);
+    } finally {
+      setSubjectsLoading(false);
+    }
+  };
+  fetchSubjects();
+}, [studentSchoolYear]);
 
   // Group subjects by grade level with MAPEH separated
   const subjectsByGrade = useMemo(() => {
@@ -191,6 +197,8 @@ export default function Form137() {
     parentAddress,
     parentOccupation,
   });
+ 
+    setStudentSchoolYear(s.school_year || '');
 
     setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
 
@@ -200,7 +208,7 @@ export default function Form137() {
     console.log(`📌 Grade level: ${studentGradeLevel} → Roman: ${gradeRoman}`);
 
     if (gradeRoman) {
-      setGradeField(gradeRoman, 'school', s.section?.name || '');
+      setGradeField(gradeRoman, 'school', 'Siloam International Christian School');
       setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
     }
 

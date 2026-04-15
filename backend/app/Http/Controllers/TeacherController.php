@@ -31,10 +31,12 @@ class TeacherController extends Controller
 
 private function getCurrentSchoolYear(): string
 {
+    // return '2026-2027';
     $month = (int) date('n');
     $year  = (int) date('Y');
     return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
 }
+
 
     // Create new teacher, User account, AND Section (if advisory_grade is set)
     public function store(Request $request)

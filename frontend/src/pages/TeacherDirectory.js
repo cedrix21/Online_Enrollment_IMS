@@ -227,6 +227,7 @@ export default function TeacherDirectory() {
   const fetchData = useCallback(async (force = false) => {
     try {
       setLoading(true);
+      setTeacherLoad([]);
 
       if (!force) {
         const cached = localStorage.getItem(CACHE_KEY);
@@ -263,15 +264,17 @@ export default function TeacherDirectory() {
       setTeachers(sortedTeachers);
       setAvailableSubjects(data.subjects);
       setTeacherLoad(data.load);
+      
     } catch (err) {
       console.error("Error fetching data", err);
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolYear]);
+  }, [selectedSchoolYear,invalidateCache]);
 
   useEffect(() => {
-  fetchData(true); // force refresh when year changes
+     invalidateCache();     
+  fetchData(true); 
 }, [selectedSchoolYear]);
 
   // Memoized Maps

@@ -136,9 +136,7 @@ public function getCurrentYearList(Request $request)
         });
     } else {
         if (!$schoolYear) {
-            $month = (int) date('n');
-            $year  = (int) date('Y');
-            $schoolYear = ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+            $schoolYear = $this->getSchoolYear();
         }
 
         // Enrollments for the selected school year
@@ -174,6 +172,7 @@ public function getCurrentYearList(Request $request)
     return response()->json($combined);
 }
 
+
 public function updateStudentInfo(Request $request, $id)
 {
      $student = Student::findOrFail($id);
@@ -204,25 +203,55 @@ public function searchByEmail(Request $request)
     return response()->json($student);
 }
 
+private function getSchoolYear(): string
+{
+    // return '2026-2027';   // ← uncomment for testing
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 /**
  * Find a student by their human-readable studentId (e.g., SICS-2025-0001)
  */
 public function findByStudentId($studentId)
 {
-    $student = Student::where('studentId', $studentId)->first();
-    
+    $student = Student::with('currentEnrollment')
+        ->where('studentId', $studentId)
+        ->first();
+
     if (!$student) {
         return response()->json(['message' => 'Student not found'], 404);
     }
-    
-    // Return only necessary public info (do NOT expose sensitive data)
+
+    $enrollment = $student->currentEnrollment;
+
     return response()->json([
-        'id' => $student->id,
-        'studentId' => $student->studentId,
-        'firstName' => $student->firstName,
-        'lastName' => $student->lastName,
-        'gradeLevel' => $student->gradeLevel,
-        'section' => $student->section ? $student->section->name : null,
+        'id'                => $student->id,
+        'studentId'         => $student->studentId,
+        'firstName'         => $student->firstName,
+        'lastName'          => $student->lastName,
+        'middleName'        => $student->middleName,
+        'nickname'          => $student->nickname,
+        'gender'            => $student->gender,
+        'dateOfBirth'       => $student->dateOfBirth,
+        'gradeLevel'        => $student->gradeLevel,
+        'email'             => $student->email,
+        'handedness'        => $enrollment->handedness ?? null,
+        'fatherName'        => $enrollment->fatherName ?? null,
+        'fatherContact'     => $enrollment->fatherContact ?? null,
+        'fatherOccupation'  => $enrollment->fatherOccupation ?? null,
+        'fatherEmail'       => $enrollment->fatherEmail ?? null,
+        'fatherAddress'     => $enrollment->fatherAddress ?? null,
+        'motherName'        => $enrollment->motherName ?? null,
+        'motherContact'     => $enrollment->motherContact ?? null,
+        'motherOccupation'  => $enrollment->motherOccupation ?? null,
+        'motherEmail'       => $enrollment->motherEmail ?? null,
+        'motherAddress'     => $enrollment->motherAddress ?? null,
+        'emergencyContact'  => $enrollment->emergencyContact ?? null,
+        'medicalConditions' => $enrollment->medicalConditions ?? null,
+        'section'           => $student->section ? $student->section->name : null,
     ]);
 }
+
+
 }

@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class SubjectAssignment extends Model
 {
-    protected $fillable = ['teacher_id', 'subject_id', 'gradeLevel','schedule'];
+    protected $fillable = [
+    'teacher_id', 
+    'subject_id', 
+    'gradeLevel',
+    'schedule',
+    'school_year',];
 
     public function teacher() {
         return $this->belongsTo(Teacher::class);

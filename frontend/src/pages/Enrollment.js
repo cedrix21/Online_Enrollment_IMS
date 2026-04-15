@@ -203,9 +203,26 @@ const verifyStudentId = async () => {
       // Auto-fill form fields (optional)
       setFormData(prev => ({
         ...prev,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        middleName: student.middleName || '',
+        nickname: student.nickname || '',
+        gender: student.gender || '',
+        dateOfBirth: student.dateOfBirth || '',
+        email: student.email || '',
+        handedness: student.handedness || '',
+        fatherName: student.fatherName || '',
+        fatherContact: student.fatherContact || '',
+        fatherOccupation: student.fatherOccupation || '',
+        fatherEmail: student.fatherEmail || '',
+        fatherAddress: student.fatherAddress || '',
+        motherName: student.motherName || '',
+        motherContact: student.motherContact || '',
+        motherOccupation: student.motherOccupation || '',
+        motherEmail: student.motherEmail || '',
+        motherAddress: student.motherAddress || '',
+        emergencyContact: student.emergencyContact || '',
+        medicalConditions: student.medicalConditions || '',
       }));
     }
   } catch (err) {

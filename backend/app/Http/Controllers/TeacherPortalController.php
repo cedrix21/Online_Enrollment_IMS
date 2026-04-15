@@ -24,10 +24,11 @@ class TeacherPortalController extends Controller
         // Determine current school year (e.g., 2025-2026)
         $currentSchoolYear = $this->getCurrentSchoolYear();
 
-        // Get grade levels this teacher teaches
+        // Get grade levels this teacher teaches in the CURRENT school year
         $gradeLevels = [];
         if (method_exists($teacher, 'assignments')) {
             $gradeLevels = $teacher->assignments()
+                ->where('school_year', $currentSchoolYear)           // ✅ Filter by year
                 ->pluck('gradeLevel')
                 ->unique()
                 ->values()
@@ -51,13 +52,21 @@ class TeacherPortalController extends Controller
                 ->get()
             : [];
 
-        // Subjects
+        // Subjects – only those assigned for the CURRENT school year
         $subjects = !empty($gradeLevels)
-            ? $teacher->subjects()
-                ->select('subjects.id', 'subjects.subjectName', 'subjects.subjectCode', 'subjects.gradeLevel')
-                ->orderBy('subjects.gradeLevel')
-                ->orderBy('subjects.subjectName')
+            ? $teacher->assignments()
+                ->where('school_year', $currentSchoolYear)           // ✅ Filter by year
+                ->with('subject')
                 ->get()
+                ->map(function ($assignment) {
+                    return [
+                        'id'            => $assignment->subject->id,
+                        'subjectName'   => $assignment->subject->subjectName,
+                        'subjectCode'   => $assignment->subject->subjectCode,
+                        'gradeLevel'    => $assignment->gradeLevel,
+                        'assignment_id' => $assignment->id,
+                    ];
+                })
             : [];
 
         // Grades – also filter students by current school year
@@ -97,7 +106,7 @@ class TeacherPortalController extends Controller
  */
 private function getCurrentSchoolYear(): string
 {
-     // return '2026-2027';
+    //  return '2026-2027';
     $month = (int) date('n');
     $year  = (int) date('Y');
     return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
