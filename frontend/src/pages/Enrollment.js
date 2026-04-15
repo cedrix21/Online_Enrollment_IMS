@@ -48,10 +48,10 @@ export default function Enrollment() {
 
   // ── School year ───────────────────────────────────────────────
   const getCurrentSchoolYear = () => {
-    return '2026-2027';
-    // const month = new Date().getMonth() + 1;
-    // const year  = new Date().getFullYear();
-    // return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+    // return '2026-2027';
+    const month = new Date().getMonth() + 1;
+    const year  = new Date().getFullYear();
+    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   };
   const [schoolYear] = useState(getCurrentSchoolYear());
 

@@ -392,10 +392,10 @@ class PaymentController extends Controller
 
     private function getSchoolYear(): string
     {
-        return '2026-2027';
-        // $month = (int) date('n');
-        // $year  = (int) date('Y');
-        // return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+        // return '2026-2027';
+        $month = (int) date('n');
+        $year  = (int) date('Y');
+        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
     private function storeRequirement(Request $request, $field, Enrollment $enrollment, $type, $label)

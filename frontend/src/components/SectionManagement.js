@@ -596,7 +596,11 @@ export default function SectionManagement() {
   // Form State
   const [newSchedule, setNewSchedule] = useState(INITIAL_SCHEDULE_FORM);
   const [newSection, setNewSection] = useState(INITIAL_SECTION_FORM);
-
+const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+});
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // MEMOIZED VALUES
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -643,15 +647,15 @@ export default function SectionManagement() {
   // DATA FETCHING
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
-        API.get("/sections"),
-        API.get("/teachers"),
-        API.get("/rooms"),
-        API.get("/time-slots"),
-        API.get("/schedules"),
-      ]);
+  try {
+    setLoading(true);
+    const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
+      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+      API.get("/teachers"),
+      API.get("/rooms"),
+      API.get("/time-slots"),
+      API.get("/schedules"),
+    ]);
 
       // Sort sections by grade level
       const sortedSections = sortSectionsByGrade(secRes.data);
@@ -665,7 +669,11 @@ export default function SectionManagement() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedSchoolYear]);
+
+  useEffect(() => {
+  fetchData();
+}, [selectedSchoolYear]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // HANDLERS
@@ -713,25 +721,29 @@ export default function SectionManagement() {
   }, [selectedDays, selectedSection, newSchedule]);
 
   const handleViewStudents = useCallback(async (section) => {
-    try {
-      const res = await API.get(`/sections/${section.id}`);
-      setSelectedSection(res.data);
-      setSectionStudents(res.data.students || []);
-      setShowStudentModal(true);
-    } catch (err) {
-      console.error("Error loading section details");
-      alert("Failed to load section details");
-    }
-  }, []);
+  try {
+    const res = await API.get(`/sections/${section.id}`, {
+      params: { school_year: selectedSchoolYear }
+    });
+    setSelectedSection(res.data);
+    setSectionStudents(res.data.students || []);
+    setShowStudentModal(true);
+  } catch (err) {
+    console.error("Error loading section details");
+    alert("Failed to load section details");
+  }
+}, [selectedSchoolYear]);
 
   const handleOpenScheduleModal = useCallback(async (section) => {
-    setSelectedSection(section);
-    try {
-      const [loadRes, sectionRes, schedRes] = await Promise.all([
-        API.get("/teacher-load"),
-        API.get(`/sections/${section.id}`),
-        API.get("/schedules"),
-      ]);
+  setSelectedSection(section);
+  try {
+    const [loadRes, sectionRes, schedRes] = await Promise.all([
+      API.get("/teacher-load"),
+      API.get(`/sections/${section.id}`, {
+        params: { school_year: selectedSchoolYear }
+      }),
+      API.get("/schedules"),
+    ]);
 
       setTeacherLoad(loadRes.data);
       setSelectedSection(sectionRes.data);
@@ -743,7 +755,7 @@ export default function SectionManagement() {
         "Error loading data: " + (err.response?.data?.message || err.message),
       );
     }
-  }, []);
+  }, [selectedSchoolYear]);
 
   const handleCreateSection = useCallback(async (e) => {
     e.preventDefault();
@@ -942,9 +954,27 @@ export default function SectionManagement() {
                   <p>Organize classrooms, capacities, and advisory teachers.</p>
                 </div>
               </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <select
+                  value={selectedSchoolYear}
+                  onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #b8860b',
+                    background: '#fff',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
               <button className="add-btn" onClick={() => setShowModal(true)}>
                 <FaPlus /> New Section
               </button>
+            </div>
             </div>
 
             {loading ? (

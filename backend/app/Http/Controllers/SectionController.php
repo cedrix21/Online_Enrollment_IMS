@@ -10,19 +10,27 @@ use Illuminate\Http\Request;
 class SectionController extends Controller
 {
     // List all sections with their Advisor, Student Count, and Schedule details
-    public function index()
-    {
-        $sections = Section::with([
-            'advisor', 
-            'students',
-            'schedules.subject', 
-            'schedules.room', 
-            'schedules.teacher',
-            'schedules.time_slot'
-        ])->withCount('students')->get();
-        
-        return response()->json($sections);
-    }
+    public function index(Request $request)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $sections = Section::with([
+        'advisor',
+        'students' => function ($query) use ($schoolYear) {
+            $query->where('school_year', $schoolYear);
+        },
+        'schedules.subject',
+        'schedules.room',
+        'schedules.teacher',
+        'schedules.time_slot'
+    ])
+    ->withCount(['students' => function ($query) use ($schoolYear) {
+        $query->where('school_year', $schoolYear);
+    }])
+    ->get();
+
+    return response()->json($sections);
+}
 
     // Create a new section with validation
     public function store(Request $request)
@@ -67,21 +75,34 @@ class SectionController extends Controller
     }
 
     // Show a specific section with its schedule and students
-    public function show($id)
-    {
-        $section = Section::with([
-            'advisor', 
-            'students', 
-            'schedules.subject',
-            'schedules.teacher',
-            'schedules.room',
-            'schedules.time_slot'
-        ])
-        ->withCount('students')
-        ->findOrFail($id);
-            
-        return response()->json($section);
-    }
+   public function show(Request $request, $id)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $section = Section::with([
+        'advisor',
+        'students' => function ($query) use ($schoolYear) {
+            $query->where('school_year', $schoolYear);
+        },
+        'schedules.subject',
+        'schedules.teacher',
+        'schedules.room',
+        'schedules.time_slot'
+    ])
+    ->withCount(['students' => function ($query) use ($schoolYear) {
+        $query->where('school_year', $schoolYear);
+    }])
+    ->findOrFail($id);
+
+    return response()->json($section);
+}
+
+private function getCurrentSchoolYear(): string
+{
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 
     // Delete a section
     public function destroy($id)

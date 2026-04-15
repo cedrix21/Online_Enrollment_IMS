@@ -51,29 +51,31 @@ class GradeController extends Controller
      * NOT just advisory students
      */
     public function getTeacherStudents(Request $request)
-    {
-        $teacher = Auth::user()->teacher;
-        
-        if (!$teacher) {
-            return response()->json(['message' => 'Teacher record not found'], 404);
-        }
-
-        // Get unique grade levels from teacher's subject assignments
-        $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
-            ->pluck('gradeLevel')
-            ->unique();
-
-        // Get all students from those grade levels
-        $students = Student::whereIn('gradeLevel', $gradeLevels)
-            ->where('status', 'active')
-            ->with(['section'])
-            ->orderBy('gradeLevel')
-            ->orderBy('lastName')
-            ->orderBy('firstName')
-            ->get();
-
-        return response()->json($students);
+{
+    $teacher = Auth::user()->teacher;
+    if (!$teacher) {
+        return response()->json(['message' => 'Teacher record not found'], 404);
     }
+
+    $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+        ->pluck('gradeLevel')
+        ->unique();
+
+    $currentSchoolYear = $this->getCurrentSchoolYear();
+
+    $students = Student::whereIn('gradeLevel', $gradeLevels)
+        ->where('status', 'active')
+        ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {
+            $q->where('school_year', $currentSchoolYear);
+        })
+        ->with(['section'])
+        ->orderBy('gradeLevel')
+        ->orderBy('lastName')
+        ->orderBy('firstName')
+        ->get();
+
+    return response()->json($students);
+}
 
     /**
      * Get ALL subjects assigned to the logged-in teacher (with grade level context)
@@ -112,33 +114,34 @@ class GradeController extends Controller
      * Get grades for this teacher's subjects
      */
     public function getGrades(Request $request)
-    {
-        $teacher = Auth::user()->teacher;
-        
-        if (!$teacher) {
-            return response()->json(['message' => 'Teacher record not found'], 404);
-        }
-
-        // Get subject IDs this teacher handles
-        $subjectIds = SubjectAssignment::where('teacher_id', $teacher->id)
-            ->pluck('subject_id')
-            ->unique();
-
-        // Get grade levels this teacher handles
-        $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
-            ->pluck('gradeLevel')
-            ->unique();
-
-        // Get grades for these subjects and grade levels
-        $grades = Grade::with(['student', 'subject'])
-            ->whereIn('subject_id', $subjectIds)
-            ->whereHas('student', function($query) use ($gradeLevels) {
-                $query->whereIn('gradeLevel', $gradeLevels);
-            })
-            ->get();
-
-        return response()->json($grades);
+{
+    $teacher = Auth::user()->teacher;
+    if (!$teacher) {
+        return response()->json(['message' => 'Teacher record not found'], 404);
     }
+
+    $subjectIds = SubjectAssignment::where('teacher_id', $teacher->id)
+        ->pluck('subject_id')
+        ->unique();
+
+    $gradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+        ->pluck('gradeLevel')
+        ->unique();
+
+    $currentSchoolYear = $this->getCurrentSchoolYear();
+
+    $grades = Grade::with(['student', 'subject'])
+        ->whereIn('subject_id', $subjectIds)
+        ->whereHas('student', function ($query) use ($gradeLevels, $currentSchoolYear) {
+            $query->whereIn('gradeLevel', $gradeLevels)
+                  ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {
+                      $q->where('school_year', $currentSchoolYear);
+                  });
+        })
+        ->get();
+
+    return response()->json($grades);
+}
 
     /**
      * Store or update a grade
@@ -208,35 +211,39 @@ public function submitGrade(Request $request)
     /**
      * Get grades for all students in a specific subject
      */
-    public function getSubjectGrades(Request $request, $subjectId)
-    {
-        $teacher = Auth::user()->teacher;
-        
-        if (!$teacher) {
-            return response()->json(['message' => 'Teacher record not found'], 404);
-        }
-
-        // Verify the teacher is assigned to teach this subject
-        $hasAssignment = SubjectAssignment::where([
-            'teacher_id' => $teacher->id,
-            'subject_id' => $subjectId
-        ])->exists();
-
-        if (!$hasAssignment) {
-            return response()->json(['message' => 'Subject not assigned to you'], 404);
-        }
-
-        $grades = Grade::where('subject_id', $subjectId)
-            ->whereHas('student', function($query) use ($teacher) {
-                $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
-                    ->pluck('gradeLevel');
-                $query->whereIn('gradeLevel', $teacherGradeLevels);
-            })
-            ->with(['student', 'subject'])
-            ->get();
-
-        return response()->json($grades);
+   public function getSubjectGrades(Request $request, $subjectId)
+{
+    $teacher = Auth::user()->teacher;
+    if (!$teacher) {
+        return response()->json(['message' => 'Teacher record not found'], 404);
     }
+
+    $hasAssignment = SubjectAssignment::where([
+        'teacher_id' => $teacher->id,
+        'subject_id' => $subjectId
+    ])->exists();
+
+    if (!$hasAssignment) {
+        return response()->json(['message' => 'Subject not assigned to you'], 404);
+    }
+
+    $teacherGradeLevels = SubjectAssignment::where('teacher_id', $teacher->id)
+        ->pluck('gradeLevel');
+
+    $currentSchoolYear = $this->getCurrentSchoolYear();
+
+    $grades = Grade::where('subject_id', $subjectId)
+        ->whereHas('student', function ($query) use ($teacherGradeLevels, $currentSchoolYear) {
+            $query->whereIn('gradeLevel', $teacherGradeLevels)
+                  ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {
+                      $q->where('school_year', $currentSchoolYear);
+                  });
+        })
+        ->with(['student', 'subject'])
+        ->get();
+
+    return response()->json($grades);
+}
 
     // ═══════════════════════════════════════════════════════════════════
     // ADMIN/REGISTRAR METHODS
@@ -347,4 +354,12 @@ public function getAllGrades(Request $request)
 
         return response()->json($stats);
     }
+
+
+    private function getCurrentSchoolYear(): string
+{
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 }

@@ -360,7 +360,7 @@ export default function EnrollmentManagement() {
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-
+  const [filterSchoolYear, setFilterSchoolYear] = useState('all');
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -388,16 +388,24 @@ export default function EnrollmentManagement() {
   }, [location.state?.filter, location.state?.paymentFilter]);
 
   const fetchEnrollments = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/enrollments");
-      setEnrollments(res.data);
-    } catch {
-      setMessage("Failed to load enrollments");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    const res = await API.get("/enrollments", {
+      params: { school_year: filterSchoolYear }
+    });
+    setEnrollments(res.data);
+  } catch {
+    setMessage("Failed to load enrollments");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+useEffect(() => {
+  fetchEnrollments();
+}, [filterSchoolYear]);
+
 
   const updateStatus = useCallback(
     async (id, status) => {
@@ -802,9 +810,29 @@ export default function EnrollmentManagement() {
                     minWidth: "140px",
                   }}
                 >
+                  
                   <option value="all">All Requirements</option>
                   <option value="complete">Complete</option>
                   <option value="incomplete">Incomplete</option>
+                  </select>
+
+                   {/* 🆕 School Year Dropdown */}
+                  <select
+                    value={filterSchoolYear}
+                    onChange={(e) => setFilterSchoolYear(e.target.value)}
+                    style={{
+                      padding: "6px 10px",
+                      fontSize: "13px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      minWidth: "140px",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    <option value="all">All School Years</option>
+                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
                 </select>
               </div>
               <div className="enrollment-btn-group">

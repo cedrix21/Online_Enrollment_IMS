@@ -79,23 +79,28 @@ class EnrollmentController extends Controller
 
 
 
-    public function index()
+    public function index(Request $request)
 {
     try {
-        $enrollments = Enrollment::with([
+        $query = Enrollment::with([
             'siblings', 
             'payments',
             'student', 
             'student.section'
-        ])->orderBy('created_at', 'desc')->get();
+        ]);
+
+        // 🆕 Filter by school year if provided
+        if ($request->has('school_year') && $request->school_year !== 'all') {
+            $query->where('school_year', $request->school_year);
+        }
+
+        $enrollments = $query->orderBy('created_at', 'desc')->get();
 
         // TRANSFORM the data to include full URLs for receipts
         $enrollments->transform(function ($enrollment) {
             $enrollment->payments->transform(function ($payment) {
                 if ($payment->receipt_path) {
-                    // Check if it's already a full URL (like from Supabase)
                     if (!filter_var($payment->receipt_path, FILTER_VALIDATE_URL)) {
-                        // If it's a local path, clean it and wrap it in asset()
                         $cleanPath = ltrim(str_replace('public/', '', $payment->receipt_path), '/');
                         $payment->receipt_path = asset('storage/' . $cleanPath);
                     }
@@ -283,10 +288,10 @@ class EnrollmentController extends Controller
 
     private function getSchoolYear(): string
     {
-        return '2026-2027';
-        // $month = (int) date('n');
-        // $year  = (int) date('Y');
-        // return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+        // return '2026-2027';
+        $month = (int) date('n');
+        $year  = (int) date('Y');
+        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
 
