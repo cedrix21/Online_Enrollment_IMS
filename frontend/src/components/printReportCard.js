@@ -97,7 +97,7 @@ const printReportCard = ({
       }
       sum += score;
     }
-    return allPresent ? Math.round(sum / quarters.length) : null;
+    return allPresent ? Math.round(sum / quarters.length) : '';
   };
 
   const getFinalRemarks = (subjectId) => {
@@ -118,12 +118,12 @@ const printReportCard = ({
     const remarks = getFinalRemarks(sub.id);
     rows += `<tr>
       <td>${sub.subjectName}</td>
-      <td class="center">${q1 || '—'}</td>
-      <td class="center">${q2 || '—'}</td>
-      <td class="center">${q3 || '—'}</td>
-      <td class="center">${q4 || '—'}</td>
-      <td class="center"><strong>${finalGrade !== null ? finalGrade : '—'}</strong></td>
-      <td class="center">${remarks || '—'}</td>
+      <td class="center">${q1 || ''}</td>
+      <td class="center">${q2 || ''}</td>
+      <td class="center">${q3 || ''}</td>
+      <td class="center">${q4 || ''}</td>
+      <td class="center"><strong>${finalGrade || ''}</strong></td>
+      <td class="center">${remarks || ''}</td>
     </tr>`;
   });
 
@@ -141,13 +141,13 @@ const printReportCard = ({
         }
         sum += score;
       }
-      return allPresent ? Math.round(sum / mapehComponents.length) : null;
+      return allPresent ? Math.round(sum / mapehComponents.length) : '';
     });
     // Final grade for MAPEH: only if all four quarterly averages are present
-    const allQuartersPresent = mapehQuarterGrades.every(g => g !== null);
+    const allQuartersPresent = mapehQuarterGrades.every(g => g !== '');
     const mapehFinalGrade = allQuartersPresent
       ? Math.round(mapehQuarterGrades.reduce((a,b) => a + b, 0) / quarters.length)
-      : null;
+      : '';
     // Remarks (first non‑empty from any component)
     let mapehRemarks = '';
     for (let comp of mapehComponents) {
@@ -157,9 +157,9 @@ const printReportCard = ({
     // MAPEH main row (normal weight, not bold)
     rows += `<tr class="mapeh-row">
       <td>MAPEH</td>
-      ${mapehQuarterGrades.map(g => `<td class="center">${g !== null ? g : '—'}</td>`).join('')}
-      <td class="center"><strong>${mapehFinalGrade !== null ? mapehFinalGrade : '—'}</strong></td>
-      <td class="center">${mapehRemarks || '—'}</td>
+      ${mapehQuarterGrades.map(g => `<td class="center">${g || ''}</td>`).join('')}
+      <td class="center"><strong>${mapehFinalGrade || ''}</strong></td>
+      <td class="center">${mapehRemarks || ''}</td>
     </tr>`;
 
     // Indented component rows (Music, Arts, PE, Health) – no final grade
@@ -171,12 +171,12 @@ const printReportCard = ({
       const remarks = getFinalRemarks(comp.id);
       rows += `<tr class="mapeh-component">
         <td style="padding-left: 14px;">↳ ${comp.subjectName}</td>
-        <td class="center">${q1 || '—'}</td>
-        <td class="center">${q2 || '—'}</td>
-        <td class="center">${q3 || '—'}</td>
-        <td class="center">${q4 || '—'}</td>
-        <td class="center">—</td>   <!-- No final grade -->
-        <td class="center">${remarks || '—'}</td>
+        <td class="center">${q1 || ''}</td>
+        <td class="center">${q2 || ''}</td>
+        <td class="center">${q3 || ''}</td>
+        <td class="center">${q4 || ''}</td>
+        <td class="center"></td>   <!-- Keep dash as placeholder for "no final grade" for components -->
+        <td class="center">${remarks || ''}</td>
       </tr>`;
     });
   }
@@ -186,7 +186,7 @@ const printReportCard = ({
   // Regular subjects
   regular.forEach(sub => {
     const f = getFinalGrade(sub.id);
-    if (f !== null) allFinalGrades.push(f);
+    if (f !== '') allFinalGrades.push(f);
   });
   // MAPEH main subject (if exists)
   if (mapehComponents.length > 0) {
@@ -197,20 +197,20 @@ const printReportCard = ({
         if (score === '') { allPresent = false; break; }
         sum += score;
       }
-      return allPresent ? Math.round(sum / mapehComponents.length) : null;
+      return allPresent ? Math.round(sum / mapehComponents.length) : '';
     });
-    const allQuartersPresent = mapehQuarterGrades.every(g => g !== null);
+    const allQuartersPresent = mapehQuarterGrades.every(g => g !== '');
     const mapehFinal = allQuartersPresent
       ? Math.round(mapehQuarterGrades.reduce((a,b) => a + b, 0) / quarters.length)
-      : null;
-    if (mapehFinal !== null) allFinalGrades.push(mapehFinal);
+      : '';
+    if (mapehFinal !== '') allFinalGrades.push(mapehFinal);
   }
-  const genAvg = allFinalGrades.length ? Math.round(allFinalGrades.reduce((a,b)=>a+b,0) / allFinalGrades.length) : '—';
+  const genAvg = allFinalGrades.length ? Math.round(allFinalGrades.reduce((a,b)=>a+b,0) / allFinalGrades.length) : '';
   rows += `<tr class="total-row">
     <td><strong>General Average</strong></td>
     <td colspan="4"></td>
-    <td class="center"><strong>${genAvg}</strong></td>
-    <td class="center">${typeof genAvg === 'number' ? (genAvg >= 75 ? 'Passed' : 'Failed') : '—'}</td>
+    <td class="center"><strong>${genAvg || ''}</strong></td>
+    <td class="center">${typeof genAvg === 'number' ? (genAvg >= 75 ? 'Passed' : 'Failed') : ''}</td>
   </tr>`;
 
   return rows;
@@ -386,72 +386,92 @@ const printReportCard = ({
 
     /* Second page styles */
     .p2-section-title {
-      font-family: Arial, sans-serif;
-      font-size: 10pt;
-      font-weight: bold;
-      text-align: center;
-      text-transform: uppercase;
-      margin-bottom: 2mm;
-      letter-spacing: 0.3px;
-    }
-    .p2-table {
-      font-family: Arial, sans-serif;
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 7.5pt;
-      margin-bottom: 2mm;
-    }
-    .p2-table th, .p2-table td {
-      border: 1px solid #000;
-      padding: 3px 4px;
-      vertical-align: middle;
-    }
-    .p2-table th {
-      font-weight: bold;
-      text-align: center;
-      font-size: 7.5pt;
-    }
-    .p2-table td.center { text-align: center; }
-    .p2-table td:first-child { text-align: left; }
-    .p2-col-q { width: 28px; text-align: center; }
-    .p2-col-final { width: 40px; text-align: center; }
-    .p2-col-remarks { width: 50px; text-align: center; }
-    .total-row td { font-weight: bold; background-color: #d9d9d9; }
-    .mapeh-row td { font-weight: normal; }   
-    .mapeh-component td:first-child {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 3mm;
+  letter-spacing: 0.3px;
+}
+
+.p2-table {
+  font-family: 'Times New Roman', Times, serif;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  margin-bottom: 0;
+  flex: 1;
+}
+.p2-table th, .p2-table td {
+  border: 1px solid #000;
+  padding: 6px 5px;
+  vertical-align: middle;
+}
+.p2-table th {
+  font-weight: bold;
+  text-align: center;
+  font-size: 9pt;
+}
+.p2-table td.center { text-align: center; }
+.p2-table td:first-child { text-align: left; }
+.p2-col-q { width: 30px; text-align: center; }
+.p2-col-final { width: 45px; text-align: center; }
+.p2-col-remarks { width: 55px; text-align: center; }
+
+.total-row td { font-weight: bold; background-color: #d9d9d9; }
+.mapeh-row td { font-weight: normal; }
+.mapeh-component td:first-child {
   padding-left: 14px;
   font-style: italic;
 }
-    .p2-footer-grid {
-      font-family: Arial, sans-serif;
-      display: flex;
-      gap: 10mm;
-      margin-top: 3mm;
-    }
-    .p2-footer-col { flex: 1; }
-    .p2-footer-col p { margin: 2px 0; font-size: 7.5pt; }
-    .p2-footer-col p.head { font-weight: bold; margin-bottom: 2px; font-size: 8pt; }
-    .core-label {
-      font-family: Arial, sans-serif;
-      font-weight: bold;
-      vertical-align: middle;
-      text-align: center;
-      font-size: 7.5pt;
-    }
-    .stmt {
-      font-family: Arial, sans-serif;
-      text-align: left;
-      font-size: 7pt;
-      line-height: 1.3;
-    }
-    .p2-marking-grid {
-      font-family: Arial, sans-serif;
-      display: flex;
-      gap: 10mm;
-      margin-top: 3mm;
-    }
-    .p2-marking-col p { margin: 1px 0; font-size: 7.5pt; }
-    .p2-marking-col p.head { font-weight: bold; margin-bottom: 2px; font-size: 8pt; }
+
+/* Left and right columns stretch to full height */
+.left-col, .right-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+.left-col > .p2-table, .right-col > .p2-table {
+  flex: 1;
+  margin-bottom: 2mm;
+}
+
+/* Footer grids – stay at bottom */
+.p2-footer-grid {
+  font-family: 'Times New Roman', Times, serif;
+  display: flex;
+  gap: 10mm;
+  margin-top: auto;
+  width: 100%;
+}
+.p2-footer-col { flex: 1; }
+.p2-footer-col p { margin: 2px 0; font-size: 8.5pt; }
+.p2-footer-col p.head { font-weight: bold; margin-bottom: 2px; font-size: 9.5pt; }
+
+.core-label {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: bold;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 9pt;
+}
+.stmt {
+  font-family: 'Times New Roman', Times, serif;
+  text-align: left;
+  font-size: 8.5pt;
+  line-height: 1.3;
+}
+.p2-marking-grid {
+  font-family: 'Times New Roman', Times, serif;
+  display: flex;
+  gap: 10mm;
+  margin-top: auto;
+  margin-bottom: 0;
+}
+.p2-marking-col p { margin: 1px 0; font-size: 8.5pt; }
+.p2-marking-col p.head { font-weight: bold; margin-bottom: 2px; font-size: 9.5pt; }
   </style>
 </head>
 <body>
@@ -566,23 +586,31 @@ const printReportCard = ({
       </tbody>
     </table>
     <div class="p2-footer-grid">
-      <div class="p2-footer-col">
-        <p class="head">Description</p>
-        <p>Outstanding</p>
-        <p>Very Satisfactory</p>
-        <p>Satisfactory</p>
-        <p>Fairly Satisfactory</p>
-        <p>Did not meet expectations</p>
-      </div>
-      <div class="p2-footer-col">
-        <p class="head">Grading Scale</p>
-        <p>90-100</p>
-        <p>85-89</p>
-        <p>80-84</p>
-        <p>75-79</p>
-        <p>Below 75</p>
-      </div>
-    </div>
+  <div class="p2-footer-col">
+    <p class="head">Description</p>
+    <p>Outstanding</p>
+    <p>Very Satisfactory</p>
+    <p>Satisfactory</p>
+    <p>Fairly Satisfactory</p>
+    <p>Did not meet expectations</p>
+  </div>
+  <div class="p2-footer-col">
+    <p class="head">Grading Scale</p>
+    <p>90-100</p>
+    <p>85-89</p>
+    <p>80-84</p>
+    <p>75-79</p>
+    <p>Below 75</p>
+  </div>
+  <div class="p2-footer-col">
+    <p class="head">Remarks</p>
+    <p>Passed</p>
+    <p>Passed</p>
+    <p>Passed</p>
+    <p>Passed</p>
+    <p>Failed</p>
+  </div>
+</div>
   </div>
   <div class="right-col">
     <div class="p2-section-title">Report on Learner's Observed Values</div>

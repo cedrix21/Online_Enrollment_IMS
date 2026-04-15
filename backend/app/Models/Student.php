@@ -15,33 +15,41 @@ class Student extends Model
         'lastName',
         'email',
         'gradeLevel',
-        'enrollment_id',
         'section_id',
         'status',
         'school_year',
-        'status',
         'lrn',
         'contact_number',
-        // 'created_at' removed from here
     ];
 
-    // Use $casts to format the date for your React Frontend automatically
     protected $casts = [
         'created_at' => 'datetime:Y-m-d',
     ];
 
-    public function enrollment()
+    // A student has many enrollments (one per school year/grade)
+    public function enrollments()
     {
-        return $this->belongsTo(Enrollment::class);
+        return $this->hasMany(Enrollment::class);
+    }
+
+    // Current/latest enrollment
+    public function latestEnrollment()
+    {
+        return $this->hasOne(Enrollment::class)->latestOfMany();
     }
 
     public function section()
-{
-    return $this->belongsTo(Section::class);
-}
+    {
+        return $this->belongsTo(Section::class);
+    }
 
-public function payments()
-{
-    return $this->hasMany(Payment::class, 'student_id', 'id');
-}
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'student_id', 'id');
+    }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
+    }
 }

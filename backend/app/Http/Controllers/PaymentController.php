@@ -238,24 +238,207 @@ class PaymentController extends Controller
         });
     }
 
-    public function handleWebhook(Request $request)
-    {
-        $event = $request->all();
-        $eventType = $event['data']['attributes']['type'] ?? '';
 
-        if ($eventType === 'payment.paid') {
-            $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
 
-            if ($enrollmentId) {
-                // Since you don't have a payment_status column, 
-                // you might want to update the 'status' to 'paid' or 'approved'
-                Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
-                Payment::where('enrollment_id', $enrollmentId)->update(['status' => 'paid']);
-                Log::info("Enrollment $enrollmentId marked as paid.");
-            }
-        }
-        return response()->json(['success' => true]);
+public function initializeBankTransfer(Request $request)
+{
+    $request->validate([
+        'firstName'        => 'required|string',
+        'lastName'         => 'required|string',
+        'email'            => 'required|email',
+        'gradeLevel'       => 'required|string',
+        'registrationType' => 'required|string',
+        'emergencyContact' => 'required|string',
+        'amount_paid'      => 'required|numeric|min:5000',
+    ]);
+
+    // Validate files if present
+    if ($request->hasFile('requirement_psa')) {
+        $request->validate(['requirement_psa' => 'file|mimes:jpg,png,pdf|max:2048']);
     }
+    if ($request->hasFile('requirement_good_moral')) {
+            $request->validate([
+                'requirement_good_moral' => 'file|mimes:jpg,png,pdf|max:2048',
+            ]);
+        }
+        if ($request->hasFile('requirement_report_card')) {
+            $request->validate([
+                'requirement_report_card' => 'file|mimes:jpg,png,pdf|max:2048',
+            ]);
+        }
+        if ($request->hasFile('requirement_picture_2x2')) {
+            $request->validate([
+                'requirement_picture_2x2' => 'image|mimes:jpg,png|max:2048',
+            ]);
+        }
+        if ($request->hasFile('requirement_picture_1x1')) {
+            $request->validate([
+                'requirement_picture_1x1' => 'image|mimes:jpg,png|max:2048',
+            ]);
+        }
+
+    return DB::transaction(function () use ($request) {
+        // Create enrollment
+        $enrollment = Enrollment::create($request->except([
+            'requirement_psa', 'requirement_good_moral', 'requirement_report_card',
+            'requirement_picture_2x2', 'requirement_picture_1x1'
+        ]));
+
+        // Handle file uploads and create EnrollmentRequirement records (same as GCash)
+        if ($request->hasFile('requirement_psa')) {
+            $path = $request->file('requirement_psa')->store('requirements/psa', 'public');
+            $enrollment->psa_path = $path;
+            EnrollmentRequirement::create([
+                'enrollment_id' => $enrollment->id,
+                'type' => 'psa',
+                'type_label' => 'PSA Birth Certificate',
+                'original_name' => $request->file('requirement_psa')->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'pending',
+            ]);
+        }
+        if ($request->hasFile('requirement_good_moral')) {
+            $path = $request->file('requirement_good_moral')->store('requirements/good_moral', 'public');
+            $enrollment->good_moral_path = $path;
+            EnrollmentRequirement::create([
+                'enrollment_id' => $enrollment->id,
+                'type' => 'good_moral',
+                'type_label' => 'Certificate of Good Moral',
+                'original_name' => $request->file('requirement_good_moral')->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'pending',
+            ]);
+        }
+        if ($request->hasFile('requirement_report_card')) {
+            $path = $request->file('requirement_report_card')->store('requirements/report_card', 'public');
+            $enrollment->report_card_path = $path;
+            EnrollmentRequirement::create([
+                'enrollment_id' => $enrollment->id,
+                'type' => 'report_card',
+                'type_label' => 'Report Card',
+                'original_name' => $request->file('requirement_report_card')->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'pending',
+            ]);
+        }
+        if ($request->hasFile('requirement_picture_2x2')) {
+            $path = $request->file('requirement_picture_2x2')->store('requirements/picture_2x2', 'public');
+            $enrollment->picture_2x2_path = $path;
+            EnrollmentRequirement::create([
+                'enrollment_id' => $enrollment->id,
+                'type' => 'picture_2x2',
+                'type_label' => '2x2 Picture',
+                'original_name' => $request->file('requirement_picture_2x2')->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'pending',
+            ]);
+        }
+        if ($request->hasFile('requirement_picture_1x1')) {
+            $path = $request->file('requirement_picture_1x1')->store('requirements/picture_1x1', 'public');
+            $enrollment->picture_1x1_path = $path;
+            EnrollmentRequirement::create([
+                'enrollment_id' => $enrollment->id,
+                'type' => 'picture_1x1',
+                'type_label' => '1x1 Picture',
+                'original_name' => $request->file('requirement_picture_1x1')->getClientOriginalName(),
+                'file_path' => $path,
+                'status' => 'pending',
+            ]);
+        }
+
+        $enrollment->save();
+
+        // Create Checkout Session for bank transfer
+        $response = $this->paymongoHttp($this->paymongo_secret_key)
+        ->post($this->base_url . '/checkout_sessions', [
+            'data' => [
+                'attributes' => [
+                        'send_email_receipt' => false,
+                        'show_description' => true,
+                        'show_line_items' => true,
+                        'billing' => [
+                            'name' => $request->firstName . ' ' . $request->lastName,
+                            'email' => $request->email,
+                        ],
+                        'line_items' => [
+                            [
+                                'name' => 'Enrollment Downpayment',
+                                'quantity' => 1,
+                                'amount' => (int) ($request->amount_paid * 100),
+                                'currency' => 'PHP',
+                            ]
+                        ],
+                        'payment_method_types' => [
+                            'bdo_online',
+                            'landbank_online',
+                            'metrobank_online'
+                        ],
+                        'success_url' => env('APP_URL_FRONTEND') . '/enrollment/payment-success?session_id={CHECKOUT_SESSION_ID}',
+                        'failed_url' => env('APP_URL_FRONTEND') . '/enrollment/payment-failed',
+                        'metadata' => [
+                            'enrollment_id' => (string) $enrollment->id,
+                        ]
+                    ]
+                ]
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Checkout Session Error: ' . $response->body());
+        }
+
+        $checkoutUrl = $response->json()['data']['attributes']['checkout_url'];
+        $sessionId = $response->json()['data']['id'];
+
+        // Create payment record
+        Payment::create([
+            'enrollment_id' => $enrollment->id,
+            'paymentMethod' => 'Bank Transfer',
+            'amount_paid' => $request->amount_paid,
+            'reference_number' => $sessionId,
+            'payment_type' => 'Downpayment',
+            'payment_date' => now(),
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'checkout_url' => $checkoutUrl,
+            'enrollment_id' => $enrollment->id,
+        ]);
+    });
+}
+
+   public function handleWebhook(Request $request)
+{
+    $event = $request->all();
+    $eventType = $event['data']['attributes']['type'] ?? '';
+
+    // GCash payment via Payment Intent
+    if ($eventType === 'payment.paid') {
+        $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
+
+        if ($enrollmentId) {
+            Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
+            Payment::where('enrollment_id', $enrollmentId)->update(['status' => 'paid']);
+            Log::info("Enrollment $enrollmentId marked as paid via GCash.");
+        }
+    }
+    
+    // Bank Transfer payment via Checkout Session
+    if ($eventType === 'checkout_session.payment.paid') {
+        $checkoutSessionId = $event['data']['attributes']['data']['id'] ?? null;
+        $enrollmentId = $event['data']['attributes']['data']['attributes']['metadata']['enrollment_id'] ?? null;
+
+        if ($enrollmentId && $checkoutSessionId) {
+            Enrollment::where('id', $enrollmentId)->update(['status' => 'paid']);
+            // Update payment using the checkout session ID as reference_number
+            Payment::where('reference_number', $checkoutSessionId)->update(['status' => 'paid']);
+            Log::info("Enrollment $enrollmentId marked as paid via Bank Transfer (session: $checkoutSessionId).");
+        }
+    }
+
+    return response()->json(['success' => true]);
+}
 
 
 

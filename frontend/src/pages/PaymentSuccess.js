@@ -10,9 +10,18 @@ export default function PaymentSuccess() {
   const [email, setEmail] = useState('');
 
   useEffect(() => {
+    // Check for redirect_status (GCash) or session_id (Bank Transfer)
     const redirectStatus = searchParams.get('redirect_status');
-    // Retrieve enrollment data saved before redirect
-    const storedData = sessionStorage.getItem('gcashEnrollmentData');
+    const sessionId = searchParams.get('session_id');
+    
+    // Determine which payment method and retrieve stored data
+    let storedData = sessionStorage.getItem('gcashEnrollmentData');
+    let paymentMethod = 'GCash';
+    
+    if (!storedData) {
+      storedData = sessionStorage.getItem('bankTransferEnrollmentData');
+      paymentMethod = 'Bank Transfer';
+    }
     
     if (storedData) {
       const data = JSON.parse(storedData);
@@ -21,10 +30,14 @@ export default function PaymentSuccess() {
       setEmail(data.email);
     }
 
-    if (redirectStatus === 'succeeded') {
+    // Determine success/failure
+    if (redirectStatus === 'succeeded' || sessionId) {
       setStatus('success');
     } else if (redirectStatus === 'failed') {
       setStatus('failed');
+    } else if (sessionId) {
+      // Bank Transfer success – session_id present
+      setStatus('success');
     } else {
       // Fallback – assume success if we have stored data
       setStatus('success');
@@ -41,7 +54,6 @@ export default function PaymentSuccess() {
   }
 
   if (status === 'success') {
-    // Same styling as your existing success screen
     return (
       <div className="enrollment-container">
         <div className="enrollment-card">
@@ -66,7 +78,15 @@ export default function PaymentSuccess() {
                 <li>Ensure <strong>Kid's Note</strong> is installed on your mobile device.</li>
               </ul>
             </div>
-            <Link to="/enroll" className="enroll-button" style={{ maxWidth: '300px', display: 'inline-block', textDecoration: 'none' }}>
+            <Link 
+              to="/enroll" 
+              className="enroll-button" 
+              style={{ maxWidth: '300px', display: 'inline-block', textDecoration: 'none' }}
+              onClick={() => {
+                sessionStorage.removeItem('gcashEnrollmentData');
+                sessionStorage.removeItem('bankTransferEnrollmentData');
+              }}
+            >
               Submit Another Application
             </Link>
           </div>

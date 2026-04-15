@@ -246,7 +246,7 @@ const GradeModal = memo(({
                       </span>
                     </td>
                     <td className="remarks-text">
-                      {mapehRemark || "-"}
+                      {mapehRemark || " "}
                     </td>
                     <td className="action-cell">
                       <button className="btn-edit-disabled" disabled title="Edit components individually">Group</button>
@@ -453,33 +453,64 @@ const EvaluationManagement = () => {
   // Handlers
   // ────────────────────────────────────────────────────────────
   const openStudentModal = useCallback((student) => {
-    setSelectedStudent(student);
-    setSelectedQuarter("Q1");
+  setSelectedStudent(student);
+  setSelectedQuarter("Q1");
 
-    const gradesByQuarter = {};
-    allGrades
-      .filter(g => g.student?.id === student.id)
-      .forEach(grade => {
-        if (!gradesByQuarter[grade.quarter]) {
-          gradesByQuarter[grade.quarter] = [];
-        }
-        gradesByQuarter[grade.quarter].push(grade);
-      });
-    setStudentGrades(gradesByQuarter);
+  // 1. Get existing grades for this student
+  const existingGrades = allGrades.filter(g => g.student?.id === student.id);
 
-    // Extract adviser name from the first grade of this student
-    const firstGrade = allGrades.find(g => g.student?.id === student.id);
-    if (firstGrade && firstGrade.student?.section?.advisor) {
-      const advisor = firstGrade.student.section.advisor;
-      setTeacherName(`${advisor.firstName} ${advisor.lastName}`);
-    } else {
-      setTeacherName('TBA');
-    }
+  // 2. Get subjects for the student's grade level
+  const gradeLevelSubjects = allSubjects.filter(
+    sub => sub.gradeLevel === student.gradeLevel
+  );
 
-    setModalOpen(true);
-    setEditingGradeId(null);
-    setEditData({});
-  }, [allGrades]);
+  // 3. Build a complete map for all quarters and subjects
+  const quarters = ["Q1", "Q2", "Q3", "Q4"];
+  const completeGradesByQuarter = {};
+
+  quarters.forEach(quarter => {
+    completeGradesByQuarter[quarter] = gradeLevelSubjects.map(subject => {
+      // Find existing grade for this subject and quarter
+      const existing = existingGrades.find(
+        g => g.subject_id === subject.id && g.quarter === quarter
+      );
+      
+      if (existing) {
+        return existing;
+      }
+      
+      // Create placeholder with empty score and remarks
+      return {
+        id: `placeholder-${subject.id}-${quarter}`,
+        student_id: student.id,
+        subject_id: subject.id,
+        quarter: quarter,
+        score: '',
+        remarks: '',
+        subject: subject,
+        teacher: null,
+        isPlaceholder: true,
+      };
+    });
+  });
+
+  setStudentGrades(completeGradesByQuarter);
+
+  // Extract adviser name from section advisor
+  if (student.section?.advisor) {
+    const advisor = student.section.advisor;
+    setTeacherName(`${advisor.firstName} ${advisor.lastName}`);
+  } else {
+    setTeacherName('TBA');
+  }
+
+  setModalOpen(true);
+  setEditingGradeId(null);
+  setEditData({});
+}, [allGrades, allSubjects]);
+
+
+
 
   const closeModal = useCallback(() => {
     setModalOpen(false);
@@ -506,35 +537,41 @@ const EvaluationManagement = () => {
   }, []);
 
   const handleSave = useCallback(async (gradeId) => {
-    if (editData.score < 0 || editData.score > 100) {
-      setError("Score must be between 0 and 100");
-      return;
-    }
+  // Prevent saving placeholder entries
+  if (typeof gradeId === 'string' && gradeId.startsWith('placeholder-')) {
+    setError("Cannot save placeholder grade. Please contact administrator.");
+    return;
+  }
 
-    try {
-      const res = await API.put(`/admin/grades/${gradeId}`, {
-        score: editData.score,
-        remarks: editData.remarks,
-      });
+  if (editData.score < 0 || editData.score > 100) {
+    setError("Score must be between 0 and 100");
+    return;
+  }
 
-      setAllGrades(prev => prev.map(g => g.id === gradeId ? res.data.grade : g));
-      setStudentGrades(prev => {
-        const updated = { ...prev };
-        if (updated[selectedQuarter]) {
-          updated[selectedQuarter] = updated[selectedQuarter].map(g =>
-            g.id === gradeId ? res.data.grade : g
-          );
-        }
-        return updated;
-      });
+  try {
+    const res = await API.put(`/admin/grades/${gradeId}`, {
+      score: editData.score,
+      remarks: editData.remarks,
+    });
 
-      setEditingGradeId(null);
-      setSuccess("Grade updated successfully!");
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError("Failed to update grade: " + (err.response?.data?.message || err.message));
-    }
-  }, [editData, selectedQuarter]);
+    setAllGrades(prev => prev.map(g => g.id === gradeId ? res.data.grade : g));
+    setStudentGrades(prev => {
+      const updated = { ...prev };
+      if (updated[selectedQuarter]) {
+        updated[selectedQuarter] = updated[selectedQuarter].map(g =>
+          g.id === gradeId ? res.data.grade : g
+        );
+      }
+      return updated;
+    });
+
+    setEditingGradeId(null);
+    setSuccess("Grade updated successfully!");
+    setTimeout(() => setSuccess(""), 3000);
+  } catch (err) {
+    setError("Failed to update grade: " + (err.response?.data?.message || err.message));
+  }
+}, [editData, selectedQuarter]);
 
   const handlePrintReportCard = useCallback(() => {
     printReportCard({

@@ -13,7 +13,8 @@ export default function Enrollment() {
   const [paymentMethod,      setPaymentMethod]      = useState("");
   const [processingPayment,  setProcessingPayment]  = useState(false);
   const [gcashRedirectUrl,   setGcashRedirectUrl]   = useState("");
-
+  const [continuingStudentId, setContinuingStudentId] = useState("");
+  const [studentIdValid, setStudentIdValid] = useState(null); 
   // ── Requirement files (all optional) ─────────────────────────
   const [requirementFiles, setRequirementFiles] = useState({
     psa:          null,
@@ -187,7 +188,28 @@ export default function Enrollment() {
     setProcessingPayment(false);
 }
   };
-
+const verifyStudentId = async () => {
+  if (!continuingStudentId) {
+    setStudentIdValid(null);
+    return;
+  }
+  try {
+    const res = await API.get(`/students/by-id/${continuingStudentId}`);
+    if (res.status === 200) {
+      setStudentIdValid(true);
+      const student = res.data;
+      // Auto-fill form fields (optional)
+      setFormData(prev => ({
+        ...prev,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        
+      }));
+    }
+  } catch (err) {
+    setStudentIdValid(false);
+  }
+};
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -233,6 +255,11 @@ export default function Enrollment() {
     Object.entries(requirementFiles).forEach(([key, file]) => {
       if (file) dataToSend.append(`requirement_${key}`, file);
     });
+
+    // Inside submitEnrollment, after appending formData fields
+    if (formData.registrationType === 'Continuing') {
+      dataToSend.append('studentId', continuingStudentId);
+    }
 
     dataToSend.append('paymentMethod', paymentMethod);
 
@@ -361,29 +388,107 @@ export default function Enrollment() {
 
             <form onSubmit={handleSubmit} className="enrollment-grid-form">
 
-              {/* ── Registration Status ── */}
-              <div className="form-section">
-                <h3>Registration Status</h3>
-                <div className="input-group">
-                  <div className="input-grid-2">
-                    <select name="registrationType" value={formData.registrationType}
-                      onChange={handleChange} required>
-                      <option value="">Select Status</option>
-                      <option value="New Student">New Student</option>
-                      <option value="Continuing">Continuing</option>
-                      <option value="Transferee">Transferee</option>
-                      <option value="Returning Student">Returning Student</option>
-                    </select>
-                    <select name="gradeLevel" value={formData.gradeLevel}
-                      onChange={handleChange} required>
-                      <option value="">Enrolling For...</option>
-                      <option value="Nursery">Nursery</option>
-                      <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
-                      <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
-                      {[1,2,3,4,5,6].map(n =>
-                        <option key={n} value={`Grade ${n}`}>Grade {n}</option>
+             {/* ── Registration Status ── */}
+                <div className="form-section">
+                  <h3>Registration Status</h3>
+                  <div className="input-group">
+                    {/* Row 1: Registration Type + Student ID (side by side) */}
+                    <div className="input-grid-2">
+                      <div>
+                        <label>Registration Type</label>
+                        <select 
+                          name="registrationType" 
+                          value={formData.registrationType}
+                          onChange={handleChange} 
+                          required
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px' }}
+                        >
+                          <option value="">Select Status</option>
+                          <option value="New Student">New Student</option>
+                          <option value="Continuing">Continuing</option>
+                          <option value="Transferee">Transferee</option>
+                          <option value="Returning Student">Returning Student</option>
+                        </select>
+                      </div>
+
+                      {formData.registrationType === 'Continuing' ? (
+                        <div>
+                          <label>Student ID (e.g., SICS-2025-0001)</label>
+                          <input
+                            type="text"
+                            value={continuingStudentId}
+                            onChange={(e) => {
+                              setContinuingStudentId(e.target.value.toUpperCase());
+                              setStudentIdValid(null);
+                            }}
+                            onBlur={verifyStudentId}
+                            placeholder="SICS-YYYY-XXXX"
+                            required
+                            pattern="^SICS-\\d{4}-\\d{4}$"
+                            title="Format: SICS-YYYY-XXXX"
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              border: '1px solid',
+                              borderColor: studentIdValid === false ? '#d32f2f' : 
+                                          studentIdValid === true ? '#2e7d32' : '#ccc',
+                              borderRadius: '6px'
+                            }}
+                          />
+                          {studentIdValid === true && (
+                            <small style={{ color: '#2e7d32', marginTop: '4px', display: 'block' }}>
+                              ✓ {formData.firstName} {formData.lastName}
+                            </small>
+                          )}
+                          {studentIdValid === false && (
+                            <small style={{ color: '#d32f2f', marginTop: '4px', display: 'block' }}>
+                              ✗ Student ID not found
+                            </small>
+                          )}
+                        </div>
+                      ) : (
+                        <div /> // empty placeholder to maintain grid alignment
                       )}
-                    </select>
+                    </div>
+
+                    {/* Row 2: Grade Level (full width) */}
+                    <div style={{ marginTop: '15px' }}>
+                      <label>Enrolling For (Grade Level)</label>
+                      <select 
+                        name="gradeLevel" 
+                        value={formData.gradeLevel}
+                        onChange={handleChange} 
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #ccc',
+                          borderRadius: '6px',
+                          backgroundColor: '#fff'
+                        }}
+                      >
+                        <option value="">Select Grade</option>
+                        <option value="Nursery">Nursery</option>
+                        <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
+                        <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
+                        {[1,2,3,4,5,6].map(n =>
+                          <option key={n} value={`Grade ${n}`}>Grade {n}</option>
+                        )}
+                      </select>
+                      {formData.registrationType === 'Continuing' && studentIdValid === true && (
+                        <small style={{ color: '#2e7d32', marginTop: '4px', display: 'block' }}>
+                          ℹ️ Select the grade level for the upcoming school year.
+                        </small>
+                      )}
+                    </div>
+                    
+
+                    {/* Additional helper text (optional) */}
+                    {formData.registrationType === 'Continuing' && (
+                      <small style={{ color: '#8b7500', marginTop: '10px', display: 'block' }}>
+                        This ID was provided in your previous enrollment confirmation.
+                      </small>
+                    )}
                   </div>
                 </div>
 
@@ -520,7 +625,7 @@ export default function Enrollment() {
                     Loading fee information...
                   </div>
                 )}
-              </div>
+             
 
               {/* ── Requirements Upload ── */}
               <div className="form-section">
@@ -810,8 +915,8 @@ export default function Enrollment() {
                     <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8',
                       borderRadius: '8px', fontSize: '0.9rem' }}>
                       <strong>Bank Account Details:</strong><br />
-                      Bank: BDO - 1234567890<br />
-                      Account Name: Siloam International Christian School
+                      Bank: BPI - 1083497978<br />
+                      Account Name: SILOAM
                     </div>
                     <div className="input-grid-2">
                       <div className="input-group">

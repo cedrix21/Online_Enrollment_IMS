@@ -213,4 +213,26 @@ public function searchByEmail(Request $request)
 
     return response()->json($student);
 }
+
+/**
+ * Find a student by their human-readable studentId (e.g., SICS-2025-0001)
+ */
+public function findByStudentId($studentId)
+{
+    $student = Student::where('studentId', $studentId)->first();
+    
+    if (!$student) {
+        return response()->json(['message' => 'Student not found'], 404);
+    }
+    
+    // Return only necessary public info (do NOT expose sensitive data)
+    return response()->json([
+        'id' => $student->id,
+        'studentId' => $student->studentId,
+        'firstName' => $student->firstName,
+        'lastName' => $student->lastName,
+        'gradeLevel' => $student->gradeLevel,
+        'section' => $student->section ? $student->section->name : null,
+    ]);
+}
 }
