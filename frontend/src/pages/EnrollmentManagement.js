@@ -361,6 +361,12 @@ export default function EnrollmentManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterSchoolYear, setFilterSchoolYear] = useState('all');
+  const [availableSections, setAvailableSections] = useState([]);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [showSectionPicker, setShowSectionPicker] = useState(false);
+  const [pendingApprovalId, setPendingApprovalId] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [sectionsLoading, setSectionsLoading] = useState(false); 
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -407,38 +413,80 @@ useEffect(() => {
 }, [filterSchoolYear]);
 
 
-  const updateStatus = useCallback(
-    async (id, status) => {
-      if (!window.confirm(`Are you sure you want to mark this as ${status}?`))
-        return;
-      setEnrollments((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status } : e)),
-      );
-      try {
-        const enrollment = enrollments.find((e) => e.id === id);
-        if (
-          status === "approved" &&
-          enrollment?.payments?.[0]?.paymentMethod === "Cash"
-        ) {
-          const payment = enrollment.payments[0];
-          await API.put(
-            `/admin/billing/payment/${payment.id}`,
-            { amount_paid: 5000 },
-            {
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-        }
-        await API.put(`/enrollment/${id}/status`, { status });
-        setMessage(`Enrollment ${status} successfully`);
-        fetchEnrollments();
-      } catch {
-        setMessage("Action failed");
-        fetchEnrollments();
-      }
-    },
-    [enrollments],
-  );
+ const updateStatus = useCallback(
+  async (id, status) => {
+    if (status === 'approved') {
+  const enrollment = enrollments.find(e => e.id === id);
+  setSectionsLoading(true);   // 🆕
+  try {
+    const res = await API.get('/sections', {
+      params: { gradeLevel: enrollment.gradeLevel, with_vacancy: true }
+    });
+    const sections = res.data;
+    if (sections.length === 0) {
+      alert(`No sections with vacancy for ${enrollment.gradeLevel}.`);
+      return;
+    }
+    if (sections.length === 1) {
+      performApproval(id, sections[0].id);
+    } else {
+      setAvailableSections(sections);
+      setPendingApprovalId(id);
+      setSelectedSectionId('');
+      setShowSectionPicker(true);
+    }
+  } catch (err) {
+    alert('Failed to load sections.');
+  } finally {
+    setSectionsLoading(false);   // 🆕
+  }
+  return;
+}
+
+    // Reject flow (unchanged)
+    if (!window.confirm(`Are you sure you want to mark this as ${status}?`)) return;
+    setEnrollments(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+    try {
+      await API.put(`/enrollment/${id}/status`, { status });
+      setMessage(`Enrollment ${status} successfully`);
+      fetchEnrollments();
+    } catch {
+      setMessage('Action failed');
+      fetchEnrollments();
+    }
+  },
+  [enrollments],
+);
+
+  const performApproval = async (enrollmentId, sectionId) => {
+  if (!window.confirm(`Are you sure you want to approve this enrollment?`)) return;
+  
+  setIsApproving(true);
+  setEnrollments(prev => prev.map(e => e.id === enrollmentId ? { ...e, status: 'approved' } : e));
+  
+  try {
+    const enrollment = enrollments.find(e => e.id === enrollmentId);
+    if (enrollment?.payments?.[0]?.paymentMethod === 'Cash') {
+      const payment = enrollment.payments[0];
+      await API.put(`/admin/billing/payment/${payment.id}`, { amount_paid: 5000 });
+    }
+    await API.put(`/enrollment/${enrollmentId}/status`, {
+      status: 'approved',
+      section_id: sectionId
+    });
+    setMessage(`Enrollment approved successfully`);
+    fetchEnrollments();
+  } catch {
+    setMessage('Action failed');
+    fetchEnrollments();
+  } finally {
+    setIsApproving(false);
+    setShowSectionPicker(false);
+    setPendingApprovalId(null);
+    setSelectedSectionId('');
+  }
+};
+
 
   const handleUpdateRequirement = useCallback(
     async (enrollmentId, requirementField, value) => {
@@ -1228,8 +1276,65 @@ useEffect(() => {
               </button>
             </div>
           </div>
+
+          
+     
+
         </div>
       )}
+       {/* 🆕 Section Picker Modal – separate, independent modal */}
+  {showSectionPicker && (
+  <div className="modal-overlay" onClick={() => setShowSectionPicker(false)}>
+    <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <h3>Select Section</h3>
+        <button className="close-btn" onClick={() => setShowSectionPicker(false)}>&times;</button>
+      </div>
+      <div className="modal-body">
+        <p>Multiple sections available for this grade. Please choose one:</p>
+        {sectionsLoading ? (
+          // Skeleton loading state
+          <div style={{ marginTop: '10px' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="skeleton-line" style={{ height: '36px', marginBottom: '8px', borderRadius: '4px' }}></div>
+            ))}
+          </div>
+        ) : (
+          <select
+            value={selectedSectionId}
+            onChange={e => setSelectedSectionId(e.target.value)}
+            style={{ width: '100%', padding: '8px', marginTop: '10px' }}
+          >
+            <option value="">-- Select Section --</option>
+            {availableSections.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name} (Capacity: {s.students_count}/{s.capacity})
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="modal-footer">
+        <button onClick={() => setShowSectionPicker(false)} disabled={isApproving || sectionsLoading}>
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            if (!selectedSectionId) {
+              alert('Please select a section.');
+              return;
+            }
+            performApproval(pendingApprovalId, selectedSectionId);
+          }}
+          style={{ backgroundColor: '#b8860b', color: 'white', marginLeft: '10px' }}
+          disabled={isApproving || sectionsLoading}
+        >
+          {isApproving ? 'Approving...' : 'Approve'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

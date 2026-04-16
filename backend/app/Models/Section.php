@@ -40,4 +40,11 @@ class Section extends Model
     {
         return $this->hasMany(Schedule::class);
     }
+
+    public function subjects()
+{
+    return $this->belongsToMany(Subject::class, 'section_subjects')
+                ->withPivot('school_year')
+                ->withTimestamps();
+}
 }

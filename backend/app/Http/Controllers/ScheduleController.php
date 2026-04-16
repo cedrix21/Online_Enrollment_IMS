@@ -15,9 +15,30 @@ use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
 {
-    public function index() {
-        return response()->json(Schedule::with(['subject', 'teacher', 'room', 'time_slot'])->get());
-    }
+public function index(Request $request)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $schedules = Schedule::with([
+        'subject', 
+        'teacher', 
+        'room', 
+        'time_slot', 
+        'section', 
+        'subjectAssignment'
+        ])
+        ->where('school_year', $schoolYear)
+        ->get();
+
+    return response()->json($schedules);
+}
+
+private function getCurrentSchoolYear(): string
+{
+    $month = (int) date('n');
+    $year  = (int) date('Y');
+    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+}
 
     public function store(Request $request)
     {
@@ -26,6 +47,7 @@ class ScheduleController extends Controller
                 'section_id'   => 'required|exists:sections,id',
                 'subject_id'   => 'required|exists:subjects,id',
                 'teacher_id'   => 'required|exists:teachers,id',
+                'subject_assignment_id' => 'required|exists:subject_assignments,id',
                 'days'         => 'required|array', // Expecting array from React
                 'time_slot_id' => 'required|exists:time_slots,id',
                 'room_id'      => 'required|exists:rooms,id',
@@ -35,9 +57,10 @@ class ScheduleController extends Controller
             $roomId = $request->room_id;
             $teacherId = $request->teacher_id;
             $sectionId = $request->section_id;
+            $subjectAssignmentId = $request->subject_assignment_id;  
 
             // Use a transaction to ensure atomic operations
-            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId) {
+            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId) {
                 $createdSchedules = [];
 
                 foreach ($request->days as $day) {
@@ -78,14 +101,27 @@ class ScheduleController extends Controller
                         return response()->json(['message' => "This subject is already scheduled for this section on $day."], 422);
                     }
 
+                    $existing = Schedule::where('section_id', $sectionId)
+                    ->where('subject_assignment_id', $subjectAssignmentId)
+                    ->where('day', $day)
+                    ->exists();
+
+                if ($existing) {
+                    return response()->json([
+                        'message' => "This teacher is already scheduled for this subject on $day."
+                    ], 422);
+                }
+
                     // Create the record for this specific day
                     $createdSchedules[] = Schedule::create([
                         'section_id'   => $sectionId,
                         'subject_id'   => $request->subject_id,
                         'teacher_id'   => $teacherId,
+                        'subject_assignment_id' => $subjectAssignmentId,
                         'day'          => $day,
                         'time_slot_id' => $timeSlotId,
                         'room_id'      => $roomId,
+                        'school_year'           => $this->getCurrentSchoolYear(), 
                     ]);
                 }
 

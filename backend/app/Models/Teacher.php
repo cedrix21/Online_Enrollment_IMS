@@ -52,4 +52,8 @@ class Teacher extends Model
         
         return Student::whereIn('gradeLevel', $gradeLevels)->get();
     }
+    public function advisorySection()
+{
+    return $this->hasOne(Section::class, 'teacher_id');
+}
 }

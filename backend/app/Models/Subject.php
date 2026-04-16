@@ -20,4 +20,11 @@ class Subject extends Model
     {
         return $this->belongsTo(Teacher::class, 'teacher_id');
     }
+
+    public function sections()
+{
+    return $this->belongsToMany(Section::class, 'section_subjects')
+                ->withPivot('school_year')
+                ->withTimestamps();
+}
 }

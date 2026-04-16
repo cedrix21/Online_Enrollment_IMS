@@ -296,9 +296,13 @@ class EnrollmentController extends Controller
 
 
 
-    public function updateStatus(Request $request, $id)
+   public function updateStatus(Request $request, $id)
 {
-    $request->validate(['status' => 'required|in:approved,rejected']);
+    $request->validate([
+        'status'     => 'required|in:approved,rejected',
+        'section_id' => 'nullable|exists:sections,id',   // 🆕
+    ]);
+
     $enrollment = Enrollment::findOrFail($id);
 
     if ($enrollment->status !== 'pending') {
@@ -310,27 +314,45 @@ class EnrollmentController extends Controller
         $enrollment->save();
 
         if ($request->status === 'approved') {
-            $section = Section::where('gradeLevel', $enrollment->gradeLevel)
-                ->whereColumn('students_count', '<', 'capacity')
-                ->first();
+            // Determine which section to use
+            $section = null;
 
-            if (!$section) {
-                throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
+            if ($request->filled('section_id')) {
+                // Use the section chosen by the admin, but verify it has capacity
+                $section = Section::where('id', $request->section_id)
+                    ->where('gradeLevel', $enrollment->gradeLevel)
+                    ->whereColumn('students_count', '<', 'capacity')
+                    ->first();
+
+                if (!$section) {
+                    throw new \Exception("Selected section is full or invalid.");
+                }
+            } else {
+                // Fallback: first available section
+                $section = Section::where('gradeLevel', $enrollment->gradeLevel)
+                    ->whereColumn('students_count', '<', 'capacity')
+                    ->first();
+
+                if (!$section) {
+                    throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
+                }
             }
 
             // Check if enrollment already linked to a student (continuing)
-            $studentId = Schema::hasColumn('enrollments', 'student_id') ? $enrollment->student_id : null;
+            $studentId = Schema::hasColumn('enrollments', 'student_id')
+                ? $enrollment->student_id
+                : null;
 
             if ($studentId) {
                 // Continuing student: use existing student record
                 $student = Student::findOrFail($studentId);
                 $student->update([
-                    'section_id' => $section->id,
-                    'gradeLevel' => $enrollment->gradeLevel,
-                    'school_year' => Schema::hasColumn('enrollments', 'school_year') 
-                        ? $enrollment->school_year 
+                    'section_id'  => $section->id,
+                    'gradeLevel'  => $enrollment->gradeLevel,
+                    'school_year' => Schema::hasColumn('enrollments', 'school_year')
+                        ? $enrollment->school_year
                         : $this->getSchoolYear(),
-                    'status' => 'active',
+                    'status'      => 'active',
                 ]);
                 $formattedId = $student->studentId;
             } else {
@@ -340,30 +362,28 @@ class EnrollmentController extends Controller
                 $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
                 $studentData = [
-                    'studentId'     => $formattedId,
-                    'firstName'     => $enrollment->firstName,
-                    'lastName'      => $enrollment->lastName,
-                    'middleName'    => $enrollment->middleName,
-                    'nickname'      => $enrollment->nickname,
-                    'email'         => $enrollment->email,
-                    'gradeLevel'    => $enrollment->gradeLevel,
-                    'gender'        => $enrollment->gender,
-                    'dateOfBirth'   => $enrollment->dateOfBirth,
-                    'section_id'    => $section->id,
-                    'school_year'   => Schema::hasColumn('enrollments', 'school_year') 
-                        ? $enrollment->school_year 
+                    'studentId'   => $formattedId,
+                    'firstName'   => $enrollment->firstName,
+                    'lastName'    => $enrollment->lastName,
+                    'middleName'  => $enrollment->middleName,
+                    'nickname'    => $enrollment->nickname,
+                    'email'       => $enrollment->email,
+                    'gradeLevel'  => $enrollment->gradeLevel,
+                    'gender'      => $enrollment->gender,
+                    'dateOfBirth' => $enrollment->dateOfBirth,
+                    'section_id'  => $section->id,
+                    'school_year' => Schema::hasColumn('enrollments', 'school_year')
+                        ? $enrollment->school_year
                         : $this->getSchoolYear(),
-                    'status'        => 'active',
+                    'status'      => 'active',
                 ];
 
-                // Only include enrollment_id if column still exists (pre-migration)
                 if (Schema::hasColumn('students', 'enrollment_id')) {
                     $studentData['enrollment_id'] = $enrollment->id;
                 }
 
                 $student = Student::create($studentData);
 
-                // If enrollment has student_id column, update it now
                 if (Schema::hasColumn('enrollments', 'student_id')) {
                     $enrollment->student_id = $student->id;
                     $enrollment->save();
@@ -372,8 +392,8 @@ class EnrollmentController extends Controller
 
             // Update payment with student_id
             $enrollment->payments()->update([
-                'student_id' => $student->id,
-                'payment_status' => 'completed',
+                'student_id'      => $student->id,
+                'payment_status'  => 'completed',
             ]);
 
             $section->increment('students_count');
@@ -381,8 +401,8 @@ class EnrollmentController extends Controller
             $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $student->studentId ?? $formattedId);
 
             return response()->json([
-                'message' => "Approved, assigned to {$section->name}. {$emailStatus}",
-                'generatedId' => $student->studentId ?? $formattedId
+                'message'     => "Approved, assigned to {$section->name}. {$emailStatus}",
+                'generatedId' => $student->studentId ?? $formattedId,
             ]);
         }
 

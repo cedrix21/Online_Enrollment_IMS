@@ -6,6 +6,9 @@ use App\Models\Section;
 use App\Models\Room;
 use App\Models\TimeSlot;
 use Illuminate\Http\Request;
+use App\Models\Subject;
+use App\Models\Teacher;
+use Illuminate\Support\Facades\DB;
 
 class SectionController extends Controller
 {
@@ -14,7 +17,7 @@ class SectionController extends Controller
 {
     $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
-    $sections = Section::with([
+    $query = Section::with([
         'advisor',
         'students' => function ($query) use ($schoolYear) {
             $query->where('school_year', $schoolYear);
@@ -26,8 +29,19 @@ class SectionController extends Controller
     ])
     ->withCount(['students' => function ($query) use ($schoolYear) {
         $query->where('school_year', $schoolYear);
-    }])
-    ->get();
+    }]);
+
+    // 🆕 Filter by grade level
+    if ($request->has('gradeLevel')) {
+        $query->where('gradeLevel', $request->gradeLevel);
+    }
+
+    // 🆕 Filter by sections with vacancy
+    if ($request->has('with_vacancy') && $request->with_vacancy === 'true') {
+        $query->having('students_count', '<', DB::raw('capacity'));
+    }
+
+    $sections = $query->get();
 
     return response()->json($sections);
 }
@@ -67,10 +81,29 @@ class SectionController extends Controller
         }
 
         $section = Section::create($validated);
+        
+         // 🆕 Sync teacher's advisory_grade
+    if (!empty($validated['teacher_id'])) {
+        Teacher::where('id', $validated['teacher_id'])
+            ->update(['advisory_grade' => $section->gradeLevel]);
+    }
+        // Determine school year (use request if provided, otherwise current)
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    // Attach all subjects for this grade level and school year
+    $subjects = Subject::where('gradeLevel', $section->gradeLevel)
+        ->where('school_year', $schoolYear)
+        ->get();
+
+    if ($subjects->isNotEmpty()) {
+        $section->subjects()->attach(
+            $subjects->pluck('id')->mapWithKeys(fn($id) => [$id => ['school_year' => $schoolYear]])
+        );
+    }
 
         return response()->json([
             'message' => 'Section created successfully',
-            'section' => $section->load('advisor')
+            'section' => $section->load('advisor','subjects')
         ], 201);
     }
 
@@ -84,10 +117,14 @@ class SectionController extends Controller
         'students' => function ($query) use ($schoolYear) {
             $query->where('school_year', $schoolYear);
         },
+        'schedules' => function ($query) use ($schoolYear) {   // 🆕 filter schedules
+            $query->where('school_year', $schoolYear);
+        },
         'schedules.subject',
         'schedules.teacher',
         'schedules.room',
-        'schedules.time_slot'
+        'schedules.time_slot',
+        'subjects'
     ])
     ->withCount(['students' => function ($query) use ($schoolYear) {
         $query->where('school_year', $schoolYear);
@@ -117,16 +154,27 @@ private function getCurrentSchoolYear(): string
             ], 422);
         }
 
-        // Check if section has schedules
-        if ($section->schedules()->count() > 0) {
-            return response()->json([
-                'message' => "Cannot delete section '{$section->name}'. It has {$section->schedules()->count()} scheduled subject(s). Please remove schedules first.",
-                'has_schedules' => true
-            ], 422);
-        }
+        
 
         $sectionName = $section->name;
         $section->delete();
+
+        $teacherId = $section->teacher_id;
+        $section->delete();
+
+        if ($teacherId) {
+            $otherSections = Section::where('teacher_id', $teacherId)->count();
+            if ($otherSections === 0) {
+                Teacher::where('id', $teacherId)->update(['advisory_grade' => null]);
+            }
+        }
+         // 🆕 Clear teacher's advisory_grade if they have no other sections
+        if ($teacherId) {
+            $otherSections = Section::where('teacher_id', $teacherId)->count();
+            if ($otherSections === 0) {
+                Teacher::where('id', $teacherId)->update(['advisory_grade' => null]);
+            }
+        }
 
         return response()->json([
             'message' => "Section '{$sectionName}' deleted successfully"

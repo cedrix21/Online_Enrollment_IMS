@@ -13,13 +13,23 @@ class Schedule extends Model
         'section_id',
         'subject_id',
         'teacher_id',
+        'subject_assignment_id',
         'day',         
         'time_slot_id', 
-        'room_id',     
+        'room_id',
+        'school_year',     
     ];
 
-    public function section() { return $this->belongsTo(Section::class); }
-    // Add this relationship
+    public function section() 
+    { 
+        return $this->belongsTo(Section::class); 
+    
+    }
+    
+    public function subjectAssignment()
+{
+    return $this->belongsTo(SubjectAssignment::class);
+}
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacher_id');

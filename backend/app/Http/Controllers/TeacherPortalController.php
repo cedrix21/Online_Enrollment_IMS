@@ -4,102 +4,90 @@ namespace App\Http\Controllers;
 
 use App\Models\Teacher;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\Grade;
+use App\Models\Schedule;   // 🆕
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TeacherPortalController extends Controller
 {
-    /**
-     * Get all dashboard data in a single optimized query
-     * Replaces 4 separate API calls with 1
-     */
     public function getDashboardData(Request $request)
-{
-    try {
-        $user = Auth::user();
-        $teacher = Teacher::where('email', $user->email)->firstOrFail();
+    {
+        try {
+            $user = Auth::user();
+            $teacher = Teacher::where('email', $user->email)->firstOrFail();
 
-        // Determine current school year (e.g., 2025-2026)
-        $currentSchoolYear = $this->getCurrentSchoolYear();
+            $currentSchoolYear = $this->getCurrentSchoolYear();
 
-        // Get grade levels this teacher teaches in the CURRENT school year
-        $gradeLevels = [];
-        if (method_exists($teacher, 'assignments')) {
-            $gradeLevels = $teacher->assignments()
-                ->where('school_year', $currentSchoolYear)           // ✅ Filter by year
-                ->pluck('gradeLevel')
-                ->unique()
-                ->values()
-                ->toArray();
-        }
+            // Grade levels this teacher teaches (subject assignments)
+            $assignments = $teacher->assignments()
+                ->where('school_year', $currentSchoolYear)
+                ->get();
 
-        if (empty($gradeLevels) && !empty($teacher->advisory_grade)) {
-            $gradeLevels = [$teacher->advisory_grade];
-        }
+            $gradeLevels = $assignments->pluck('gradeLevel')->unique()->values();
+            $subjectIds  = $assignments->pluck('subject_id')->unique();
 
-        // Students – filter by grade levels AND current school year
-        $students = !empty($gradeLevels)
-            ? Student::select('id', 'studentId', 'firstName', 'lastName', 'gradeLevel', 'section_id')
-                ->whereIn('gradeLevel', $gradeLevels)
-                ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {
-                    $q->where('school_year', $currentSchoolYear);
-                })
-                ->where('status', 'active')
-                ->with('section:id,name')
-                ->orderBy('lastName')
-                ->get()
-            : [];
+            if ($gradeLevels->isEmpty() && !empty($teacher->advisory_grade)) {
+                $gradeLevels = collect([$teacher->advisory_grade]);
+            }
 
-        // Subjects – only those assigned for the CURRENT school year
-        $subjects = !empty($gradeLevels)
-            ? $teacher->assignments()
-                ->where('school_year', $currentSchoolYear)           // ✅ Filter by year
-                ->with('subject')
-                ->get()
-                ->map(function ($assignment) {
-                    return [
-                        'id'            => $assignment->subject->id,
-                        'subjectName'   => $assignment->subject->subjectName,
-                        'subjectCode'   => $assignment->subject->subjectCode,
-                        'gradeLevel'    => $assignment->gradeLevel,
-                        'assignment_id' => $assignment->id,
-                    ];
-                })
-            : [];
-
-        // Grades – also filter students by current school year
-        $grades = !empty($gradeLevels)
-            ? Grade::select('id', 'student_id', 'subject_id', 'score', 'remarks', 'quarter', 'teacher_id', 'component')
-                ->whereHas('student', function ($q) use ($gradeLevels, $currentSchoolYear) {
-                    $q->whereIn('gradeLevel', $gradeLevels)
-                      ->whereHas('enrollments', function ($eq) use ($currentSchoolYear) {
-                          $eq->where('school_year', $currentSchoolYear);
-                      });
-                })
+            // Get sections where the teacher has schedules for these subjects
+            $scheduledSectionIds = Schedule::whereIn('subject_id', $subjectIds)
                 ->where('teacher_id', $teacher->id)
-                ->get()
-            : [];
+                ->where('school_year', $currentSchoolYear)
+                ->pluck('section_id')
+                ->unique();
 
-        return response()->json([
-            'teacher' => [
-                'id' => $teacher->id,
-                'firstName' => $teacher->firstName,
-                'lastName' => $teacher->lastName,
-                'advisory_grade' => $teacher->advisory_grade ?? 'N/A',
-                'gradeLevels' => $gradeLevels,
-            ],
-            'students' => $students,
-            'subjects' => $subjects,
-            'grades' => $grades,
-        ], 200);
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json(['message' => 'Teacher not found'], 404);
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Failed to load dashboard data', 'error' => $e->getMessage()], 500);
+            // Students – filter by grade levels AND scheduled sections
+            $students = $gradeLevels->isNotEmpty()
+                ? Student::select('id', 'studentId', 'firstName', 'lastName', 'gradeLevel', 'section_id')
+                    ->whereIn('gradeLevel', $gradeLevels)
+                    ->whereIn('section_id', $scheduledSectionIds)
+                    ->whereHas('enrollments', fn($q) => $q->where('school_year', $currentSchoolYear))
+                    ->where('status', 'active')
+                    ->with('section:id,name')
+                    ->orderBy('lastName')
+                    ->get()
+                : collect();
+
+            // Subjects – only those assigned for the CURRENT school year
+            $subjects = $assignments->map(fn($a) => [
+                'id'            => $a->subject->id,
+                'subjectName'   => $a->subject->subjectName,
+                'subjectCode'   => $a->subject->subjectCode,
+                'gradeLevel'    => $a->gradeLevel,
+                'assignment_id' => $a->id,
+            ]);
+
+            // Grades – only for students in scheduled sections
+            $grades = $gradeLevels->isNotEmpty()
+                ? Grade::select('id', 'student_id', 'subject_id', 'score', 'remarks', 'quarter', 'teacher_id', 'component')
+                    ->where('teacher_id', $teacher->id)
+                    ->whereHas('student', fn($q) => $q->whereIn('gradeLevel', $gradeLevels)
+                        ->whereIn('section_id', $scheduledSectionIds)
+                        ->whereHas('enrollments', fn($e) => $e->where('school_year', $currentSchoolYear)))
+                    ->get()
+                : collect();
+
+            return response()->json([
+                'teacher' => [
+                    'id'             => $teacher->id,
+                    'firstName'      => $teacher->firstName,
+                    'lastName'       => $teacher->lastName,
+                    'advisory_grade' => $teacher->advisory_grade ?? 'N/A',
+                    'gradeLevels'    => $gradeLevels,
+                    'section'        => $teacher->advisorySection ? $teacher->advisorySection->name : null,
+                ],
+                'students' => $students,
+                'subjects' => $subjects,
+                'grades'   => $grades,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Teacher not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to load dashboard data', 'error' => $e->getMessage()], 500);
+        }
     }
-}
 
 /**
  * Helper to get current school year (e.g., 2025-2026)

@@ -38,7 +38,7 @@ const INITIAL_TEACHER_FORM = {
   lastName: "",
   email: "",
   specialization: "",
-  advisory_grade: "",
+  section_id: "",       
   phone: "",
   status: "active",
 };
@@ -210,11 +210,13 @@ export default function TeacherDirectory() {
   const [editTeacherForm, setEditTeacherForm] = useState(INITIAL_TEACHER_FORM);
   const [assignmentForm, setAssignmentForm] = useState(INITIAL_ASSIGNMENT_FORM);
   const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
+  const [assignedSubjectIdsForTeacher, setAssignedSubjectIdsForTeacher] = useState(new Set());
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
   const month = new Date().getMonth() + 1;
   const year = new Date().getFullYear();
   return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 });
+  const [sections, setSections] = useState([]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Cache helpers
@@ -245,10 +247,11 @@ export default function TeacherDirectory() {
         }
       }
 
-      const [teacherRes, subjectRes, loadRes] = await Promise.all([
+      const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
       API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
       API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
       API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+       API.get("/sections"), 
     ]);
 
       const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
@@ -256,6 +259,7 @@ export default function TeacherDirectory() {
         teachers: sortedTeachers,
         subjects: subjectRes.data,
         load: loadRes.data,
+        sections: sectionRes.data,
       };
 
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
@@ -264,6 +268,7 @@ export default function TeacherDirectory() {
       setTeachers(sortedTeachers);
       setAvailableSubjects(data.subjects);
       setTeacherLoad(data.load);
+      setSections(sectionRes.data);
       
     } catch (err) {
       console.error("Error fetching data", err);
@@ -278,29 +283,47 @@ export default function TeacherDirectory() {
 }, [selectedSchoolYear]);
 
   // Memoized Maps
-  const advisoryMap = useMemo(() => {
-    const map = new Map();
-    teachers.forEach((t) => {
-      if (t.advisory_grade) {
-        map.set(t.advisory_grade, t);
+  // Memoized map of grade level → array of { teacher, sectionName }
+const gradeAdvisers = useMemo(() => {
+  const map = new Map();
+  teachers.forEach((t) => {
+    if (t.advisory_grade) {
+      const sectionName = t.advisory_section?.name || 'Unnamed Section'; 
+      const entry = { teacher: t, sectionName };
+      if (!map.has(t.advisory_grade)) {
+        map.set(t.advisory_grade, [entry]);
+      } else {
+        map.get(t.advisory_grade).push(entry);
       }
-    });
-    return map;
-  }, [teachers]);
+    }
+  });
+  return map;
+}, [teachers]);
 
-  const assignedSubjectIds = useMemo(() => {
-    return new Set(teacherLoad.map(a => Number(a.subject_id)));
-  }, [teacherLoad]);
+const sectionsByGrade = useMemo(() => {
+  const map = new Map();
+  sections.forEach(section => {
+    const grade = section.gradeLevel;
+    if (!map.has(grade)) {
+      map.set(grade, []);
+    }
+    map.get(grade).push(section);
+  });
+  return map;
+}, [sections]);
 
-  const availableSubjectsForAssignment = useMemo(() => {
-    return availableSubjects.filter(
-      (subject) => !assignedSubjectIds.has(subject.id)
-    );
-  }, [availableSubjects, assignedSubjectIds]);
 
-  const getTeacherWithAdvisory = useCallback((gradeLevel) => {
-    return advisoryMap.get(gradeLevel);
-  }, [advisoryMap]);
+const availableSubjectsForAssignment = useMemo(() => {
+  return availableSubjects.filter(
+    (subject) => !assignedSubjectIdsForTeacher.has(subject.id)
+  );
+}, [availableSubjects, assignedSubjectIdsForTeacher]);
+
+
+  const isGradeTakenByOthers = useCallback((grade, currentTeacherId) => {
+  const entries = gradeAdvisers.get(grade) || [];
+  return entries.some(entry => entry.teacher.id !== currentTeacherId);
+}, [gradeAdvisers]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Event Handlers
@@ -325,65 +348,75 @@ export default function TeacherDirectory() {
   }, [newTeacher, invalidateCache]);
 
   const openAssignModal = useCallback((teacher) => {
-    setSelectedTeacherForAssign(teacher);
-    setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
-    setSelectedSubjectsForBulk([]);
-    setShowAssignModal(true);
-  }, []);
+  setSelectedTeacherForAssign(teacher);
+  // Compute subject IDs already assigned to this teacher
+  const teacherAssignments = teacherLoad.filter(a => a.teacher_id === teacher.id);
+  const ids = new Set(teacherAssignments.map(a => Number(a.subject_id)));
+  setAssignedSubjectIdsForTeacher(ids);
+  setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+  setSelectedSubjectsForBulk([]);
+  setShowAssignModal(true);
+}, [teacherLoad]);
 
   const handleAssignSubject = useCallback(async (e) => {
-    e.preventDefault();
-    const subjectsToAssign = selectedSubjectsForBulk.length > 0 
-      ? selectedSubjectsForBulk 
-      : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
+  e.preventDefault();
+  const subjectsToAssign = selectedSubjectsForBulk.length > 0 
+    ? selectedSubjectsForBulk 
+    : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
 
-    if (subjectsToAssign.length === 0) {
-      alert("Please select at least one subject");
-      return;
-    }
+  if (subjectsToAssign.length === 0) {
+    alert("Please select at least one subject");
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      const assignmentPromises = subjectsToAssign.map((subjectId) => {
-        const subject = availableSubjects.find(s => s.id === parseInt(subjectId));
-        return API.post(
-          `/teachers/${selectedTeacherForAssign.id}/assign-subject`,
-          {
-            subject_id: subjectId,
-            gradeLevel: subject?.gradeLevel || "",
-            schedule: "",
-             school_year: selectedSchoolYear, 
-          }
-        );
-      });
-
-      const responses = await Promise.all(assignmentPromises);
-      
-      setTeachers(prev => prev.map(teacher => {
-        if (teacher.id === selectedTeacherForAssign.id) {
-          const newAssignments = responses.map(res => res.data.assignment);
-          return {
-            ...teacher,
-            assignments: [...(teacher.assignments || []), ...newAssignments]
-          };
+  try {
+    const assignmentPromises = subjectsToAssign.map((subjectId) => {
+      const subject = availableSubjects.find(s => s.id === parseInt(subjectId));
+      return API.post(
+        `/teachers/${selectedTeacherForAssign.id}/assign-subject`,
+        {
+          subject_id: subjectId,
+          gradeLevel: subject?.gradeLevel || "",
+          schedule: "",
+          school_year: selectedSchoolYear, 
         }
-        return teacher;
-      }));
-      
-      setTeacherLoad(prev => [...prev, ...responses.map(res => res.data.assignment)]);
-      invalidateCache();
-      setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
-      setSelectedSubjectsForBulk([]);
-      alert(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
-    } catch (err) {
-      console.error("Assignment Error:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to assign subjects");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [assignmentForm, selectedSubjectsForBulk, selectedTeacherForAssign, availableSubjects, invalidateCache]);
+      );
+    });
 
+    const responses = await Promise.all(assignmentPromises);
+    
+    // 🆕 Update assigned subjects set
+    setAssignedSubjectIdsForTeacher(prev => {
+      const updated = new Set(prev);
+      subjectsToAssign.forEach(id => updated.add(Number(id)));
+      return updated;
+    });
+
+    setTeachers(prev => prev.map(teacher => {
+      if (teacher.id === selectedTeacherForAssign.id) {
+        const newAssignments = responses.map(res => res.data.assignment);
+        return {
+          ...teacher,
+          assignments: [...(teacher.assignments || []), ...newAssignments]
+        };
+      }
+      return teacher;
+    }));
+    
+    setTeacherLoad(prev => [...prev, ...responses.map(res => res.data.assignment)]);
+    invalidateCache();
+    setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+    setSelectedSubjectsForBulk([]);
+    alert(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
+  } catch (err) {
+    console.error("Assignment Error:", err.response?.data);
+    alert(err.response?.data?.message || "Failed to assign subjects");
+  } finally {
+    setIsSubmitting(false);
+  }
+}, [assignmentForm, selectedSubjectsForBulk, selectedTeacherForAssign, availableSubjects, invalidateCache, selectedSchoolYear]);
   const handleRemoveAssignment = useCallback(async (assignmentId) => {
     if (!window.confirm("Remove this subject assignment?")) return;
 
@@ -417,13 +450,14 @@ export default function TeacherDirectory() {
   }, [availableSubjects]);
 
   const openEditModal = useCallback((teacher) => {
+
     setSelectedTeacherForEdit(teacher);
     setEditTeacherForm({
       firstName: teacher.firstName,
       lastName: teacher.lastName,
       email: teacher.email,
       specialization: teacher.specialization,
-      advisory_grade: teacher.advisory_grade || "",
+      section_id: teacher.advisory_section?.id || "",
       phone: teacher.phone || "",
       status: teacher.status,
     });
@@ -564,7 +598,7 @@ export default function TeacherDirectory() {
             onSubmit={handleAddTeacher}
             onClose={() => setShowModal(false)}
             isSubmitting={isSubmitting}
-            getTeacherWithAdvisory={getTeacherWithAdvisory}
+            sectionsByGrade={sectionsByGrade}
           />
         )}
 
@@ -575,8 +609,8 @@ export default function TeacherDirectory() {
             onSubmit={handleEditTeacher}
             onClose={() => setShowEditModal(false)}
             isSubmitting={isSubmitting}
-            selectedTeacher={selectedTeacherForEdit}
-            getTeacherWithAdvisory={getTeacherWithAdvisory}
+            selectedTeacher={selectedTeacherForEdit}  
+            sectionsByGrade={sectionsByGrade} 
           />
         )}
 
@@ -611,7 +645,7 @@ const AddTeacherModal = memo(({
   onSubmit, 
   onClose, 
   isSubmitting,
-  getTeacherWithAdvisory 
+  sectionsByGrade                 
 }) => (
   <div className="modal-overlay">
     <div className="modal-content">
@@ -674,26 +708,26 @@ const AddTeacherModal = memo(({
         />
 
         <div className="form-grid">
+          {/* ─── UPDATED ADVISORY DROPDOWN ────────────────────────────── */}
           <select
-            value={newTeacher.advisory_grade}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, advisory_grade: e.target.value })
-            }
+            value={newTeacher.section_id || ""}
+            onChange={(e) => setNewTeacher({ ...newTeacher, section_id: e.target.value })}
           >
             <option value="">No Advisory (N/A)</option>
-            {GRADE_LEVELS.map((grade) => {
-              const assignedTeacher = getTeacherWithAdvisory(grade);
-              return (
-                <option 
-                  key={grade} 
-                  value={grade}
-                  disabled={!!assignedTeacher}
-                >
-                  {grade}
-                  {assignedTeacher ? ` (Assigned to ${assignedTeacher.firstName} ${assignedTeacher.lastName})` : ''}
-                </option>
-              );
-            })}
+            {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
+              <optgroup key={grade} label={grade}>
+                {gradeSections.map(section => {
+                  const currentAdviser = section.advisor 
+                    ? `${section.advisor.firstName} ${section.advisor.lastName}` 
+                    : 'Unassigned';
+                  return (
+                    <option key={section.id} value={section.id}>
+                      {section.name} — Adviser: {currentAdviser}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
           </select>
 
           <select
@@ -728,7 +762,7 @@ const EditTeacherModal = memo(({
   onClose, 
   isSubmitting,
   selectedTeacher,
-  getTeacherWithAdvisory 
+  sectionsByGrade               // 🆕 add this prop
 }) => (
   <div className="modal-overlay">
     <div className="modal-content">
@@ -797,30 +831,28 @@ const EditTeacherModal = memo(({
         />
 
         <div className="form-grid">
+          {/* ─── UPDATED ADVISORY DROPDOWN ────────────────────────────── */}
           <select
-            value={editTeacherForm.advisory_grade}
-            onChange={(e) =>
-              setEditTeacherForm({
-                ...editTeacherForm,
-                advisory_grade: e.target.value,
-              })
-            }
+            value={editTeacherForm.section_id || ""}
+            onChange={(e) => setEditTeacherForm({ ...editTeacherForm, section_id: e.target.value })}
           >
             <option value="">No Advisory (N/A)</option>
-            {GRADE_LEVELS.map((grade) => {
-              const assignedTeacher = getTeacherWithAdvisory(grade);
-              const isCurrentTeacher = assignedTeacher?.id === selectedTeacher?.id;
-              return (
-                <option 
-                  key={grade} 
-                  value={grade}
-                  disabled={!!assignedTeacher && !isCurrentTeacher}
-                >
-                  {grade}
-                  {assignedTeacher && !isCurrentTeacher ? ` (Assigned to ${assignedTeacher.firstName} ${assignedTeacher.lastName})` : ''}
-                </option>
-              );
-            })}
+            {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
+              <optgroup key={grade} label={grade}>
+                {gradeSections.map(section => {
+                  const currentAdviser = section.advisor 
+                    ? `${section.advisor.firstName} ${section.advisor.lastName}` 
+                    : 'Unassigned';
+                  const isCurrentTeacher = section.teacher_id === selectedTeacher?.id;
+                  return (
+                    <option key={section.id} value={section.id}>
+                      {section.name} — Adviser: {currentAdviser}
+                      {isCurrentTeacher ? ' (Current)' : ''}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
           </select>
 
           <select
