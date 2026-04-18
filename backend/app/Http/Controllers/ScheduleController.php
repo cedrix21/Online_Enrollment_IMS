@@ -9,6 +9,7 @@ use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Section;
 
 
 class ScheduleController extends Controller
@@ -31,12 +32,12 @@ public function index(Request $request)
     return response()->json($schedules);
 }
 
-private function getCurrentSchoolYear(): string
-{
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-}
+    private function getCurrentSchoolYear(): string
+    {
+        $month = (int) date('n');
+        $year  = (int) date('Y');
+        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
+    }
 
     public function store(Request $request)
     {
@@ -55,7 +56,35 @@ private function getCurrentSchoolYear(): string
             $roomId = $request->room_id;
             $teacherId = $request->teacher_id;
             $sectionId = $request->section_id;
-            $subjectAssignmentId = $request->subject_assignment_id;  
+            $subjectAssignmentId = $request->subject_assignment_id;
+            $gradeLevel = Section::find($sectionId)->gradeLevel;
+            $sectionsCount = Section::where('gradeLevel', $gradeLevel)->count();
+
+           $currentSchoolYear = $this->getCurrentSchoolYear();
+
+                if ($sectionsCount === 1) {
+                    $subjectAlreadyScheduled = Schedule::whereHas('section', fn($q) => $q->where('gradeLevel', $gradeLevel))
+                        ->where('subject_id', $request->subject_id)
+                        ->where('school_year', $currentSchoolYear)   // 🆕 ADD THIS LINE
+                        ->exists();
+
+                    if ($subjectAlreadyScheduled) {
+                        return response()->json([
+                            'message' => 'This subject is already scheduled for this grade level (only one section exists).'
+                        ], 422);
+                    }
+                }
+
+                 $subjectAlreadyInSection = Schedule::where('section_id', $sectionId)
+                ->where('subject_id', $request->subject_id)
+                ->where('school_year', $currentSchoolYear)
+                ->exists();
+
+            if ($subjectAlreadyInSection) {
+                return response()->json([
+                    'message' => 'This subject is already scheduled in this section.'
+                ], 422);
+            }
 
             // Use a transaction to ensure atomic operations
             return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId) {

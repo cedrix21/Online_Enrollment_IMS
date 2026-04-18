@@ -170,15 +170,25 @@
           {activeTab === "schedule" && (
             <div id="schedule-tab" className="tab-content">
               <div className="schedule-section">
-                <h4><FaCalendarAlt /> Weekly Class Schedule</h4>
+                <h4>
+                  <FaCalendarAlt /> Weekly Class Schedule
+                </h4>
                 <div className="schedule-grid">
                   {loading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="skeleton-table-row" />
-                    ))
+                    <table className="schedule-table">
+                      <tbody>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <tr key={i}>
+                            <td colSpan="5" style={{ padding: '8px 12px' }}>
+                              <div className="skeleton-table-row" style={{ width: '100%' }} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   ) : schedules?.length > 0 ? (
-                    <ScheduleTable 
-                      schedules={groupedSchedules} 
+                    <ScheduleTable
+                      schedules={groupedSchedules}
                       onDeleteSchedule={onDeleteSchedule}
                     />
                   ) : (
@@ -194,16 +204,22 @@
               <div className="students-section">
                 <h4><FaUsers /> Enrolled Students</h4>
                 {loading ? (
-                  <div>
+                <table className="students-table">
+                  <tbody>
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="skeleton-table-row" />
+                      <tr key={i}>
+                        <td colSpan="5" style={{ padding: '8px 12px' }}>
+                          <div className="skeleton-table-row" style={{ width: '100%' }} />
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                ) : students.length > 0 ? (
-                  <StudentTable students={students} />
-                ) : (
-                  <NoStudentsPlaceholder />
-                )}
+                  </tbody>
+                </table>
+              ) : students.length > 0 ? (
+                <StudentTable students={students} />
+              ) : (
+                <NoStudentsPlaceholder />
+              )}
               </div>
             </div>
           )}
@@ -374,13 +390,28 @@
   getScheduledTeacher,
   occupiedSchedules ,
    loading,  
+    sections,
 }) => {
   
   const filteredTeacherLoad = useMemo(() => {
-  // All assignments for this grade level
+
+console.log('=== ScheduleModal Filter ===');
+  console.log('section gradeLevel:', section?.gradeLevel);
+  console.log('sections count:', sections.filter(s => s.gradeLevel === section?.gradeLevel).length);
+
   const assignmentsForGrade = teacherLoad.filter(
     a => a.gradeLevel === section?.gradeLevel
   );
+  console.log('teacherLoad for this grade:', assignmentsForGrade);
+
+  const occupiedForGrade = occupiedSchedules.filter(
+    sched => sched.section?.gradeLevel === section?.gradeLevel
+  );
+  console.log('occupiedSchedules for this grade:', occupiedForGrade);
+
+  const scheduledSubjectIds = new Set(occupiedForGrade.map(s => s.subject_id));
+  console.log('scheduledSubjectIds:', scheduledSubjectIds);
+
 
   // Get the set of subject_assignment_ids already scheduled in ANY section for this grade
   const scheduledAssignmentIds = new Set(
@@ -390,11 +421,47 @@
       .filter(Boolean)
   );
 
-  // Keep only assignments that are NOT already scheduled somewhere
-  return assignmentsForGrade.filter(
-    a => !scheduledAssignmentIds.has(a.id)
-  );
-}, [teacherLoad, section?.gradeLevel, occupiedSchedules]);
+  // Determine how many sections exist for this grade level
+  const sectionsInThisGrade = sections.filter(sec => sec.gradeLevel === section?.gradeLevel).length;
+  const isSingleSection = sectionsInThisGrade === 1;
+
+  // If only one section exists, we must also prevent the same SUBJECT from being scheduled by any teacher
+  if (isSingleSection) {
+    const scheduledSubjectIds = new Set(
+      occupiedSchedules
+        .filter(sched => sched.section?.gradeLevel === section?.gradeLevel)
+        .map(sched => sched.subject_id)
+    );
+    return assignmentsForGrade.filter(
+      a => !scheduledSubjectIds.has(a.subject_id)
+    );
+  }
+
+        // Multiple sections: only hide the exact teacher‑subject assignment that is already scheduled
+      // Always prevent the same subject from being scheduled twice in THIS section
+      const scheduledSubjectsInThisSection = new Set(
+        occupiedSchedules
+          .filter(sched => sched.section_id === section?.id)
+          .map(sched => sched.subject_id)
+      );
+
+      // Start with assignments for this grade
+      let filtered = assignmentsForGrade;
+
+      // 1. Remove assignments for subjects already scheduled in this section
+      filtered = filtered.filter(a => !scheduledSubjectsInThisSection.has(a.subject_id));
+
+      // 2. For multiple sections, also remove the exact teacher‑subject assignment already used anywhere in the grade
+      if (!isSingleSection) {
+        filtered = filtered.filter(a => !scheduledAssignmentIds.has(a.id));
+      }
+
+      return filtered;
+
+
+}, [teacherLoad, section?.gradeLevel, occupiedSchedules, sections]);
+
+
 
   return (
     <div className="modal-overlay">
@@ -791,6 +858,25 @@
           alert(`Cannot save schedule. The following day(s) have conflicts: ${conflictedSelectedDays.join(", ")}. Please choose different days or adjust the time/room.`);
           return;
         }
+        const sectionsInThisGrade = sections.filter(
+            s => s.gradeLevel === selectedSection.gradeLevel
+          ).length;
+
+          if (sectionsInThisGrade === 1) {
+            const subjectAlreadyScheduled = occupiedSchedules.some(
+              s =>
+                s.section?.gradeLevel === selectedSection.gradeLevel &&
+                Number(s.subject_id) === Number(newSchedule.subject_id)
+            );
+            if (subjectAlreadyScheduled) {
+              alert(
+                "This subject is already scheduled in this grade level (only one section exists)."
+              );
+              return;
+            }
+          }
+
+
 
         setIsSubmitting(true);
         try {
@@ -823,13 +909,15 @@
         } finally {
           setIsSubmitting(false);
         }
-      }, [selectedDays, selectedSection, newSchedule, selectedSchoolYear, getConflictMessages]);
+      }, [selectedDays, selectedSection, newSchedule, selectedSchoolYear, getConflictMessages,sections, occupiedSchedules]);
 
 
 
     const handleViewStudents = useCallback(async (section) => {
        setStudentModalLoading(true);  
+        setShowStudentModal(true);
     try {
+     
       const res = await API.get(`/sections/${section.id}`, {
         params: { school_year: selectedSchoolYear }
       });
@@ -845,10 +933,14 @@
   }
 }, [selectedSchoolYear]);
 
-    const handleOpenScheduleModal = useCallback(async (section) => {
+
+
+const handleOpenScheduleModal = useCallback(async (section) => {
     setSelectedSection(section);
     setScheduleModalLoading(true);
+     setShowScheduleModal(true); 
     try {
+      
       const [loadRes, sectionRes, schedRes] = await Promise.all([
       API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
       API.get(`/sections/${section.id}`, { params: { school_year: selectedSchoolYear } }),
@@ -1111,6 +1203,7 @@
               getScheduledTeacher={getScheduledTeacher}
               occupiedSchedules={occupiedSchedules}
               loading={scheduleModalLoading}
+               sections={sections}
             />
           )}
 
