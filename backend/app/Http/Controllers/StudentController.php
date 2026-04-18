@@ -253,5 +253,12 @@ public function findByStudentId($studentId)
     ]);
 }
 
+public function getEnrollments($studentId)
+{
+    $student = Student::findOrFail($studentId);
+    $enrollments = $student->enrollments()->orderBy('school_year')->get(['id', 'school_year', 'gradeLevel']);
+    return response()->json($enrollments);
+}
+
 
 }

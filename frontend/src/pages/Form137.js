@@ -183,7 +183,7 @@ export default function Form137() {
     lastName:         s.lastName                              || '',
     firstName:        s.firstName                             || '',
     middleInitial:    middleName ? middleName.charAt(0) + '.' : '',
-    division:         s.section?.name                         || '',
+    division:         '',
     lrn:              s.lrn                                   || '',
     sex:              gender,
     birthMonth:       dobParts[1]                             || '',
@@ -197,67 +197,113 @@ export default function Form137() {
     parentAddress,
     parentOccupation,
   });
- 
-    setStudentSchoolYear(s.school_year || '');
 
-    setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
+  setStudentSchoolYear(s.school_year || '');
+  setGradeData(Object.fromEntries(GRADES.map(g => [g, makeGradeData()])));
 
-    const studentGradeLevel = s.gradeLevel;
-    const gradeRoman = gradeToRoman[studentGradeLevel];
-    console.log(`👤 Student selected: ${s.firstName} ${s.lastName}`);
-    console.log(`📌 Grade level: ${studentGradeLevel} → Roman: ${gradeRoman}`);
+  const studentGradeLevel = s.gradeLevel;
+  const gradeRoman = gradeToRoman[studentGradeLevel];
 
-    if (gradeRoman) {
-      setGradeField(gradeRoman, 'school', 'Siloam International Christian School');
-      setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
-    }
+  if (gradeRoman) {
+    setGradeField(gradeRoman, 'school', 'Siloam International Christian School');
+    setGradeField(gradeRoman, 'schoolYear', s.school_year || '');
+  }
 
-    setGradesLoading(true);
-try {
-  const res = await API.get(`/admin/grades?student_id=${s.id}`);
-  const gradesData = res.data.data || [];
+  setGradesLoading(true);
+  try {
+    // 1. Fetch all enrollments for this student
+    const enrollRes = await API.get(`/students/${s.id}/enrollments`);
+    const enrollments = enrollRes.data;
 
-  setGradeData(prevGradeData => {
+    // 2. Fetch all grades for this student
+    const gradesRes = await API.get(`/admin/grades?student_id=${s.id}`);
+    const allGrades = gradesRes.data.data || [];
+
+    // 3. Deduplicate grades: keep the most recent per subject + quarter
+    const latestGradesMap = new Map();
+    allGrades.forEach(grade => {
+      const key = `${grade.subject_id}-${grade.quarter}`;
+      const existing = latestGradesMap.get(key);
+      if (!existing || new Date(grade.updated_at) > new Date(existing.updated_at)) {
+        latestGradesMap.set(key, grade);
+      }
+    });
+    const uniqueGrades = Array.from(latestGradesMap.values());
+
+    // 4. Fetch subjects for each enrollment's school year
+    const subjectPromises = enrollments.map(enrollment =>
+      API.get('/subjects', { params: { school_year: enrollment.school_year } })
+    );
+    const subjectResponses = await Promise.all(subjectPromises);
+
+    const subjectsByYearAndGrade = {};
+    enrollments.forEach((enrollment, idx) => {
+      const subjectsData = subjectResponses[idx].data;
+      subjectsData.forEach(sub => {
+        const key = `${enrollment.school_year}|${sub.gradeLevel}`;
+        if (!subjectsByYearAndGrade[key]) subjectsByYearAndGrade[key] = [];
+        subjectsByYearAndGrade[key].push(sub);
+      });
+    });
+
+    // 5. Build gradeData for each enrollment
     const newGradeData = Object.fromEntries(
       GRADES.map(g => [g, {
-        school: prevGradeData[g].school,
-        schoolYear: prevGradeData[g].schoolYear,
-        subjects: { ...prevGradeData[g].subjects },
-        eligible: prevGradeData[g].eligible,
+        school: 'Siloam International Christian School',
+        schoolYear: '',
+        subjects: {},
+        eligible: '',
       }])
     );
 
-    gradesData.forEach(grade => {
-      const subjectName = grade.subject?.subjectName;
-      const score = grade.score;
-      const remarks = grade.remarks || '';
-      let quarter = grade.quarter ? String(grade.quarter).toLowerCase() : '';
-      if (quarter === '1' || quarter === 'quarter1' || quarter === 'q1') quarter = 'q1';
-      else if (quarter === '2' || quarter === 'quarter2' || quarter === 'q2') quarter = 'q2';
-      else if (quarter === '3' || quarter === 'quarter3' || quarter === 'q3') quarter = 'q3';
-      else if (quarter === '4' || quarter === 'quarter4' || quarter === 'q4') quarter = 'q4';
+    enrollments.forEach(enrollment => {
+      const roman = gradeToRoman[enrollment.gradeLevel];
+      if (!roman) return;
+      const key = `${enrollment.school_year}|${enrollment.gradeLevel}`;
+      const subjectsForThisEnrollment = subjectsByYearAndGrade[key] || [];
 
-      if (gradeRoman && subjectName && quarter) {
-        const gData = newGradeData[gradeRoman];
-        if (!gData.subjects[subjectName]) {
-          gData.subjects[subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
+      const subjectsObj = {};
+      subjectsForThisEnrollment.forEach(sub => {
+        subjectsObj[sub.subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
+      });
+
+      // Use uniqueGrades and filter by subject.school_year
+      const gradesForThisEnrollment = uniqueGrades.filter(grade => {
+        return grade.subject?.school_year === enrollment.school_year;
+      });
+
+      gradesForThisEnrollment.forEach(grade => {
+        const subjName = grade.subject?.subjectName;
+        if (!subjName || !subjectsObj.hasOwnProperty(subjName)) return;
+        let quarter = grade.quarter?.toLowerCase();
+        if (quarter?.startsWith('q')) {
+          subjectsObj[subjName][quarter] = grade.score;
+          if (grade.remarks) subjectsObj[subjName].remarks = grade.remarks;
         }
-        gData.subjects[subjectName][quarter] = score;
-        if (remarks) gData.subjects[subjectName].remarks = remarks;
-      }
+      });
+
+      newGradeData[roman] = {
+        school: 'Siloam International Christian School',
+        schoolYear: enrollment.school_year,
+        subjects: subjectsObj,
+        eligible: '',
+      };
     });
 
-    return newGradeData;
-  });
-} catch (err) {
-  console.error('❌ Error fetching grades:', err);
-} finally {
-  setGradesLoading(false);
-}
+    console.log('✅ Final gradeData:', newGradeData);
+    setGradeData(newGradeData);
+  } catch (err) {
+    console.error('❌ Error loading Form 137 data:', err);
+  } finally {
+    setGradesLoading(false);
+  }
 
-    setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
-    setShowDropdown(false);
-  };
+  setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
+  setShowDropdown(false);
+};
+
+
+
 
   const [student, setStudent] = useState({
     lastName: '', firstName: '', middleInitial: '',
@@ -288,92 +334,117 @@ try {
   const handlePrint = () => {
 
     const buildGradeTable = (g) => {
-      const gradeKey = romanToGrade[g];
-      const gradeDataObj = gradeData[g];
-      const subjectsForGrade = subjectsByGrade[gradeKey] || { regular: [], mapeh: [] };
-      
-      // Helper to render a single subject row
-      const renderSubjectRow = (subjectName, isMapehComponent = false) => {
-        const sd = gradeDataObj.subjects[subjectName] || {};
-        const indent = isMapehComponent ? '&nbsp;&nbsp;' : '';
-        const q1 = sd.q1 ? Math.round(parseFloat(sd.q1)) : '';
-        const q2 = sd.q2 ? Math.round(parseFloat(sd.q2)) : '';
-        const q3 = sd.q3 ? Math.round(parseFloat(sd.q3)) : '';
-        const q4 = sd.q4 ? Math.round(parseFloat(sd.q4)) : '';
-        return `<tr>
-          <td class="area-col">${indent}${subjectName}</td>
-          <td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>
-          <td>${sd.remarks||''}</td>
-        </tr>`;
-      };
+  const gradeKey = romanToGrade[g];
+  const gradeDataObj = gradeData[g];
+  const subjectsObj = gradeDataObj.subjects || {};
 
-      // Build rows: regular subjects first
-      let rows = subjectsForGrade.regular.map(sub => renderSubjectRow(sub.subjectName, false)).join('');
-      
-      // If there are MAPEH components, add a heading row with per-quarter averages
-      if (subjectsForGrade.mapeh.length > 0) {
-        // Calculate per-quarter averages for MAPEH
-        const quarterAverages = {};
-        ['q1', 'q2', 'q3', 'q4'].forEach(q => {
-          const quarterScores = subjectsForGrade.mapeh
-            .map(sub => {
-              const sd = gradeDataObj.subjects[sub.subjectName] || {};
-              const score = sd[q];
-              return score && !isNaN(parseFloat(score)) ? parseFloat(score) : null;
-            })
-            .filter(s => s !== null);
-          quarterAverages[q] = quarterScores.length ? Math.round(quarterScores.reduce((a,b)=>a+b,0)/quarterScores.length) : '';
-        });
-        
-        // MAPEH heading row with per-quarter averages
-        rows += `<tr>
-          <td class="area-col">MAPEH</td>
-          <td>${quarterAverages.q1 || ''}</td><td>${quarterAverages.q2 || ''}</td><td>${quarterAverages.q3 || ''}</td><td>${quarterAverages.q4 || ''}</td>
-          <td></td>
-        </tr>`;
-        // Component rows indented
-        rows += subjectsForGrade.mapeh.map(sub => renderSubjectRow(sub.subjectName, true)).join('');
+  // Separate regular and MAPEH subjects
+  const subjectNames = Object.keys(subjectsObj);
+  const regularSubjects = [];
+  const mapehSubjects = [];
+
+  subjectNames.forEach(name => {
+    // Need subject metadata to detect MAPEH – we can use the subject list from the enrollment
+    // Since we only stored subjectName in subjectsObj, we need a way to check MAPEH.
+    // We'll assume subject names are unique and we can look up the subject object from a flat list.
+    // Alternatively, we can store the subject object during data building, but we stored just scores.
+    // Quick fix: use the subjectsByGrade (global) to check MAPEH for that gradeKey.
+    const subjectMeta = (subjectsByGrade[gradeKey]?.regular || [])
+      .concat(subjectsByGrade[gradeKey]?.mapeh || [])
+      .find(s => s.subjectName === name);
+    if (subjectMeta) {
+      if (isMapehComponent(subjectMeta.subjectCode)) {
+        mapehSubjects.push({ name, scores: subjectsObj[name] });
+      } else {
+        regularSubjects.push({ name, scores: subjectsObj[name] });
       }
+    } else {
+      // Fallback: assume regular
+      regularSubjects.push({ name, scores: subjectsObj[name] });
+    }
+  });
 
-      // Compute general average for the whole block (all subjects)
-      const allRatings = [...subjectsForGrade.regular, ...subjectsForGrade.mapeh].flatMap(sub => {
-        const sd = gradeDataObj.subjects[sub.subjectName] || {};
-        return [sd.q1, sd.q2, sd.q3, sd.q4].filter(v => v && !isNaN(parseFloat(v))).map(parseFloat);
+  // Sort regular subjects alphabetically
+  regularSubjects.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Sort MAPEH components by custom order
+  mapehSubjects.sort((a, b) => {
+    const codeA = subjectsByGrade[gradeKey]?.mapeh?.find(s => s.subjectName === a.name)?.subjectCode || '';
+    const codeB = subjectsByGrade[gradeKey]?.mapeh?.find(s => s.subjectName === b.name)?.subjectCode || '';
+    return getMapehSortIndex(codeA) - getMapehSortIndex(codeB);
+  });
+
+  const renderSubjectRow = (subjectName, scores, isMapehComponent = false) => {
+    const indent = isMapehComponent ? '&nbsp;&nbsp;' : '';
+    const q1 = scores.q1 ? Math.round(parseFloat(scores.q1)) : '';
+    const q2 = scores.q2 ? Math.round(parseFloat(scores.q2)) : '';
+    const q3 = scores.q3 ? Math.round(parseFloat(scores.q3)) : '';
+    const q4 = scores.q4 ? Math.round(parseFloat(scores.q4)) : '';
+    return `<tr>
+      <td class="area-col">${indent}${subjectName}</td>
+      <td>${q1||''}</td><td>${q2||''}</td><td>${q3||''}</td><td>${q4||''}</td>
+      <td>${scores.remarks||''}</td>
+    </tr>`;
+  };
+
+  let rows = regularSubjects.map(s => renderSubjectRow(s.name, s.scores, false)).join('');
+
+  if (mapehSubjects.length > 0) {
+    // MAPEH heading row with per-quarter averages
+    const quarterAverages = { q1: [], q2: [], q3: [], q4: [] };
+    mapehSubjects.forEach(s => {
+      ['q1','q2','q3','q4'].forEach(q => {
+        const val = s.scores[q];
+        if (val && !isNaN(parseFloat(val))) quarterAverages[q].push(parseFloat(val));
       });
-      const generalAvg = allRatings.length ? Math.round(allRatings.reduce((a,b)=>a+b,0)/allRatings.length) : '';
+    });
+    const avg = (q) => quarterAverages[q].length ? Math.round(quarterAverages[q].reduce((a,b)=>a+b,0)/quarterAverages[q].length) : '';
 
+    rows += `<tr>
+      <td class="area-col">MAPEH</td>
+      <td>${avg('q1')||''}</td><td>${avg('q2')||''}</td><td>${avg('q3')||''}</td><td>${avg('q4')||''}</td>
+      <td></td>
+    </tr>`;
+    rows += mapehSubjects.map(s => renderSubjectRow(s.name, s.scores, true)).join('');
+  }
 
-     return `
-        <div class="grade-block">
-          <div class="grade-block-header">${gradeLabel(g)} – School:
-            <span style="border-bottom:1px solid #000;display:inline-block;min-width:110px;">&nbsp;${gradeDataObj.school}&nbsp;</span>
-          </div>
-          <div class="grade-info-line">
-            <span class="lbl">School Year:</span>
-            <span class="ln">&nbsp;${gradeDataObj.schoolYear}&nbsp;</span>
-          </div>
-          <table class="grade-table">
-            <thead>
-              <tr><th class="area-col" rowspan="2">LEARNING AREAS</th>
-                <th colspan="4">Periodic Rating</th><th class="rem-col" rowspan="2">Remarks</th>
-              </tr>
-              <tr><th class="q-col">1</th><th class="q-col">2</th><th class="q-col">3</th><th class="q-col">4</th></tr>
-            </thead>
-            <tbody>
-              ${rows}
-              <tr class="bold-row">
-                <td class="area-col"><strong>General Average</strong></td>
-                <td colspan="4" style="font-weight:bold;">${generalAvg}</td>
-                <td></td>
-              </tr>
-              <tr><td colspan="6" class="eligible-row">
-                Eligible for Admission to:
-                <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;${gradeDataObj.eligible}&nbsp;</span>
-              </td></tr>
-            </tbody>
-          </table>
-        </div>`;
-    };
+  // General average (from all subjects)
+  const allRatings = [...regularSubjects, ...mapehSubjects].flatMap(s => 
+    [s.scores.q1, s.scores.q2, s.scores.q3, s.scores.q4].filter(v => v && !isNaN(parseFloat(v))).map(parseFloat)
+  );
+  const generalAvg = allRatings.length ? Math.round(allRatings.reduce((a,b)=>a+b,0)/allRatings.length) : '';
+
+  return `
+    <div class="grade-block">
+      <div class="grade-block-header">${gradeLabel(g)} – School:
+        <span style="border-bottom:1px solid #000;display:inline-block;min-width:110px;">&nbsp;${gradeDataObj.school}&nbsp;</span>
+      </div>
+      <div class="grade-info-line">
+        <span class="lbl">School Year:</span>
+        <span class="ln">&nbsp;${gradeDataObj.schoolYear}&nbsp;</span>
+      </div>
+      <table class="grade-table">
+        <thead>
+          <tr><th class="area-col" rowspan="2">LEARNING AREAS</th>
+            <th colspan="4">Periodic Rating</th><th class="rem-col" rowspan="2">Remarks</th>
+          </tr>
+          <tr><th class="q-col">1</th><th class="q-col">2</th><th class="q-col">3</th><th class="q-col">4</th></tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr class="bold-row">
+            <td class="area-col"><strong>General Average</strong></td>
+            <td colspan="4" style="font-weight:bold;">${generalAvg}</td>
+            <td></td>
+          </tr>
+          <tr><td colspan="6" class="eligible-row">
+            Eligible for Admission to:
+            <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;${gradeDataObj.eligible}&nbsp;</span>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>`;
+};
 
     const buildObsTable = (grades) => {
       const headerCells = grades.map(g =>

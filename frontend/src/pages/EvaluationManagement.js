@@ -334,6 +334,7 @@ const EvaluationManagement = () => {
   // Filter states
   const [selectedGradeLevel, setSelectedGradeLevel] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
+  const [filterSection, setFilterSection] = useState("all");
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -342,6 +343,7 @@ const EvaluationManagement = () => {
   const [studentGrades, setStudentGrades] = useState({});
   const [editingGradeId, setEditingGradeId] = useState(null);
   const [editData, setEditData] = useState({});
+  
 
   
   // Teacher name state (dynamic)
@@ -407,7 +409,10 @@ const EvaluationManagement = () => {
 };
 useEffect(() => {
   fetchAllGrades();
-}, [selectedSchoolYear]);
+   setFilterSection("all");
+}, [selectedSchoolYear,selectedGradeLevel]);
+
+
 
   const handleRefresh = () => fetchAllGrades(true);
 
@@ -454,63 +459,110 @@ useEffect(() => {
   }, [allGrades, selectedGradeLevel]);
 
   const filteredStudents = useMemo(() => {
-    if (!studentSearch) return studentsInGrade;
+  if (!studentSearch && filterSection === "all") return studentsInGrade;
+  let result = studentsInGrade;
+  if (studentSearch) {
     const term = studentSearch.toLowerCase();
-    return studentsInGrade.filter(s =>
+    result = result.filter(s =>
       `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) ||
       s.studentId?.toLowerCase().includes(term)
     );
-  }, [studentsInGrade, studentSearch]);
+  }
+  if (filterSection !== "all") {
+    result = result.filter(s => s.section?.name === filterSection);
+  }
+  return result;
+}, [studentsInGrade, studentSearch, filterSection]);
+
+  const availableSections = useMemo(() => {
+  if (!selectedGradeLevel) return [];
+  const sectionsSet = new Set(
+    studentsInGrade.map(s => s.section?.name).filter(Boolean)
+  );
+  return Array.from(sectionsSet).sort();
+}, [studentsInGrade, selectedGradeLevel]);
 
   // ────────────────────────────────────────────────────────────
   // Handlers
   // ────────────────────────────────────────────────────────────
-  const openStudentModal = useCallback((student) => {
+  const openStudentModal = useCallback(async (student) => {
   setSelectedStudent(student);
   setSelectedQuarter("Q1");
 
-  // 1. Get existing grades for this student
   const existingGrades = allGrades.filter(g => g.student?.id === student.id);
-
-  // Filter subjects by grade level AND selected school year
-  const gradeLevelSubjects = allSubjects.filter(
-    sub => sub.gradeLevel === student.gradeLevel && sub.school_year === selectedSchoolYear
-  );
-
-
-  // 3. Build a complete map for all quarters and subjects
   const quarters = ["Q1", "Q2", "Q3", "Q4"];
   const completeGradesByQuarter = {};
 
-  quarters.forEach(quarter => {
-    completeGradesByQuarter[quarter] = gradeLevelSubjects.map(subject => {
-      // Find existing grade for this subject and quarter
-      const existing = existingGrades.find(
-        g => g.subject_id === subject.id && g.quarter === quarter
-      );
-      
-      if (existing) {
-        return existing;
-      }
-      
-      // Create placeholder with empty score and remarks
-      return {
-        id: `placeholder-${subject.id}-${quarter}`,
-        student_id: student.id,
-        subject_id: subject.id,
-        quarter: quarter,
-        score: '',
-        remarks: '',
-        subject: subject,
-        teacher: null,
-        isPlaceholder: true,
-      };
+  try {
+    // 1. Fetch subjects assigned to this student's section
+    const res = await API.get(`/sections/${student.section_id}/subjects`, {
+      params: { school_year: selectedSchoolYear }
     });
-  });
+    const sectionSubjects = res.data;
+
+    // 2. Build a Map of subjects by ID for easy lookup and merging
+    const subjectsMap = new Map();
+    sectionSubjects.forEach(sub => subjectsMap.set(sub.id, sub));
+
+    // 3. Add any subjects that have existing grades (even if no longer scheduled)
+    existingGrades.forEach(grade => {
+      if (grade.subject && !subjectsMap.has(grade.subject.id)) {
+        subjectsMap.set(grade.subject.id, grade.subject);
+      }
+    });
+
+    // Convert map values back to array
+    const allRelevantSubjects = Array.from(subjectsMap.values());
+
+    quarters.forEach(quarter => {
+      completeGradesByQuarter[quarter] = allRelevantSubjects.map(subject => {
+        const existing = existingGrades.find(
+          g => g.subject_id === subject.id && g.quarter === quarter
+        );
+        if (existing) return existing;
+        return {
+          id: `placeholder-${subject.id}-${quarter}`,
+          student_id: student.id,
+          subject_id: subject.id,
+          quarter: quarter,
+          score: '',
+          remarks: '',
+          subject: subject,
+          teacher: null,
+          isPlaceholder: true,
+        };
+      });
+    });
+  } catch (err) {
+    console.error('Failed to load section subjects, falling back to all grade subjects', err);
+    // Fallback to all grade level subjects
+    const gradeLevelSubjects = allSubjects.filter(
+      sub => sub.gradeLevel === student.gradeLevel && sub.school_year === selectedSchoolYear
+    );
+    quarters.forEach(quarter => {
+      completeGradesByQuarter[quarter] = gradeLevelSubjects.map(subject => {
+        const existing = existingGrades.find(
+          g => g.subject_id === subject.id && g.quarter === quarter
+        );
+        if (existing) return existing;
+        return {
+          id: `placeholder-${subject.id}-${quarter}`,
+          student_id: student.id,
+          subject_id: subject.id,
+          quarter: quarter,
+          score: '',
+          remarks: '',
+          subject: subject,
+          teacher: null,
+          isPlaceholder: true,
+        };
+      });
+    });
+  }
 
   setStudentGrades(completeGradesByQuarter);
 
-  // Extract adviser name from section advisor
+  // Extract adviser name
   if (student.section?.advisor) {
     const advisor = student.section.advisor;
     setTeacherName(`${advisor.firstName} ${advisor.lastName}`);
@@ -521,7 +573,7 @@ useEffect(() => {
   setModalOpen(true);
   setEditingGradeId(null);
   setEditData({});
-}, [allGrades, allSubjects,selectedSchoolYear]);
+}, [allGrades, allSubjects, selectedSchoolYear]);
 
 
 
@@ -684,17 +736,39 @@ useEffect(() => {
 
             {selectedGradeLevel && (
               <div className="students-section">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                  <h3>Students in {selectedGradeLevel}</h3>
-                  <div className="student-search">
-                    <FaSearch className="search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Search by name or ID..."
-                      value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
-                      className="student-search-input"
-                    />
+                <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "15px", flexWrap: "wrap" }}>
+                  <h3 style={{ margin: 0, whiteSpace: "nowrap" }}>Students in {selectedGradeLevel}</h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+                    {availableSections.length > 0 && (
+                      <select
+                        value={filterSection}
+                        onChange={(e) => setFilterSection(e.target.value)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #b8860b",
+                          background: "#fff",
+                          fontSize: "0.9rem",
+                          cursor: "pointer",
+                          minWidth: "140px"
+                        }}
+                      >
+                        <option value="all">All Sections</option>
+                        {availableSections.map((section) => (
+                          <option key={section} value={section}>{section}</option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="student-search" style={{ marginLeft: "auto" }}>
+                      <FaSearch className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search by name or ID..."
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        className="student-search-input"
+                      />
+                    </div>
                   </div>
                 </div>
 

@@ -190,4 +190,16 @@ private function getCurrentSchoolYear(): string
     {
         return response()->json(TimeSlot::all());
     }
+
+
+    public function getSectionSubjects($sectionId, Request $request)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+    
+    $section = Section::with(['subjects' => function ($q) use ($schoolYear) {
+        $q->wherePivot('school_year', $schoolYear);
+    }])->findOrFail($sectionId);
+    
+    return response()->json($section->subjects);
+}
 }

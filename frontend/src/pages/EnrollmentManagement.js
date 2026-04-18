@@ -1288,7 +1288,7 @@ useEffect(() => {
     <div className="modal-content" onClick={e => e.stopPropagation()}>
       <div className="modal-header">
         <h3>Select Section</h3>
-        <button className="close-btn" onClick={() => setShowSectionPicker(false)}>&times;</button>
+        <button className="close-btn" onClick={() => setShowSectionPicker(false)} disabled={isApproving || sectionsLoading} >&times;</button>
       </div>
       <div className="modal-body">
         <p>Multiple sections available for this grade. Please choose one:</p>

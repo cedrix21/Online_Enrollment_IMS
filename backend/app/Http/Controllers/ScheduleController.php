@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Schedule;
-use App\Models\Subject;
 use App\Models\Room;
 use App\Models\TimeSlot;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use SebastianBergmann\Environment\Console;
 use Illuminate\Support\Facades\Log;
 
 

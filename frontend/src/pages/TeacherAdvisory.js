@@ -39,6 +39,8 @@ export default function TeacherAdvisory() {
   const [teacherInfo, setTeacherInfo] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [filterGradeLevel, setFilterGradeLevel] = useState("all");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [filterSection, setFilterSection] = useState("all");
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -92,6 +94,7 @@ export default function TeacherAdvisory() {
   }, []);
 
   const processData = useCallback((data) => {
+     setDashboardData(data);
     setTeacherInfo(data.teacher);
     setStudents(data.students);
     setSubjects(data.subjects);
@@ -110,8 +113,9 @@ export default function TeacherAdvisory() {
   }, []);
 
   useEffect(() => {
+    setFilterSection("all");
     fetchData();
-  }, [fetchData]);
+  }, [fetchData,filterGradeLevel]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -120,16 +124,45 @@ export default function TeacherAdvisory() {
   }, []);
 
   const filteredStudents = useMemo(() => {
-    if (filterGradeLevel === "all") return students;
-    return students.filter((s) => s.gradeLevel === filterGradeLevel);
-  }, [students, filterGradeLevel]);
+  let result = students;
+  if (filterGradeLevel !== "all") {
+    result = result.filter(s => s.gradeLevel === filterGradeLevel);
+  }
+  if (filterSection !== "all") {
+    result = result.filter(s => s.section?.name === filterSection);
+  }
+  return result;
+}, [students, filterGradeLevel, filterSection]);
+
+  const availableSections = useMemo(() => {
+  if (filterGradeLevel === "all") {
+    // When "All Grades" is selected, collect sections from all students
+    const sectionsSet = new Set(students.map(s => s.section?.name).filter(Boolean));
+    return Array.from(sectionsSet).sort();
+  }
+  // Only sections within the selected grade
+  const sectionsSet = new Set(
+    students
+      .filter(s => s.gradeLevel === filterGradeLevel)
+      .map(s => s.section?.name)
+      .filter(Boolean)
+  );
+  return Array.from(sectionsSet).sort();
+}, [students, filterGradeLevel]);
 
   const gradeLevels = useMemo(() => teacherInfo?.gradeLevels || [], [teacherInfo]);
 
   const getSubjectsForStudent = useCallback(
-    (student) => subjects.filter((sub) => sub.gradeLevel === student.gradeLevel),
-    [subjects],
-  );
+  (student) => {
+    // Use the new section-based map if available
+    if (dashboardData?.subjectsBySection) {
+      return dashboardData.subjectsBySection[student.section_id] || [];
+    }
+    // Fallback to grade-level filtering (for backward compatibility)
+    return subjects.filter((sub) => sub.gradeLevel === student.gradeLevel);
+  },
+  [subjects, dashboardData]
+);
 
   const handleLogout = () => {
     localStorage.removeItem(CACHE_KEY);
@@ -418,6 +451,21 @@ export default function TeacherAdvisory() {
               </select>
             </div>
             <div className="student-count-compact">{filteredStudents.length} Students</div>
+            {availableSections.length > 0 && (
+              <div className="control-group-compact">
+                <label>Section:</label>
+                <select
+                  value={filterSection}
+                  onChange={(e) => setFilterSection(e.target.value)}
+                  className="control-select-compact"
+                >
+                  <option value="all">All</option>
+                  {availableSections.map((section) => (
+                    <option key={section} value={section}>{section}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div className="student-list">
             {filteredStudents.length === 0 ? <div className="no-students">No students found</div> : filteredStudents.map((student) => (

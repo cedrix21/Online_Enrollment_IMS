@@ -149,9 +149,9 @@
 }
 
 .student-list-modal {
-  max-width: 900px; /* Wider for tables */
+  max-width: 800px; /* Wider for tables */
   width: 95%;
-  max-height: 90vh;
+  max-height: 80vh;
   overflow-y: auto;
 }
 
@@ -549,7 +549,7 @@
 .day-btn.conflict {
   background: rgb(255, 0, 0);
   border-color: rgb(255, 0, 0);
-  cursor: not-allowed;
+   cursor: pointer; 
   opacity: 0.7;
 }
 
@@ -619,4 +619,26 @@
   background: #7f8c8d;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(141, 139, 127, 0.3);
+}
+/* Skeleton Loading */
+.skeleton-option {
+  height: 38px;
+  margin-bottom: 2px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  animation: pulse 1.5s infinite;
+}
+
+.skeleton-table-row {
+  height: 40px;
+  margin-bottom: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }

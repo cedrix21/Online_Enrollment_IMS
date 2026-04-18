@@ -128,95 +128,90 @@
   ));
 
   const StudentModal = memo(({ 
-    section, 
-    students, 
-    schedules, 
-    onClose, 
-    onDeleteSchedule,
-    groupedSchedules 
-  }) => {
-    const [activeTab, setActiveTab] = useState("schedule");
+  section, 
+  students, 
+  schedules, 
+  onClose, 
+  onDeleteSchedule,
+  groupedSchedules,
+  loading    
+}) => {
+  const [activeTab, setActiveTab] = useState("schedule");
 
-    return (
-      <div className="modal-overlay">
-        <div className="modal-content student-list-modal">
-          <div className="modal-header">
-            <div>
-              <h3>{section?.name} - Dashboard</h3>
-              <p>
-                {section?.gradeLevel} | {students.length} Students
-              </p>
-            </div>
-            <FaTimes onClick={onClose} className="close-icon" />
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content student-list-modal">
+        <div className="modal-header">
+          <div>
+            <h3>{section?.name} - Dashboard</h3>
+            <p>
+              {section?.gradeLevel} | {loading ? '...' : `${students.length} Students`}
+            </p>
+          </div>
+          <FaTimes onClick={onClose} className="close-icon" />
+        </div>
+
+        <div className="modal-body-tabs">
+          <div className="tab-navigation">
+            <button
+              className={`tab-btn ${activeTab === "schedule" ? "active" : ""}`}
+              onClick={() => setActiveTab("schedule")}
+            >
+              📅 Schedule
+            </button>
+            <button
+              className={`tab-btn ${activeTab === "students" ? "active" : ""}`}
+              onClick={() => setActiveTab("students")}
+            >
+              👥 Students ({loading ? '...' : students.length})
+            </button>
           </div>
 
-          <div className="modal-body-tabs">
-            <div className="tab-navigation">
-              <button
-                className={`tab-btn ${activeTab === "schedule" ? "active" : ""}`}
-                onClick={() => setActiveTab("schedule")}
-              >
-                📅 Schedule
-              </button>
-              <button
-                className={`tab-btn ${activeTab === "students" ? "active" : ""}`}
-                onClick={() => setActiveTab("students")}
-              >
-                👥 Students ({students.length})
-              </button>
+          {activeTab === "schedule" && (
+            <div id="schedule-tab" className="tab-content">
+              <div className="schedule-section">
+                <h4><FaCalendarAlt /> Weekly Class Schedule</h4>
+                <div className="schedule-grid">
+                  {loading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="skeleton-table-row" />
+                    ))
+                  ) : schedules?.length > 0 ? (
+                    <ScheduleTable 
+                      schedules={groupedSchedules} 
+                      onDeleteSchedule={onDeleteSchedule}
+                    />
+                  ) : (
+                    <p className="no-data">No subjects scheduled yet.</p>
+                  )}
+                </div>
+              </div>
             </div>
+          )}
 
-            {activeTab === "schedule" && (
-              <div id="schedule-tab" className="tab-content">
-                <div className="schedule-section">
-                  <h4>
-                    <FaCalendarAlt /> Weekly Class Schedule
-                  </h4>
-                  <div className="schedule-grid">
-                    {schedules?.length > 0 ? (
-                      <ScheduleTable 
-                        schedules={groupedSchedules} 
-                        onDeleteSchedule={onDeleteSchedule}
-                      />
-                    ) : (
-                      <p className="no-data">No subjects scheduled yet.</p>
-                    )}
+          {activeTab === "students" && (
+            <div id="students-tab" className="tab-content">
+              <div className="students-section">
+                <h4><FaUsers /> Enrolled Students</h4>
+                {loading ? (
+                  <div>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="skeleton-table-row" />
+                    ))}
                   </div>
-                </div>
-                <div className="subjects-section" style={{ marginTop: '20px' }}>
-                  <h4>📚 Subjects Offered</h4>
-                  {section?.subjects?.length > 0 ? (
-                    <ul>
-                      {section.subjects.map(sub => (
-                        <li key={sub.id}>{sub.subjectName} ({sub.subjectCode})</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No subjects assigned yet.</p>
-                  )}
-                </div>
+                ) : students.length > 0 ? (
+                  <StudentTable students={students} />
+                ) : (
+                  <NoStudentsPlaceholder />
+                )}
               </div>
-            )}
-
-            {activeTab === "students" && (
-              <div id="students-tab" className="tab-content">
-                <div className="students-section">
-                  <h4>
-                    <FaUsers /> Enrolled Students
-                  </h4>
-                  {students.length > 0 ? (
-                    <StudentTable students={students} />
-                  ) : (
-                    <NoStudentsPlaceholder />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
-    );
-  });
+    </div>
+  );
+});
 
   const ScheduleTable = memo(({ schedules, onDeleteSchedule }) => (
     <table className="schedule-table">
@@ -339,7 +334,7 @@
       type="button"
       className={`day-btn ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
       onClick={() => onToggle(day)}
-      disabled={hasConflict}
+      
     >
       {isSelected && <FaCheck className="check-icon" />}
       <span>{day}</span>
@@ -377,7 +372,8 @@
   onScheduleChange,
   conflictMessages,
   getScheduledTeacher,
-  occupiedSchedules 
+  occupiedSchedules ,
+   loading,  
 }) => {
   
   const filteredTeacherLoad = useMemo(() => {
@@ -415,13 +411,22 @@
               required
               value={newSchedule.subject_assignment_id || ""}
               onChange={(e) => onScheduleChange('assignment', e.target.value)}
+              disabled={loading}
             >
               <option value="">-- Select Teacher Load --</option>
-              {filteredTeacherLoad.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.subject?.subjectName} — {a.teacher?.lastName}
-                </option>
-              ))}
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <option key={i} disabled className="skeleton-option">
+                    &nbsp;
+                  </option>
+                ))
+              ) : (
+                filteredTeacherLoad.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.subject?.subjectName} — {a.teacher?.lastName}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -434,6 +439,8 @@
                 const hasConflict = conflictMessages.some(msg => 
                   msg.days.includes(day)
                 );
+                 console.log(`Day ${day}: hasConflict=${hasConflict}`);
+
                 return (
                   <DayButton
                     key={day}
@@ -592,6 +599,8 @@
         return null;
       }
     });
+    const [scheduleModalLoading, setScheduleModalLoading] = useState(false);
+    const [studentModalLoading, setStudentModalLoading] = useState(false);
     
     // Data State
     const [sections, setSections] = useState([]);
@@ -690,78 +699,155 @@
     }, [selectedSchoolYear]);
 
     useEffect(() => {
-       console.log('School year changed to:', selectedSchoolYear);
+
     fetchData();
   }, [selectedSchoolYear]);
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // HANDLERS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const handleAddSchedule = useCallback(async (e) => {
-  e.preventDefault();
 
-  if (selectedDays.length === 0) {
-    alert("Please select at least one day for this schedule");
-    return;
-  }
+    const getConflictMessages = useCallback(() => {
+      if (!newSchedule.time_slot_id || !newSchedule.teacher_id || !newSchedule.room_id) {
+        return [];
+      }
 
-  setIsSubmitting(true);
+      const dayConflicts = DAYS.map((day) => {
+        
+        const reasons = [];
+        
+        // ⚡ Use Map iteration for efficient checking (still O(n) per day but optimized with early returns)
+        for (const sched of occupiedSchedulesMap.values()) {
 
-  try {
-    // 1. Create the schedule
-    await API.post("/schedules", {
-      section_id: selectedSection.id,
-      subject_id: newSchedule.subject_id,
-      teacher_id: newSchedule.teacher_id,
-      subject_assignment_id: newSchedule.subject_assignment_id,
-      days: selectedDays,
-      time_slot_id: newSchedule.time_slot_id,
-      room_id: newSchedule.room_id,
-    });
+          console.log(`Checking ${day} against existing: day=${sched.day}, time=${sched.time_slot_id}, teacher=${sched.teacher_id}, room=${sched.room_id}`);
 
-    // 2. Refetch all related data to get the latest state
-    const [sectionRes, loadRes, schedRes] = await Promise.all([
-      API.get(`/sections/${selectedSection.id}`, { params: { school_year: selectedSchoolYear } }),
-      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-      API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-    ]);
+          // Check section conflict
+          if (
+            !reasons.includes("Section is busy") &&
+            sched.day === day &&
+            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+            Number(sched.section_id) === Number(selectedSection?.id)
+          ) {
+             console.warn(`⚠️ Teacher conflict on ${day}: teacher ${sched.teacher_id} already at time ${sched.time_slot_id}`);
+            reasons.push("Section is busy");
+          }
 
-    // 3. Update states once with fresh data
-    setSelectedSection(sectionRes.data);
-    setTeacherLoad(loadRes.data);
-    setOccupiedSchedules(schedRes.data);
+          // Check teacher conflict
+          if (
+            !reasons.includes("Teacher is busy") &&
+            sched.day === day &&
+            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+            Number(sched.teacher_id) === Number(newSchedule.teacher_id)
+          ) {
+            reasons.push("Teacher is busy");
+          }
 
-    alert(`Schedule added successfully!`);
+          // Check room conflict
+          if (
+            !reasons.includes("Room is occupied") &&
+            sched.day === day &&
+            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+            Number(sched.room_id) === Number(newSchedule.room_id)
+          ) {
+            reasons.push("Room is occupied");
+          }
 
-    // Reset form (modal stays open)
-    setNewSchedule(INITIAL_SCHEDULE_FORM);
-    setSelectedDays([]);
-  } catch (err) {
-    const msg = err.response?.data?.message || "Conflict or Error occurred.";
-    alert("Error: " + msg);
-  } finally {
-    setIsSubmitting(false);
-  }
-}, [selectedDays, selectedSection, newSchedule, selectedSchoolYear]);
+          // Early exit if all conflicts found
+          if (reasons.length === 3) break;
+        }
+
+        return { day, reasons };
+      });
+
+      const groups = dayConflicts.reduce((acc, item) => {
+        if (item.reasons.length === 0) return acc;
+
+        const key = item.reasons.join(" & ");
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(item.day);
+        return acc;
+      }, {});
+
+      return Object.entries(groups).map(([reason, days]) => ({ reason, days }));
+    }, [newSchedule, occupiedSchedulesMap, selectedSection?.id]);
+
+
+   const handleAddSchedule = useCallback(async (e) => {
+        e.preventDefault();
+
+        if (selectedDays.length === 0) {
+          alert("Please select at least one day for this schedule");
+          return;
+        }
+
+        const currentConflicts = getConflictMessages();
+        const conflictedSelectedDays = selectedDays.filter(day =>
+          currentConflicts.some(msg => msg.days.includes(day))
+        );
+
+        if (conflictedSelectedDays.length > 0) {
+          alert(`Cannot save schedule. The following day(s) have conflicts: ${conflictedSelectedDays.join(", ")}. Please choose different days or adjust the time/room.`);
+          return;
+        }
+
+        setIsSubmitting(true);
+        try {
+          await API.post("/schedules", {
+            section_id: selectedSection.id,
+            subject_id: newSchedule.subject_id,
+            teacher_id: newSchedule.teacher_id,
+            subject_assignment_id: newSchedule.subject_assignment_id,
+            days: selectedDays,
+            time_slot_id: newSchedule.time_slot_id,
+            room_id: newSchedule.room_id,
+          });
+
+          const [sectionRes, loadRes, schedRes] = await Promise.all([
+            API.get(`/sections/${selectedSection.id}`, { params: { school_year: selectedSchoolYear } }),
+            API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+            API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
+          ]);
+
+          setSelectedSection(sectionRes.data);
+          setTeacherLoad(loadRes.data);
+          setOccupiedSchedules(schedRes.data);
+
+          alert(`Schedule added successfully!`);
+          setNewSchedule(INITIAL_SCHEDULE_FORM);
+          setSelectedDays([]);
+        } catch (err) {
+          const msg = err.response?.data?.message || "Conflict or Error occurred.";
+          alert("Error: " + msg);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, [selectedDays, selectedSection, newSchedule, selectedSchoolYear, getConflictMessages]);
 
 
 
     const handleViewStudents = useCallback(async (section) => {
+       setStudentModalLoading(true);  
     try {
       const res = await API.get(`/sections/${section.id}`, {
         params: { school_year: selectedSchoolYear }
       });
       setSelectedSection(res.data);
       setSectionStudents(res.data.students || []);
-      setShowStudentModal(true);
+      
     } catch (err) {
       console.error("Error loading section details");
       alert("Failed to load section details");
-    }
-  }, [selectedSchoolYear]);
+    } finally {
+    setStudentModalLoading(false);   // 🆕
+    setShowStudentModal(true);
+  }
+}, [selectedSchoolYear]);
 
     const handleOpenScheduleModal = useCallback(async (section) => {
     setSelectedSection(section);
+    setScheduleModalLoading(true);
     try {
       const [loadRes, sectionRes, schedRes] = await Promise.all([
       API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
@@ -772,14 +858,16 @@
         setTeacherLoad(loadRes.data);
         setSelectedSection(sectionRes.data);
         setOccupiedSchedules(schedRes.data);
-        setShowScheduleModal(true);
+        
       } catch (err) {
         console.error("DETAILED ERROR:", err.response || err);
         alert(
           "Error loading data: " + (err.response?.data?.message || err.message),
-        );
-      }
-    }, [selectedSchoolYear]);
+          )} finally {
+          setScheduleModalLoading(false);   // 🆕
+          setShowScheduleModal(true);
+        }
+      }, [selectedSchoolYear]);
 
     const handleCreateSection = useCallback(async (e) => {
       e.preventDefault();
@@ -896,66 +984,11 @@
       return null;
     }, [selectedSection?.schedules, teachers]);
 
-    const getConflictMessages = useCallback(() => {
-      if (!newSchedule.time_slot_id || !newSchedule.teacher_id || !newSchedule.room_id) {
-        return [];
-      }
+    
 
-      const dayConflicts = DAYS.map((day) => {
-        const reasons = [];
-        
-        // ⚡ Use Map iteration for efficient checking (still O(n) per day but optimized with early returns)
-        for (const sched of occupiedSchedulesMap.values()) {
-          // Check section conflict
-          if (
-            !reasons.includes("Section is busy") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.section_id) === Number(selectedSection?.id)
-          ) {
-            reasons.push("Section is busy");
-          }
 
-          // Check teacher conflict
-          if (
-            !reasons.includes("Teacher is busy") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.teacher_id) === Number(newSchedule.teacher_id)
-          ) {
-            reasons.push("Teacher is busy");
-          }
 
-          // Check room conflict
-          if (
-            !reasons.includes("Room is occupied") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.room_id) === Number(newSchedule.room_id)
-          ) {
-            reasons.push("Room is occupied");
-          }
 
-          // Early exit if all conflicts found
-          if (reasons.length === 3) break;
-        }
-
-        return { day, reasons };
-      });
-
-      const groups = dayConflicts.reduce((acc, item) => {
-        if (item.reasons.length === 0) return acc;
-
-        const key = item.reasons.join(" & ");
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(item.day);
-        return acc;
-      }, {});
-
-      return Object.entries(groups).map(([reason, days]) => ({ reason, days }));
-    }, [newSchedule, occupiedSchedulesMap, selectedSection?.id]);
 
     const conflictMessages = useMemo(() => getConflictMessages(), [getConflictMessages]);
 
@@ -1057,6 +1090,7 @@
               onClose={() => setShowStudentModal(false)}
               onDeleteSchedule={handleDeleteSchedule}
               groupedSchedules={groupedSchedules}
+              loading={studentModalLoading} 
             />
           )}
 
@@ -1076,6 +1110,7 @@
               conflictMessages={conflictMessages}
               getScheduledTeacher={getScheduledTeacher}
               occupiedSchedules={occupiedSchedules}
+              loading={scheduleModalLoading}
             />
           )}
 

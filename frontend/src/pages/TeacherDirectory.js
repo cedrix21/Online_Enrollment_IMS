@@ -200,6 +200,7 @@ export default function TeacherDirectory() {
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [sectionsLoading, setSectionsLoading] = useState(true);
   
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
