@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/students/{id}', [StudentController::class, 'destroy']);
     Route::get('/students/search', [StudentController::class, 'searchByEmail']);
     Route::get('/students/{id}/enrollments', [StudentController::class, 'getEnrollments']);
+    Route::put('/students/{studentId}/transfer', [StudentController::class, 'transferToSection']);
     // ──────────────────────────────────────────────────────────────
     // SUBJECT MANAGEMENT
     // ──────────────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/schedules', [ScheduleController::class, 'store']);
     Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
     Route::get('/sections/{id}/subjects', [SectionController::class, 'getSectionSubjects']);
+    Route::get('/teachers/{id}/schedule', [ScheduleController::class, 'getTeacherSchedule']);
 
     // ──────────────────────────────────────────────────────────────
     // BILLING MANAGEMENT

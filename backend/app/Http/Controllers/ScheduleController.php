@@ -205,4 +205,21 @@ public function index(Request $request)
             'occupied' => Schedule::where('day', $day)->get(['room_id', 'time_slot_id'])
         ]);
     }
+
+
+    // In ScheduleController.php, add this method:
+
+public function getTeacherSchedule(Request $request, $teacherId)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $schedules = Schedule::with(['subject', 'section', 'time_slot', 'room'])
+        ->where('teacher_id', $teacherId)
+        ->where('school_year', $schoolYear)
+        ->orderBy('day')
+        ->orderBy('time_slot_id')
+        ->get();
+
+    return response()->json($schedules);
+}
 }

@@ -74,8 +74,14 @@ private function getCurrentSchoolYear(): string
 
         // 3. Assign section if provided
         $section = null;
+        // Get school year from request or default
+        $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
         if (!empty($validated['section_id'])) {
-            $section = Section::find($validated['section_id']);
+            // ✅ Scope query to school_year
+            $section = Section::where('id', $validated['section_id'])
+                ->where('school_year', $schoolYear)
+                ->firstOrFail();  // throws 404 if section exists but in different year
             $section->teacher_id = $teacher->id;
             $section->save();
             
@@ -156,16 +162,22 @@ private function getCurrentSchoolYear(): string
         // Handle section reassignment
         if ($request->has('section_id')) {
             $newSectionId = $validated['section_id'];
+            $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear()); // ✅ get year
             
-            // Remove teacher from old section (if any)
-            $oldSection = Section::where('teacher_id', $teacher->id)->first();
+            // Remove teacher from old section (only if that section belongs to the same school year)
+            $oldSection = Section::where('teacher_id', $teacher->id)
+                ->where('school_year', $schoolYear)   // ✅ added scope
+                ->first();
             if ($oldSection) {
                 $oldSection->teacher_id = null;
                 $oldSection->save();
             }
             
             if ($newSectionId) {
-                $newSection = Section::find($newSectionId);
+                // ✅ scope to school_year
+                $newSection = Section::where('id', $newSectionId)
+                    ->where('school_year', $schoolYear)
+                    ->firstOrFail();
                 $newSection->teacher_id = $teacher->id;
                 $newSection->save();
                 $teacher->advisory_grade = $newSection->gradeLevel;

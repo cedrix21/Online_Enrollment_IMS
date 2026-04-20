@@ -72,7 +72,8 @@ class TeacherPortalController extends Controller
         $grades = $gradeLevels->isNotEmpty()
             ? Grade::select('id', 'student_id', 'subject_id', 'score', 'remarks', 'quarter', 'teacher_id', 'component')
                 ->where('teacher_id', $teacher->id)
-                ->whereHas('student', fn($q) => $q->whereIn('gradeLevel', $gradeLevels)
+                ->whereHas('student', fn($q) => 
+                $q->whereIn('gradeLevel', $gradeLevels)
                     ->whereIn('section_id', $scheduledSectionIds)
                     ->whereHas('enrollments', fn($e) => $e->where('school_year', $currentSchoolYear)))
                 ->get()

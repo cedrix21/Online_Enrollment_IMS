@@ -6,6 +6,7 @@ use App\Models\Student;
 use Illuminate\Http\Request;
 use App\Models\StudentRecord;
 use App\Models\Enrollment;
+use App\Models\Section;
 
 class StudentController extends Controller
 {
@@ -258,6 +259,48 @@ public function getEnrollments($studentId)
     $student = Student::findOrFail($studentId);
     $enrollments = $student->enrollments()->orderBy('school_year')->get(['id', 'school_year', 'gradeLevel']);
     return response()->json($enrollments);
+}
+
+
+// app/Http/Controllers/StudentController.php
+
+public function transferToSection(Request $request, $studentId)
+{
+    $validated = $request->validate([
+        'target_section_id' => 'required|exists:sections,id',
+        'school_year'       => 'required|string',
+    ]);
+
+    $student = Student::findOrFail($studentId);
+
+    // Optional: check that the target section has the same grade level
+    $targetSection = Section::findOrFail($validated['target_section_id']);
+    if ($targetSection->gradeLevel !== $student->gradeLevel) {
+        return response()->json([
+            'message' => 'Cannot transfer student to a section with a different grade level.'
+        ], 422);
+    }
+
+    // Check capacity
+    $currentCount = $targetSection->students()
+        ->where('school_year', $validated['school_year'])
+        ->count();
+    if ($currentCount >= $targetSection->capacity) {
+        return response()->json([
+            'message' => 'Target section is already full.'
+        ], 422);
+    }
+
+    // Update student's section
+    $student->section_id = $validated['target_section_id'];
+    $student->save();
+
+    
+   
+    return response()->json([
+        'message' => 'Student transferred successfully.',
+        'student' => $student->load('section'),
+    ]);
 }
 
 

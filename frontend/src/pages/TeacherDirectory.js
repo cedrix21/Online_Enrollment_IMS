@@ -80,7 +80,8 @@ const TeacherCard = memo(({
   onToggleExpand, 
   onAssign, 
   onEdit, 
-  onRemoveAssignment 
+  onRemoveAssignment,
+  onViewSchedule 
 }) => {
   return (
     <div className="teacher-card">
@@ -167,16 +168,16 @@ const TeacherCard = memo(({
       </div>
 
       <div className="card-actions">
-        <button className="edit-link" onClick={() => onEdit(teacher)}>
-          <FaEdit /> Edit
-        </button>
-        <button
-          className="assign-link"
-          onClick={() => onToggleExpand(teacher.id)}
-        >
-          {isExpanded ? "Hide Load" : "View Load"}
-        </button>
-      </div>
+      <button className="edit-link" onClick={() => onEdit(teacher)}>
+        <FaEdit /> Edit
+      </button>
+      <button className="schedule-link" onClick={() => onViewSchedule(teacher)}>
+        📅 Schedule
+      </button>
+      <button className="assign-link" onClick={() => onToggleExpand(teacher.id)}>
+        {isExpanded ? "Hide Load" : "View Load"}
+      </button>
+    </div>
     </div>
   );
 });
@@ -201,6 +202,8 @@ export default function TeacherDirectory() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedTeacherForSchedule, setSelectedTeacherForSchedule] = useState(null);
   
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,7 +255,7 @@ export default function TeacherDirectory() {
       API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
       API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
       API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-       API.get("/sections"), 
+      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
     ]);
 
       const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
@@ -330,23 +333,29 @@ const availableSubjectsForAssignment = useMemo(() => {
   // Event Handlers
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleAddTeacher = useCallback(async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      const res = await API.post("/teachers", newTeacher);
-      setTeachers(prev => sortTeachersByAdvisory([...prev, res.data.teacher]));
-      invalidateCache();
-      setNewTeacher(INITIAL_TEACHER_FORM);
-      setShowModal(false);
-      alert("Teacher added successfully!");
-    } catch (err) {
-      console.error("Backend Error:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to add teacher");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [newTeacher, invalidateCache]);
+  try {
+    // ✅ Include selected school year in the payload
+    const payload = {
+      ...newTeacher,
+      school_year: selectedSchoolYear,
+    };
+    const res = await API.post("/teachers", payload);
+    setTeachers(prev => sortTeachersByAdvisory([...prev, res.data.teacher]));
+    invalidateCache();
+    setNewTeacher(INITIAL_TEACHER_FORM);
+    setShowModal(false);
+    alert("Teacher added successfully!");
+  } catch (err) {
+    console.error("Backend Error:", err.response?.data);
+    alert(err.response?.data?.message || "Failed to add teacher");
+  } finally {
+    setIsSubmitting(false);
+  }
+}, [newTeacher, invalidateCache, selectedSchoolYear]);  
+
 
   const openAssignModal = useCallback((teacher) => {
   setSelectedTeacherForAssign(teacher);
@@ -466,29 +475,41 @@ const availableSubjectsForAssignment = useMemo(() => {
   }, []);
 
   const handleEditTeacher = useCallback(async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      const res = await API.put(`/teachers/${selectedTeacherForEdit.id}`, editTeacherForm);
-      setTeachers(prev => {
-        const updated = prev.map((teacher) => 
-          teacher.id === selectedTeacherForEdit.id 
-            ? { ...teacher, ...res.data.teacher }
-            : teacher
-        );
-        return sortTeachersByAdvisory(updated);
-      });
-      invalidateCache();
-      setShowEditModal(false);
-      alert("Teacher updated successfully!");
-    } catch (err) {
-      console.error("Edit Error:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to update teacher");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [editTeacherForm, selectedTeacherForEdit, invalidateCache]);
+  try {
+    // ✅ Include selected school year in the payload
+    const payload = {
+      ...editTeacherForm,
+      school_year: selectedSchoolYear,
+    };
+    const res = await API.put(`/teachers/${selectedTeacherForEdit.id}`, payload);
+    setTeachers(prev => {
+      const updated = prev.map((teacher) => 
+        teacher.id === selectedTeacherForEdit.id 
+          ? { ...teacher, ...res.data.teacher }
+          : teacher
+      );
+      return sortTeachersByAdvisory(updated);
+    });
+    invalidateCache();
+    setShowEditModal(false);
+    alert("Teacher updated successfully!");
+  } catch (err) {
+    console.error("Edit Error:", err.response?.data);
+    alert(err.response?.data?.message || "Failed to update teacher");
+  } finally {
+    setIsSubmitting(false);
+  }
+}, [editTeacherForm, selectedTeacherForEdit, invalidateCache, selectedSchoolYear]);  
+
+
+const openScheduleModal = useCallback((teacher) => {
+  setSelectedTeacherForSchedule(teacher);
+  setShowScheduleModal(true);
+}, []);
+
 
   const toggleExpandTeacher = useCallback((teacherId) => {
     setExpandedTeacher(prev => prev === teacherId ? null : teacherId);
@@ -585,6 +606,7 @@ const availableSubjectsForAssignment = useMemo(() => {
                     onAssign={openAssignModal}
                     onEdit={openEditModal}
                     onRemoveAssignment={handleRemoveAssignment}
+                    onViewSchedule={openScheduleModal}
                   />
                 ))}
               </div>
@@ -630,6 +652,13 @@ const availableSubjectsForAssignment = useMemo(() => {
             selectedSubjectsForBulk={selectedSubjectsForBulk}
             setSelectedSubjectsForBulk={setSelectedSubjectsForBulk}
             onRefreshSubjects={refreshSubjects}
+          />
+        )}
+        {showScheduleModal && (
+          <TeacherScheduleModal
+            teacher={selectedTeacherForSchedule}
+            onClose={() => setShowScheduleModal(false)}
+             schoolYear={selectedSchoolYear}  
           />
         )}
       </div>
@@ -763,7 +792,7 @@ const EditTeacherModal = memo(({
   onClose, 
   isSubmitting,
   selectedTeacher,
-  sectionsByGrade               // 🆕 add this prop
+  sectionsByGrade                
 }) => (
   <div className="modal-overlay">
     <div className="modal-content">
@@ -880,6 +909,159 @@ const EditTeacherModal = memo(({
     </div>
   </div>
 ));
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TEACHER SCHEDULE MODAL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TEACHER SCHEDULE MODAL (fetches actual schedules from backend)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Helper: convert 24-hour time (e.g., "14:00:00") to 12-hour format (e.g., "2:00 PM")
+  const formatTime12 = (time24) => {
+    if (!time24) return '';
+    let [hour, minute] = time24.split(':');
+    let h = parseInt(hour, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${minute} ${ampm}`;
+  };
+
+  useEffect(() => {
+    if (!teacher) return;
+    const fetchSchedules = async () => {
+      try {
+        setLoading(true);
+        const res = await API.get(`/teachers/${teacher.id}/schedule`, {
+          params: { school_year: schoolYear },
+        });
+        setSchedules(res.data);
+      } catch (err) {
+        console.error("Failed to fetch schedules", err);
+        setError("Could not load schedule data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSchedules();
+  }, [teacher, schoolYear]);
+
+  if (!teacher) return null;
+
+  const dayOrder = {
+    Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
+  };
+
+  const schedulesByDay = {
+    Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [],
+  };
+
+  schedules.forEach(sched => {
+    const day = sched.day;
+    if (schedulesByDay[day]) {
+      schedulesByDay[day].push(sched);
+    }
+  });
+
+  Object.keys(schedulesByDay).forEach(day => {
+    schedulesByDay[day].sort((a, b) => {
+      const timeA = a.time_slot?.start_time || '';
+      const timeB = b.time_slot?.start_time || '';
+      return timeA.localeCompare(timeB);
+    });
+  });
+
+  // Unique time slots for table rows (keep original 24h string for grouping)
+  const allTimeSlots = [...new Set(
+    schedules.flatMap(s => s.time_slot ? `${s.time_slot.start_time}-${s.time_slot.end_time}` : '')
+  )].sort();
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'auto' }}>
+        <div className="modal-header">
+          <h3>
+            📅 Weekly Schedule - {teacher.firstName} {teacher.lastName}
+          </h3>
+          <FaTimes className="close-icon" onClick={onClose} />
+        </div>
+
+        <div style={{ padding: '0 10px 10px 10px' }}>
+          {loading && <p style={{ textAlign: 'center' }}>Loading schedule...</p>}
+          {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
+
+          {!loading && schedules.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#666' }}>No scheduled classes found for this teacher.</p>
+          )}
+
+          {!loading && schedules.length > 0 && (
+            <>
+              <div className="schedule-table-wrapper">
+                <table className="teacher-schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Monday</th>
+                      <th>Tuesday</th>
+                      <th>Wednesday</th>
+                      <th>Thursday</th>
+                      <th>Friday</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allTimeSlots.map(timeSlot => {
+                      const [start24, end24] = timeSlot.split('-');
+                      return (
+                        <tr key={timeSlot}>
+                          <td className="schedule-time">
+                            {formatTime12(start24)} – {formatTime12(end24)}
+                          </td>
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
+                            const schedule = schedulesByDay[day]?.find(
+                              s => s.time_slot && `${s.time_slot.start_time}-${s.time_slot.end_time}` === timeSlot
+                            );
+                            return (
+                              <td key={day}>
+                                {schedule ? (
+                                  <div className="schedule-subject">
+                                    <strong>{schedule.subject?.subjectCode}</strong>
+                                    <div className="schedule-subject-name">{schedule.subject?.subjectName}</div>
+                                    <div className="schedule-grade">
+                                      {schedule.section?.name} ({schedule.section?.gradeLevel})
+                                    </div>
+                                    <div className="schedule-room">
+                                      Room: {schedule.room?.room_name || '?'}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="schedule-empty">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button className="submit-btn" onClick={onClose} style={{ marginTop: '20px' }}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+});
+
 
 const AssignSubjectModal = memo(({ 
   assignmentForm, 

@@ -381,3 +381,101 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* ========================================================================
+   TEACHER SCHEDULE MODAL STYLES
+   ======================================================================== */
+
+.schedule-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.teacher-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.teacher-schedule-table th,
+.teacher-schedule-table td {
+  border: 1px solid #e0d8b0;
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.teacher-schedule-table th {
+  background-color: #fdf5e6;
+  color: #b8860b;
+  font-weight: 600;
+  text-align: center;
+}
+
+.schedule-time {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.schedule-subject {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-subject-name {
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.schedule-grade {
+  font-size: 0.7rem;
+  color: #b8860b;
+  background: #fdf5e6;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.schedule-empty {
+  color: #ccc;
+  text-align: center;
+  display: block;
+}
+
+.no-schedule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.no-schedule-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.no-schedule-list li strong {
+  color: #b8860b;
+}
+.schedule-link {
+  background: none;
+  border: 1px solid #b8860b;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #b8860b;
+  transition: all 0.2s;
+}
+
+.schedule-link:hover {
+  background-color: #b8860b;
+  color: #fff;
+}

@@ -11,6 +11,7 @@
     FaTimes,
     FaTrash,
     FaCheck,
+    FaExchangeAlt 
   } from "react-icons/fa";
   import "./SectionManagement.css";
 
@@ -134,9 +135,54 @@
   onClose, 
   onDeleteSchedule,
   groupedSchedules,
-  loading    
+  loading,
+  sections,           
+  schoolYear,        
+  onStudentTransferred
 }) => {
   const [activeTab, setActiveTab] = useState("schedule");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [targetSectionId, setTargetSectionId] = useState("");
+  const [transferLoading, setTransferLoading] = useState(false);
+
+
+  // Get other sections with the same grade level (excluding current)
+  const sameGradeSections = useMemo(() => {
+    return (sections || []).filter(
+      s => s.gradeLevel === section?.gradeLevel && s.id !== section?.id
+    );
+  }, [sections, section]);
+
+  const handleTransferClick = (student) => {
+    setSelectedStudent(student);
+    setTargetSectionId("");
+    setShowTransferModal(true);
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetSectionId) {
+      alert("Please select a target section.");
+      return;
+    }
+    setTransferLoading(true);
+    try {
+      await API.put(`/students/${selectedStudent.id}/transfer`, {
+        target_section_id: targetSectionId,
+        school_year: schoolYear,
+      });
+      alert(`${selectedStudent.firstName} ${selectedStudent.lastName} transferred successfully!`);
+      setShowTransferModal(false);
+      // Refresh student list
+      if (onStudentTransferred) onStudentTransferred();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Transfer failed.");
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   return (
     <div className="modal-overlay">
@@ -202,32 +248,71 @@
           {activeTab === "students" && (
             <div id="students-tab" className="tab-content">
               <div className="students-section">
-                <h4><FaUsers /> Enrolled Students</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h4><FaUsers /> Enrolled Students</h4>
+                  {sameGradeSections.length > 0 }
+                </div>
                 {loading ? (
-                <table className="students-table">
-                  <tbody>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i}>
-                        <td colSpan="5" style={{ padding: '8px 12px' }}>
-                          <div className="skeleton-table-row" style={{ width: '100%' }} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : students.length > 0 ? (
-                <StudentTable students={students} />
-              ) : (
-                <NoStudentsPlaceholder />
-              )}
+                  <table className="students-table">
+                    {/* skeleton */}
+                  </table>
+                ) : students.length > 0 ? (
+                  <StudentTable 
+                    students={students} 
+                    onTransfer={handleTransferClick} 
+                    showTransferButton={sameGradeSections.length > 0}
+                  />
+                ) : (
+                  <NoStudentsPlaceholder />
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
+      {/* Transfer Student Modal */}
+      {showTransferModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Transfer Student</h3>
+              <FaTimes className="close-icon" onClick={() => setShowTransferModal(false)} />
+            </div>
+            <form onSubmit={handleTransferSubmit}>
+              <p>
+                Transfer <strong>{selectedStudent?.firstName} {selectedStudent?.lastName}</strong> from <strong>{section?.name}</strong> to:
+              </p>
+              <div className="input-group">
+                <label>Target Section (same grade level)</label>
+                <select
+                  required
+                  value={targetSectionId}
+                  onChange={(e) => setTargetSectionId(e.target.value)}
+                >
+                  <option value="">-- Select Section --</option>
+                  {sameGradeSections.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (Current: {s.students_count || 0}/{s.capacity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-actions" style={{ marginTop: '20px' }}>
+                <button type="button" className="cancel-btn" onClick={() => setShowTransferModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn" disabled={transferLoading}>
+                  {transferLoading ? "Transferring..." : "Confirm Transfer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
+
 
   const ScheduleTable = memo(({ schedules, onDeleteSchedule }) => (
     <table className="schedule-table">
@@ -292,51 +377,53 @@
     );
   });
 
-  const StudentTable = memo(({ students }) => (
-    <div className="students-grid">
-      <table className="students-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Student ID</th>
-            <th>Full Name</th>
-            <th>Email</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((student, index) => (
-            <StudentRow key={student.id} student={student} index={index} />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  ));
+  const StudentTable = memo(({ students, onTransfer, showTransferButton }) => (
+  <div className="students-grid">
+    <table className="students-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student ID</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          {showTransferButton && <th>Action</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {students.map((student, index) => (
+          <StudentRow 
+            key={student.id} 
+            student={student} 
+            index={index} 
+            showTransferButton={showTransferButton}
+            onTransfer={onTransfer}
+          />
+        ))}
+      </tbody>
+    </table>
+  </div>
+));
 
-  const StudentRow = memo(({ student, index }) => (
-    <tr>
-      <td>{index + 1}</td>
+const StudentRow = memo(({ student, index, showTransferButton, onTransfer }) => (
+  <tr>
+    <td>{index + 1}</td>
+    <td><span className="student-id-badge">{student.studentId || "N/A"}</span></td>
+    <td>
+      <strong>{student.lastName}, {student.firstName}</strong>
+      {student.middleName && <span className="middle-name"> {student.middleName[0]}.</span>}
+    </td>
+    <td>{student.email || "N/A"}</td>
+    <td><span className={`status-badge ${student.status}`}>{student.status}</span></td>
+    {showTransferButton && (
       <td>
-        <span className="student-id-badge">
-          {student.studentId || "N/A"}
-        </span>
+        <button className="transfer-btn" onClick={() => onTransfer(student)}>
+        Transfer
+      </button>
       </td>
-      <td>
-        <strong>
-          {student.lastName}, {student.firstName}
-        </strong>
-        {student.middleName && (
-          <span className="middle-name"> {student.middleName[0]}.</span>
-        )}
-      </td>
-      <td>{student.email || "N/A"}</td>
-      <td>
-        <span className={`status-badge ${student.status}`}>
-          {student.status}
-        </span>
-      </td>
-    </tr>
-  ));
+    )}
+  </tr>
+));
 
   const NoStudentsPlaceholder = memo(() => (
     <div className="no-students-enrolled">
@@ -964,8 +1051,11 @@ const handleOpenScheduleModal = useCallback(async (section) => {
     const handleCreateSection = useCallback(async (e) => {
       e.preventDefault();
       try {
-        const res = await API.post("/sections", newSection);
-        // Sort sections after adding new one
+        const res = await API.post("/sections", {
+      ...newSection,
+      school_year: selectedSchoolYear,  
+    });
+
         setSections(prev => sortSectionsByGrade([...prev, res.data.section]));
         setShowModal(false);
         setNewSection(INITIAL_SECTION_FORM);
@@ -975,23 +1065,30 @@ const handleOpenScheduleModal = useCallback(async (section) => {
         const errorMsg = err.response?.data?.message || "Failed to create section.";
         alert(errorMsg);
       }
-    }, [newSection]);
+    }, [newSection,selectedSchoolYear]);
 
-    const handleDeleteSection = useCallback(async (section) => {
-      if (!window.confirm(`Are you sure you want to delete section "${section.name}"?`)) {
+
+        const handleDeleteSection = useCallback(async (section) => {
+      if (!window.confirm(`Are you sure you want to delete section "${section.name}" for ${selectedSchoolYear}?`)) {
         return;
       }
 
       try {
-        await API.delete(`/sections/${section.id}`);
+        // ✅ ADDED: pass school_year so the backend only deletes the right year's record
+        await API.delete(`/sections/${section.id}`, {
+          params: { school_year: selectedSchoolYear }
+        });
         setSections(prev => prev.filter(s => s.id !== section.id));
-        alert(`Section "${section.name}" deleted successfully!`);
+        alert(`Section "${section.name}" deleted for ${selectedSchoolYear} successfully!`);
       } catch (err) {
         console.error("Delete error:", err);
         const errorMsg = err.response?.data?.message || "Failed to delete section.";
         alert(errorMsg);
       }
-    }, []);
+    }, [selectedSchoolYear]);
+
+
+
 
     const handleDeleteSchedule = useCallback(async (scheduleIds) => {
       const idsToDelete = Array.isArray(scheduleIds) ? scheduleIds : [scheduleIds];
@@ -1183,7 +1280,23 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               onDeleteSchedule={handleDeleteSchedule}
               groupedSchedules={groupedSchedules}
               loading={studentModalLoading} 
-            />
+              sections={sections}                      
+              schoolYear={selectedSchoolYear}         
+              onStudentTransferred={async () => {
+               
+              const updatedSectionRes = await API.get(`/sections/${selectedSection.id}`, {
+                params: { school_year: selectedSchoolYear }
+              });
+              setSelectedSection(updatedSectionRes.data);
+              setSectionStudents(updatedSectionRes.data.students || []);
+              
+              // Refresh the entire sections list (grid cards)
+              const allSectionsRes = await API.get("/sections", {
+                params: { school_year: selectedSchoolYear }
+              });
+              setSections(sortSectionsByGrade(allSectionsRes.data));
+            }}
+          />
           )}
 
           {showScheduleModal && (
