@@ -34,6 +34,7 @@ public function index(Request $request)
 
     private function getCurrentSchoolYear(): string
     {
+        // return '2026-2027';
         $month = (int) date('n');
         $year  = (int) date('Y');
         return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
@@ -87,7 +88,7 @@ public function index(Request $request)
             }
 
             // Use a transaction to ensure atomic operations
-            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId) {
+            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId,$currentSchoolYear) {
                 $createdSchedules = [];
 
                 foreach ($request->days as $day) {
@@ -95,6 +96,7 @@ public function index(Request $request)
                     $roomConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('room_id', $roomId)
+                         ->where('school_year', $currentSchoolYear)
                         ->exists();
                     if ($roomConflict) {
                         return response()->json(['message' => "Room conflict on $day."], 422);
@@ -104,6 +106,7 @@ public function index(Request $request)
                     $teacherConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('teacher_id', $teacherId)
+                         ->where('school_year', $currentSchoolYear)
                         ->exists();
                     if ($teacherConflict) {
                         $teacher = Teacher::find($teacherId);
@@ -114,6 +117,7 @@ public function index(Request $request)
                     $sectionConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('section_id', $sectionId)
+                         ->where('school_year', $currentSchoolYear)
                         ->exists();
                     if ($sectionConflict) {
                         return response()->json(['message' => "Section already has a class on $day at this time."], 422);
@@ -123,6 +127,7 @@ public function index(Request $request)
                     $subjectExists = Schedule::where('section_id', $sectionId)
                         ->where('subject_id', $request->subject_id)
                         ->where('day', $day)
+                         ->where('school_year', $currentSchoolYear)
                         ->exists();
                     if ($subjectExists) {
                         return response()->json(['message' => "This subject is already scheduled for this section on $day."], 422);
@@ -131,6 +136,7 @@ public function index(Request $request)
                     $existing = Schedule::where('section_id', $sectionId)
                     ->where('subject_assignment_id', $subjectAssignmentId)
                     ->where('day', $day)
+                    ->where('school_year', $currentSchoolYear)
                     ->exists();
 
                 if ($existing) {
@@ -197,29 +203,33 @@ public function index(Request $request)
 }
 
     public function getAvailableResources(Request $request) 
-    {
-        $day = $request->day; 
-        return response()->json([
-            'rooms' => Room::all(),
-            'timeSlots' => TimeSlot::all(),
-            'occupied' => Schedule::where('day', $day)->get(['room_id', 'time_slot_id'])
-        ]);
-    }
+        {
+            $day = $request->day;
+            $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+            return response()->json([
+                'rooms'     => Room::all(),
+                'timeSlots' => TimeSlot::all(),
+                'occupied'  => Schedule::where('day', $day)
+                                ->where('school_year', $schoolYear)   // 🆕
+                                ->get(['room_id', 'time_slot_id'])
+            ]);
+        }
+
 
 
     // In ScheduleController.php, add this method:
+        public function getTeacherSchedule(Request $request, $teacherId)
+        {
+            $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
-public function getTeacherSchedule(Request $request, $teacherId)
-{
-    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+            $schedules = Schedule::with(['subject', 'section', 'time_slot', 'room'])
+                ->where('teacher_id', $teacherId)
+                ->where('school_year', $schoolYear)
+                ->orderBy('day')
+                ->orderBy('time_slot_id')
+                ->get();
 
-    $schedules = Schedule::with(['subject', 'section', 'time_slot', 'room'])
-        ->where('teacher_id', $teacherId)
-        ->where('school_year', $schoolYear)
-        ->orderBy('day')
-        ->orderBy('time_slot_id')
-        ->get();
-
-    return response()->json($schedules);
-}
+            return response()->json($schedules);
+        }
 }

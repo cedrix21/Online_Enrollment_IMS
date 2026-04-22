@@ -316,11 +316,13 @@ class EnrollmentController extends Controller
         if ($request->status === 'approved') {
             // Determine which section to use
             $section = null;
+            $schoolYear = $enrollment->school_year;
 
             if ($request->filled('section_id')) {
                 // Use the section chosen by the admin, but verify it has capacity
                 $section = Section::where('id', $request->section_id)
                     ->where('gradeLevel', $enrollment->gradeLevel)
+                    ->where('school_year', $schoolYear)
                     ->whereColumn('students_count', '<', 'capacity')
                     ->first();
 
@@ -330,6 +332,7 @@ class EnrollmentController extends Controller
             } else {
                 // Fallback: first available section
                 $section = Section::where('gradeLevel', $enrollment->gradeLevel)
+                 ->where('school_year', $schoolYear)    
                     ->whereColumn('students_count', '<', 'capacity')
                     ->first();
 

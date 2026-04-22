@@ -99,7 +99,6 @@ export default function Enrollment() {
   const getRequirementsList = () => {
     const base = [
       '🖼️ 1x1 ID Picture (1 pc) & 2x2 ID Picture (2 pcs)',
-      '📄 PSA Birth Certificate (Photocopy)',
       '📱 Kids Note App',
     ];
 
@@ -125,7 +124,7 @@ export default function Enrollment() {
         return base;
     }
   };
-
+  
   // ── GCash handler ─────────────────────────────────────────────
   const handleGCashPayment = async () => {
     if (!amountPaid || parseFloat(amountPaid) < 5000) {
@@ -190,17 +189,34 @@ export default function Enrollment() {
     setProcessingPayment(false);
 }
   };
+
+const getNextGradeLevel = (currentGrade) => {
+  const progression = {
+    'Nursery': 'Kindergarten 1',
+    'Kindergarten 1': 'Kindergarten 2',
+    'Kindergarten 2': 'Grade 1',
+    'Grade 1': 'Grade 2',
+    'Grade 2': 'Grade 3',
+    'Grade 3': 'Grade 4',
+    'Grade 4': 'Grade 5',
+    'Grade 5': 'Grade 6',
+    'Grade 6': 'Grade 6', // or handle graduated case
+  };
+  return progression[currentGrade] || currentGrade;
+};
+
+
 const verifyStudentId = async () => {
   if (!continuingStudentId) {
     setStudentIdValid(null);
     return;
   }
   try {
-    const res = await API.get(`/students/by-id/${continuingStudentId}`);
+     const res = await API.get(`/students/by-id/${continuingStudentId}`);
     if (res.status === 200) {
       setStudentIdValid(true);
       const student = res.data;
-      // Auto-fill form fields (optional)
+      const nextGrade = getNextGradeLevel(student.gradeLevel);
       setFormData(prev => ({
         ...prev,
         firstName: student.firstName || '',
@@ -223,6 +239,7 @@ const verifyStudentId = async () => {
         motherAddress: student.motherAddress || '',
         emergencyContact: student.emergencyContact || '',
         medicalConditions: student.medicalConditions || '',
+         gradeLevel: nextGrade, 
       }));
     }
   } catch (err) {
@@ -250,7 +267,10 @@ const verifyStudentId = async () => {
         alert("Receipt image must be less than 2MB");
         return;
       }
-    }
+    
+   
+
+}
 
     await submitEnrollment();
   };
@@ -661,6 +681,7 @@ const verifyStudentId = async () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
 
                   {/* PSA — all types */}
+                  {formData.registrationType !== 'Continuing' && (
                   <div className="input-group">
                     <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                       📄 PSA Birth Certificate (Photocopy)
@@ -671,6 +692,7 @@ const verifyStudentId = async () => {
                       <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.psa.name}</small>
                     )}
                   </div>
+                )}
 
                   {/* 2x2 Picture — all types */}
                   <div className="input-group">
@@ -929,37 +951,44 @@ const verifyStudentId = async () => {
 
                 {paymentMethod === "Bank Transfer" && (
                   <>
-                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8',
-                      borderRadius: '8px', fontSize: '0.9rem' }}>
-                      <strong>Bank Account Details:</strong><br />
-                      Bank: BPI - 1083497978<br />
-                      Account Name: SILOAM
-                    </div>
-                    <div className="input-grid-2">
-                      <div className="input-group">
-                        <label>Downpayment Amount (₱)</label>
-                        <input type="number" value={amountPaid}
-                          onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" required />
-                      </div>
-                      <div className="input-group">
-                        <label>Reference Number</label>
-                        <input type="text" value={paymentRef}
-                          onChange={(e) => setPaymentRef(e.target.value)} placeholder="Bank Ref #" required />
-                      </div>
-                    </div>
-                    <div className="input-group" style={{ marginTop: '15px' }}>
-                      <label>Upload Receipt Image</label>
-                      <input type="file" accept="image/*"
-                        onChange={(e) => setReceiptFile(e.target.files[0])} required />
-                    </div>
-                  </>
-                )}
+              <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f0f4f8',
+                borderRadius: '8px', fontSize: '0.9rem' }}>
+                <strong>Bank Account Details:</strong><br />
+                Bank: BPI - 1083497978<br />
+                Account Name: SILOAM
+              </div>
+              <div className="input-grid-2">
+                <div className="input-group">
+                  <label>Downpayment Amount (₱)</label>
+                  <input type="number" value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" required />
+                </div>
+                <div className="input-group">
+                  <label>Reference Number</label>
+                  <input type="text" value={paymentRef}
+                    onChange={(e) => setPaymentRef(e.target.value)} placeholder="Bank Ref #" required />
+                </div>
+              </div>
+              <div className="input-group" style={{ marginTop: '15px' }}>
+                <label>Upload Receipt Image</label>
+                <input type="file" accept="image/*"
+                  onChange={(e) => setReceiptFile(e.target.files[0])} required />
+              </div>
+            </>
+          )}
               </div>
 
               <button type="submit" className="enroll-button" disabled={loading || processingPayment}>
-                {processingPayment ? "Redirecting to GCash..." : loading ? "Submitting..." :
-                  paymentMethod === "GCash" ? "Proceed to GCash Payment" : "Submit Application"}
-              </button>
+              {processingPayment 
+                ? paymentMethod === "GCash" 
+                  ? "Redirecting to GCash..." 
+                  : "Processing..."
+                : loading 
+                  ? "Submitting..." 
+                  : paymentMethod === "GCash" 
+                    ? "Proceed to GCash Payment" 
+                    : "Submit Application"}
+            </button>
 
               <div className="form-footer-warning">
                 THIS FORM IS THE PROPERTY OF SICS. UNAUTHORIZED REPRODUCTION IS PROHIBITED.

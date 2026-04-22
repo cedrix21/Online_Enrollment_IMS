@@ -59,8 +59,8 @@ const sortTeachersByAdvisory = (teachers) => {
   }, {});
 
   return [...teachers].sort((a, b) => {
-    const aGrade = a.advisory_grade;
-    const bGrade = b.advisory_grade;
+    const aGrade = a.advisory_section?.gradeLevel;
+    const bGrade = b.advisory_section?.gradeLevel;
     if (aGrade && bGrade) {
       return (gradeOrder[aGrade] ?? Infinity) - (gradeOrder[bGrade] ?? Infinity);
     }
@@ -107,7 +107,9 @@ const TeacherCard = memo(({
           <FaBookOpen className="icon" />
           <strong>Adviser of: </strong>
           <span className="advisory-tag">
-            {teacher.advisory_grade || "None"}
+            {teacher.advisory_section 
+              ? `${teacher.advisory_section.name} (${teacher.advisory_section.gradeLevel})` 
+              : "None"}
           </span>
         </div>
         <p style={{ fontSize: "0.9rem", marginTop: "10px" }}>
@@ -479,21 +481,16 @@ const availableSubjectsForAssignment = useMemo(() => {
   setIsSubmitting(true);
 
   try {
-    // ✅ Include selected school year in the payload
     const payload = {
       ...editTeacherForm,
       school_year: selectedSchoolYear,
     };
-    const res = await API.put(`/teachers/${selectedTeacherForEdit.id}`, payload);
-    setTeachers(prev => {
-      const updated = prev.map((teacher) => 
-        teacher.id === selectedTeacherForEdit.id 
-          ? { ...teacher, ...res.data.teacher }
-          : teacher
-      );
-      return sortTeachersByAdvisory(updated);
-    });
+    await API.put(`/teachers/${selectedTeacherForEdit.id}`, payload);
+    
+    // ✅ Refresh all teachers from server to capture changes for all teachers
     invalidateCache();
+    await fetchData(true);  // force fresh data from server
+    
     setShowEditModal(false);
     alert("Teacher updated successfully!");
   } catch (err) {
@@ -502,7 +499,7 @@ const availableSubjectsForAssignment = useMemo(() => {
   } finally {
     setIsSubmitting(false);
   }
-}, [editTeacherForm, selectedTeacherForEdit, invalidateCache, selectedSchoolYear]);  
+}, [editTeacherForm, selectedTeacherForEdit, invalidateCache, selectedSchoolYear, fetchData]);
 
 
 const openScheduleModal = useCallback((teacher) => {

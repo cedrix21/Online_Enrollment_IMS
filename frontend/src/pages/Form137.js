@@ -298,6 +298,11 @@ export default function Form137() {
     setGradesLoading(false);
   }
 
+  const romanCurrent = gradeToRoman[studentGradeLevel];
+if (romanCurrent) {
+  setActiveGrade(romanCurrent);
+} 
+
   setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
   setShowDropdown(false);
 };
@@ -840,9 +845,26 @@ ${buildObsTable(['I','II','III'])}
                     (() => {
                       const g = activeGrade;
                       const data = gradeData[g];
-                      const gradeKey = romanToGrade[g];
-                      const subjectsForGrade = subjectsByGrade[gradeKey] || { regular: [], mapeh: [] };
-                      const { regular, mapeh } = subjectsForGrade;
+                      const subjectsObj = data.subjects || {};
+
+                      // Build regular/mapeh lists from the subject names in gradeData
+                      const subjectNames = Object.keys(subjectsObj);
+                      const regular = [];
+                      const mapeh = [];
+
+                      subjectNames.forEach(name => {
+                        // Try to get subject metadata from global subjects list (for MAPEH detection)
+                        const gradeKey = romanToGrade[g];
+                        const subjectMeta = (subjectsByGrade[gradeKey]?.regular || [])
+                          .concat(subjectsByGrade[gradeKey]?.mapeh || [])
+                          .find(s => s.subjectName === name);
+
+                        if (subjectMeta && isMapehComponent(subjectMeta.subjectCode)) {
+                          mapeh.push({ subjectName: name, ...subjectMeta });
+                        } else {
+                          regular.push({ subjectName: name, ...subjectMeta });
+                        }
+                      });
 
                       // Calculate per‑quarter averages for MAPEH components
                       const quarters = ['q1', 'q2', 'q3', 'q4'];

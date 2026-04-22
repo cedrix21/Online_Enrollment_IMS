@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import API from "../api/api";
 import {
   FaSyncAlt,
@@ -6,6 +6,7 @@ import {
   FaSignOutAlt,
   FaCog,
   FaTimes,
+  FaCalendarAlt 
 } from "react-icons/fa";
 import "./TeacherAdvisory.css";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +42,7 @@ export default function TeacherAdvisory() {
   const [filterGradeLevel, setFilterGradeLevel] = useState("all");
   const [dashboardData, setDashboardData] = useState(null);
   const [filterSection, setFilterSection] = useState("all");
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -422,7 +424,10 @@ export default function TeacherAdvisory() {
           </p>
         </div>
         <div className="header-actions">
-          <button onClick={handleRefresh} disabled={refreshing} className="refresh-btn"><FaSyncAlt className={refreshing ? "spinning" : ""} /> {refreshing ? " Refreshing..." : " Refresh"}</button>
+          <button onClick={() => setShowScheduleModal(true)} className="schedule-btn">
+            <FaCalendarAlt /> My Schedule
+          </button>
+          <button onClick={handleRefresh} disabled={refreshing} className="refresh-advisory-btn"><FaSyncAlt className={refreshing ? "spinning" : ""} /> {refreshing ? " Refreshing..." : " Refresh"}</button>
           <button onClick={handleOpenSettings} className="settings-btn"><FaCog /> Settings</button>
           <button onClick={handleLogout} className="logout-btn"><FaSignOutAlt /> Logout</button>
         </div>
@@ -529,6 +534,16 @@ export default function TeacherAdvisory() {
           </div>
         </div>
       )}
+      {/* 🆕 Teacher Schedule Modal */}
+        {showScheduleModal && teacherInfo && (
+          <TeacherScheduleModal
+            teacher={teacherInfo}
+            schoolYear={new Date().getMonth() >= 6
+              ? `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+              : `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`}
+            onClose={() => setShowScheduleModal(false)}
+          />
+        )}
     </div>
   );
 }
@@ -575,3 +590,148 @@ const SubjectRow = React.memo(({ studentId, subject, gradeData = { score: "", re
   );
 });
 SubjectRow.displayName = "SubjectRow";
+
+const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Helper: convert 24-hour time (e.g., "14:00:00") to 12-hour format (e.g., "2:00 PM")
+  const formatTime12 = (time24) => {
+    if (!time24) return '';
+    let [hour, minute] = time24.split(':');
+    let h = parseInt(hour, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${minute} ${ampm}`;
+  };
+
+  useEffect(() => {
+    if (!teacher) return;
+    const fetchSchedules = async () => {
+      try {
+        setLoading(true);
+        const res = await API.get(`/teachers/${teacher.id}/schedule`, {
+          params: { school_year: schoolYear },
+        });
+        setSchedules(res.data);
+      } catch (err) {
+        console.error("Failed to fetch schedules", err);
+        setError("Could not load schedule data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSchedules();
+  }, [teacher, schoolYear]);
+
+  if (!teacher) return null;
+
+  const dayOrder = {
+    Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
+  };
+
+  const schedulesByDay = {
+    Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [],
+  };
+
+  schedules.forEach(sched => {
+    const day = sched.day;
+    if (schedulesByDay[day]) {
+      schedulesByDay[day].push(sched);
+    }
+  });
+
+  Object.keys(schedulesByDay).forEach(day => {
+    schedulesByDay[day].sort((a, b) => {
+      const timeA = a.time_slot?.start_time || '';
+      const timeB = b.time_slot?.start_time || '';
+      return timeA.localeCompare(timeB);
+    });
+  });
+
+  // Unique time slots for table rows (keep original 24h string for grouping)
+  const allTimeSlots = [...new Set(
+    schedules.flatMap(s => s.time_slot ? `${s.time_slot.start_time}-${s.time_slot.end_time}` : '')
+  )].sort();
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'auto' }}>
+        <div className="modal-header">
+          <h3>
+            📅 Weekly Schedule - {teacher.firstName} {teacher.lastName}
+          </h3>
+          <FaTimes className="close-icon" onClick={onClose} />
+        </div>
+
+        <div style={{ padding: '0 10px 10px 10px' }}>
+          {loading && <p style={{ textAlign: 'center' }}>Loading schedule...</p>}
+          {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
+
+          {!loading && schedules.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#666' }}>No scheduled classes found for this teacher.</p>
+          )}
+
+          {!loading && schedules.length > 0 && (
+            <>
+              <div className="schedule-table-wrapper">
+                <table className="teacher-schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Monday</th>
+                      <th>Tuesday</th>
+                      <th>Wednesday</th>
+                      <th>Thursday</th>
+                      <th>Friday</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allTimeSlots.map(timeSlot => {
+                      const [start24, end24] = timeSlot.split('-');
+                      return (
+                        <tr key={timeSlot}>
+                          <td className="schedule-time">
+                            {formatTime12(start24)} – {formatTime12(end24)}
+                          </td>
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
+                            const schedule = schedulesByDay[day]?.find(
+                              s => s.time_slot && `${s.time_slot.start_time}-${s.time_slot.end_time}` === timeSlot
+                            );
+                            return (
+                              <td key={day}>
+                                {schedule ? (
+                                  <div className="schedule-subject">
+                                    <strong>{schedule.subject?.subjectCode}</strong>
+                                    <div className="schedule-subject-name">{schedule.subject?.subjectName}</div>
+                                    <div className="schedule-grade">
+                                      {schedule.section?.name} ({schedule.section?.gradeLevel})
+                                    </div>
+                                    <div className="schedule-room">
+                                      Room: {schedule.room?.room_name || '?'}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="schedule-empty">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button className="submit-btn" onClick={onClose} style={{ marginTop: '20px' }}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+});

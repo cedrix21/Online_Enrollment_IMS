@@ -817,45 +817,40 @@ console.log('=== ScheduleModal Filter ===');
       return map;
     }, [occupiedSchedules]);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // EFFECTS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    useEffect(() => {
-      fetchData();
-    }, []);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // DATA FETCHING
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
-        API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-        API.get("/teachers"),
-        API.get("/rooms"),
-        API.get("/time-slots"),
-         API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-      ]);
 
-        // Sort sections by grade level
-        const sortedSections = sortSectionsByGrade(secRes.data);
-        setSections(sortedSections);
-        setTeachers(teachRes.data);
-        setRooms(roomRes.data);
-        setTimeSlots(slotRes.data);
-        setOccupiedSchedules(schedRes.data);
-      } catch (err) {
-        console.error("Error fetching data", err);
-      } finally {
-        setLoading(false);
-      }
-    }, [selectedSchoolYear]);
+   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DATA FETCHING
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const fetchData = useCallback(async () => {
+  try {
+    setLoading(true);
+    const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
+      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+      API.get("/teachers"),
+      API.get("/rooms"),
+      API.get("/time-slots"),
+      API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
+    ]);
 
-    useEffect(() => {
+    const sortedSections = sortSectionsByGrade(secRes.data);
+    setSections(sortedSections);
+    setTeachers(teachRes.data);
+    setRooms(roomRes.data);
+    setTimeSlots(slotRes.data);
+    setOccupiedSchedules(schedRes.data);
+  } catch (err) {
+    console.error("Error fetching data", err); 
+  } finally {
+    setLoading(false);
+  }
+}, [selectedSchoolYear]);
 
-    fetchData();
-  }, [selectedSchoolYear]);
+// ✅ Fetch data whenever school year changes
+useEffect(() => {
+  fetchData();
+}, [fetchData]); // fetchData is stable because of useCallback with selectedSchoolYear dependency
+
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // HANDLERS

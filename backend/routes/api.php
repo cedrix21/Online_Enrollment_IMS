@@ -30,6 +30,7 @@ Route::get('/students/by-id/{studentId}', [StudentController::class, 'findByStud
 
 // PayMongo public routes
 Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);
+Route::post('/payment/initialize-bank-transfer', [PaymentController::class, 'initializeBankTransfer']);
 Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
 
 /*
@@ -95,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{teacherId}/assignments', [TeacherController::class, 'getAssignments']);
         Route::get('/subjects/available', [TeacherController::class, 'getAvailableSubjects']);
         Route::delete('/subject-assignments/{id}', [TeacherController::class, 'removeAssignment']);
+        Route::get('/teachers/{teacherId}/schedule', [TeacherController::class, 'getTeacherSchedule']);
     });
 
     // ──────────────────────────────────────────────────────────────

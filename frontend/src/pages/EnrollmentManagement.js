@@ -417,10 +417,14 @@ useEffect(() => {
   async (id, status) => {
     if (status === 'approved') {
   const enrollment = enrollments.find(e => e.id === id);
-  setSectionsLoading(true);   // 🆕
+  setSectionsLoading(true);    
   try {
     const res = await API.get('/sections', {
-      params: { gradeLevel: enrollment.gradeLevel, with_vacancy: true }
+      params: {
+        gradeLevel: enrollment.gradeLevel,
+        school_year: enrollment.school_year,    
+        with_vacancy: true
+      }
     });
     const sections = res.data;
     if (sections.length === 0) {
@@ -458,6 +462,21 @@ useEffect(() => {
   [enrollments],
 );
 
+const getSchoolYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1‑12
+  const currentSchoolYearStart = currentMonth >= 6 ? currentYear : currentYear - 1;
+
+  const years = [];
+  // Generate 2 years before and 2 years after the current school year
+  for (let i = -2; i <= 2; i++) {
+    const start = currentSchoolYearStart + i;
+    years.push(`${start}-${start + 1}`);
+  }
+  return years;
+};
+
+
   const performApproval = async (enrollmentId, sectionId) => {
   if (!window.confirm(`Are you sure you want to approve this enrollment?`)) return;
   
@@ -486,6 +505,7 @@ useEffect(() => {
     setSelectedSectionId('');
   }
 };
+
 
 
   const handleUpdateRequirement = useCallback(
@@ -878,9 +898,10 @@ useEffect(() => {
                     }}
                   >
                     <option value="all">All School Years</option>
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                    {getSchoolYearOptions().map(y => (
                       <option key={y} value={y}>{y}</option>
                     ))}
+                              
                 </select>
               </div>
               <div className="enrollment-btn-group">

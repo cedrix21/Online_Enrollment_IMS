@@ -7,10 +7,10 @@ import "./Enrollment.css";
 export default function AdminEnrollment() {
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const [schoolYear, setSchoolYear] = useState(() => {
-    const month = new Date().getMonth() + 1;
-    const year  = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  });
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+});
 
   // ── Tuition fees from API ─────────────────────────────────────
   const [tuitionFees, setTuitionFees] = useState({});
@@ -72,6 +72,10 @@ export default function AdminEnrollment() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 🆕 Continuing student fields
+  const [continuingStudentId, setContinuingStudentId] = useState("");
+  const [studentIdValid, setStudentIdValid] = useState(null);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
@@ -90,11 +94,73 @@ export default function AdminEnrollment() {
     });
   };
 
+  // 🆕 Grade progression helper
+  const getNextGradeLevel = (currentGrade) => {
+    const progression = {
+      'Nursery': 'Kindergarten 1',
+      'Kindergarten 1': 'Kindergarten 2',
+      'Kindergarten 2': 'Grade 1',
+      'Grade 1': 'Grade 2',
+      'Grade 2': 'Grade 3',
+      'Grade 3': 'Grade 4',
+      'Grade 4': 'Grade 5',
+      'Grade 5': 'Grade 6',
+      'Grade 6': 'Grade 6',
+    };
+    return progression[currentGrade] || currentGrade;
+  };
+
+  // 🆕 Verify continuing student ID and auto‑fill
+  const verifyStudentId = async () => {
+    if (!continuingStudentId) {
+      setStudentIdValid(null);
+      return;
+    }
+    try {
+      const res = await API.get(`/students/by-id/${continuingStudentId}`);
+      if (res.status === 200) {
+        setStudentIdValid(true);
+        const student = res.data;
+        const nextGrade = getNextGradeLevel(student.gradeLevel);
+        setFormData(prev => ({
+          ...prev,
+          firstName: student.firstName || '',
+          lastName: student.lastName || '',
+          middleName: student.middleName || '',
+          nickname: student.nickname || '',
+          gender: student.gender || '',
+          dateOfBirth: student.dateOfBirth || '',
+          email: student.email || '',
+          handedness: student.handedness || '',
+          fatherName: student.fatherName || '',
+          fatherContact: student.fatherContact || '',
+          fatherOccupation: student.fatherOccupation || '',
+          fatherEmail: student.fatherEmail || '',
+          fatherAddress: student.fatherAddress || '',
+          motherName: student.motherName || '',
+          motherContact: student.motherContact || '',
+          motherOccupation: student.motherOccupation || '',
+          motherEmail: student.motherEmail || '',
+          motherAddress: student.motherAddress || '',
+          emergencyContact: student.emergencyContact || '',
+          medicalConditions: student.medicalConditions || '',
+          gradeLevel: nextGrade,
+        }));
+      }
+    } catch (err) {
+      setStudentIdValid(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     const payload = { ...formData, school_year: schoolYear };
+    // 🆕 Include studentId for Continuing
+    if (formData.registrationType === 'Continuing') {
+      payload.studentId = continuingStudentId;
+    }
     try {
       const response = await API.post("/admin/enroll-student", payload);
       alert(
@@ -167,6 +233,42 @@ export default function AdminEnrollment() {
                         required
                       />
                     </div>
+
+                    {/* 🆕 Student ID field for Continuing */}
+                    {formData.registrationType === 'Continuing' && (
+                      <div style={{ marginTop: '15px' }}>
+                        <label>Student ID (e.g., SICS-2025-0001)</label>
+                        <input
+                          type="text"
+                          value={continuingStudentId}
+                          onChange={(e) => {
+                            setContinuingStudentId(e.target.value.toUpperCase());
+                            setStudentIdValid(null);
+                          }}
+                          onBlur={verifyStudentId}
+                          placeholder="SICS-YYYY-XXXX"
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid',
+                            borderColor: studentIdValid === false ? '#d32f2f' : 
+                                        studentIdValid === true ? '#2e7d32' : '#ccc',
+                            borderRadius: '6px'
+                          }}
+                        />
+                        {studentIdValid === true && (
+                          <small style={{ color: '#2e7d32', marginTop: '4px', display: 'block' }}>
+                            ✓ {formData.firstName} {formData.lastName} — automatically enrolled in {formData.gradeLevel}
+                          </small>
+                        )}
+                        {studentIdValid === false && (
+                          <small style={{ color: '#d32f2f', marginTop: '4px', display: 'block' }}>
+                            ✗ Student ID not found
+                          </small>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Requirements Checklist */}
@@ -190,8 +292,10 @@ export default function AdminEnrollment() {
                           onChange={handleChange} required />{" "}
                         Kid's Note App Installed
                       </label>
+                      {/* 🆕 Hide PSA for Continuing */}
                       {(formData.registrationType === "New Student" ||
-                        formData.registrationType === "Transferee") && (
+                        formData.registrationType === "Transferee" ||
+                        formData.registrationType === "Returning Student") && (
                         <label>
                           <input type="checkbox" name="psaReceived"
                             checked={formData.psaReceived || false}
@@ -225,14 +329,13 @@ export default function AdminEnrollment() {
                     </div>
                   </div>
 
-                  {/* ── Fee Breakdown Box ── */}
+                  {/* ── Fee Breakdown Box ── (unchanged) */}
                   {formData.gradeLevel && tuitionFees[formData.gradeLevel] && (() => {
                     const fee = tuitionFees[formData.gradeLevel];
                     return (
                       <div style={{ marginTop: '16px', border: '1.5px solid #b8860b',
                         borderRadius: '10px', overflow: 'hidden', fontSize: '0.875rem' }}>
 
-                        {/* Header */}
                         <div style={{ backgroundColor: '#b8860b', color: '#fff',
                           padding: '10px 15px', fontWeight: 'bold' }}>
                           💰 Tuition & Fee Breakdown — {formData.gradeLevel}
@@ -241,7 +344,6 @@ export default function AdminEnrollment() {
                           </span>
                         </div>
 
-                        {/* Fee table */}
                         <div style={{ padding: '12px 15px', backgroundColor: '#fffdf0' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                             <thead>
@@ -273,7 +375,6 @@ export default function AdminEnrollment() {
                           </table>
                         </div>
 
-                        {/* Payment details */}
                         <div style={{ padding: '10px 15px', backgroundColor: '#f7f0de',
                           borderTop: '1px solid #e6dbac' }}>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
@@ -306,7 +407,6 @@ export default function AdminEnrollment() {
                             </div>
                           </div>
 
-                          {/* Collapsible misc breakdown */}
                           {fee.misc_items?.length > 0 && (
                             <details style={{ marginTop: '10px' }}>
                               <summary style={{ fontSize: '0.8rem', color: '#b8860b',
@@ -429,23 +529,23 @@ export default function AdminEnrollment() {
                         onChange={handleChange} />
                     </div>
                   </div>
+                </div>
 
-                  {/* ── Mother's Information ── */}
-                  <div className="form-section">
-                    <h3>Mother's Information</h3>
-                    <div className="input-group">
-                      <div className="input-grid-2">
-                        <input name="motherName" placeholder="Full Name" value={formData.motherName}
-                          onChange={handleChange} />
-                        <input name="motherContact" placeholder="Contact #" value={formData.motherContact}
-                          onChange={handleChange} />
-                        <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation}
-                          onChange={handleChange} />
-                        <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail}
-                          onChange={handleChange} />
-                        <input name="motherAddress" placeholder="Address" value={formData.motherAddress}
-                          onChange={handleChange} />
-                      </div>
+                {/* ── Mother's Information ── */}
+                <div className="form-section">
+                  <h3>Mother's Information</h3>
+                  <div className="input-group">
+                    <div className="input-grid-2">
+                      <input name="motherName" placeholder="Full Name" value={formData.motherName}
+                        onChange={handleChange} />
+                      <input name="motherContact" placeholder="Contact #" value={formData.motherContact}
+                        onChange={handleChange} />
+                      <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation}
+                        onChange={handleChange} />
+                      <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail}
+                        onChange={handleChange} />
+                      <input name="motherAddress" placeholder="Address" value={formData.motherAddress}
+                        onChange={handleChange} />
                     </div>
                   </div>
                 </div>

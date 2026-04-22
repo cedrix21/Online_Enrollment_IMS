@@ -55,7 +55,6 @@
   align-items: center;
 }
 
-.refresh-btn,
 .settings-btn,
 .logout-btn {
   display: flex;
@@ -71,15 +70,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.refresh-btn {
-  background: linear-gradient(135deg, #f3c649 0%, #b8860b 100%);
-  color: white;
-}
 
-.refresh-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(247, 225, 75, 0.4);
-}
 
 .settings-btn {
   background: linear-gradient(135deg, #f7e14b 0%, #d4a017 100%);
@@ -104,12 +95,35 @@
   box-shadow: 0 4px 12px rgba(245, 198, 203, 0.4);
 }
 
-.refresh-btn:disabled,
 .settings-btn:disabled,
 .logout-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+.schedule-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #f7e14b 0%, #d4a017 100%);
+  color: #333;
+}
+
+.schedule-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(247, 225, 75, 0.4);
+}
+
+.schedule-btn:active {
+  transform: translateY(0);
 }
 
 .spinning {
@@ -805,7 +819,7 @@
     font-size: 22px;
   }
 
-  .refresh-btn {
+  .refresh-advisory-btn {
     width: 100%;
     justify-content: center;
   }
@@ -848,7 +862,6 @@
     flex: 1;
   }
 
-  .refresh-btn,
   .settings-btn,
   .logout-btn {
     padding: 8px 12px;
@@ -902,11 +915,7 @@
   100% { background-position: 1000px 0; }
 }
 
-/* MAPEH Subject Row - Expandable */
-.mapeh-row {
-  background-color: #fffef5;
-  border-left: 4px solid #b8860b;
-}
+
 
 .mapeh-row .subject-name {
   display: flex;
@@ -1020,4 +1029,30 @@
   .mapeh-components-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+.refresh-advisory-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #f3c649 0%, #b8860b 100%);
+  color: black;
+}
+
+.refresh-advisory-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(247, 225, 75, 0.4);
+}
+
+.refresh-advisory-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }

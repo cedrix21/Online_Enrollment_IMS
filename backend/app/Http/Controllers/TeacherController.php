@@ -10,6 +10,7 @@ use App\Models\Subject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Models\Schedule;
 
 class TeacherController extends Controller
 {
@@ -24,7 +25,9 @@ class TeacherController extends Controller
                   ->orderBy('gradeLevel');
         },
         'assignments.subject',
-        'advisorySection'
+        'advisorySection' => function ($query) use ($schoolYear) {
+            $query->where('school_year', $schoolYear);
+        }
     ])->get();
 
     return response()->json($teachers);
@@ -191,7 +194,12 @@ private function getCurrentSchoolYear(): string
         
         return response()->json([
             'message' => 'Teacher updated successfully',
-            'teacher' => $teacher->load(['assignments.subject', 'advisorySection'])
+            'teacher' => $teacher->load([
+            'assignments.subject',
+            'advisorySection' => function ($query) use ($schoolYear) {
+                $query->where('school_year', $schoolYear);
+            }
+        ])
         ]);
         
     } catch (\Exception $e) {
@@ -284,5 +292,26 @@ private function getCurrentSchoolYear(): string
         ->get();
 
     return response()->json($assignments);
+}
+
+// app/Http/Controllers/TeacherController.php
+
+public function getTeacherSchedule(Request $request, $teacherId)
+{
+    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+
+    $schedules = Schedule::with([
+            'subject',
+            'room',
+            'time_slot',
+            'section'
+        ])
+        ->where('teacher_id', $teacherId)
+        ->where('school_year', $schoolYear)
+        ->orderBy('day')
+        ->orderByRelation('time_slot', 'start_time')
+        ->get();
+
+    return response()->json($schedules);
 }
 }
