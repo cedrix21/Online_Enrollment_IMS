@@ -24,11 +24,10 @@ class TimeSlotSeeder extends Seeder
         ];
 
         foreach ($slots as $slot) {
-            TimeSlot::create([
-                'start_time'    => $slot[0],
-                'end_time'      => $slot[1],
-                'display_label' => $slot[2],
-            ]);
+            TimeSlot::updateOrCreate(
+                ['start_time' => $slot[0], 'end_time' => $slot[1]],
+                ['display_label' => $slot[2]]
+            );
         }
 
     }

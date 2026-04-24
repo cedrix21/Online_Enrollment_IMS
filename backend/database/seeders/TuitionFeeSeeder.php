@@ -108,22 +108,28 @@ class TuitionFeeSeeder extends Seeder
         ];
 
         foreach ($data as $gradeLevel => $info) {
-            $tuitionFee = TuitionFee::create([
-                'grade_level'   => $gradeLevel,
-                'school_year'   => $schoolYear,
-                'tuition_fee'   => $info['tuition_fee'],
-                'korean_fee'    => $info['korean_fee'],
-                'down_payment'  => 5000,
+            $tuitionFee = TuitionFee::updateOrCreate(
+                [
+                    'grade_level' => $gradeLevel,
+                    'school_year' => $schoolYear,
+                ],
+                [
+                    'tuition_fee'   => $info['tuition_fee'],
+                    'korean_fee'    => $info['korean_fee'],
+                    'down_payment'  => 5000,
                 'monthly_terms' => 10,
                 'is_active'     => true,
             ]);
 
             foreach ($info['misc'] as $i => [$label, $amount]) {
-                MiscFeeItem::create([
-                    'tuition_fee_id' => $tuitionFee->id,
-                    'label'          => $label,
-                    'amount'         => $amount,
-                    'sort_order'     => $i,
+                MiscFeeItem::updateOrCreate(
+                    [
+                        'tuition_fee_id' => $tuitionFee->id,
+                        'label'          => $label,
+                    ],
+                    [
+                        'amount'     => $amount,
+                        'sort_order' => $i,
                 ]);
             }
         }
