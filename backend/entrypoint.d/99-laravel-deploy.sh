@@ -9,4 +9,7 @@ php artisan route:cache
 echo "=== [2/3] Running migrations... ==="
 php artisan migrate --force
 
-echo "=== [3/3] Done! Starting server... ==="
+echo "=== [3/3] Seeding database... ==="
+php artisan db:seed --force
+
+echo "=== Done! Starting server... ==="
