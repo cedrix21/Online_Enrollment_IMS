@@ -29,19 +29,23 @@ class SectionController extends Controller
         ->withCount(['students' => function ($query) use ($schoolYear) {
             $query->where('school_year', $schoolYear);
         }])
-        ->where('school_year', $schoolYear); // ✅ ADDED: scope sections to selected year
+        ->where('school_year', $schoolYear);
 
         if ($request->has('gradeLevel')) {
             $query->where('gradeLevel', $request->gradeLevel);
         }
 
         if ($request->has('with_vacancy') && $request->with_vacancy === 'true') {
-            $query->having('students_count', '<', DB::raw('capacity'));
+            // FIX: PostgreSQL does not allow referencing withCount() aliases in HAVING.
+            // Filter in PHP after fetching instead — avoids the SQL dialect issue entirely.
+            $sections = $query->get()->filter(function ($section) {
+                return $section->students_count < $section->capacity;
+            })->values();
+
+            return response()->json($sections);
         }
 
-        $sections = $query->get();
-
-        return response()->json($sections);
+        return response()->json($query->get());
     }
 
     public function store(Request $request)
@@ -54,9 +58,8 @@ class SectionController extends Controller
         ]);
 
         $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
-        $validated['school_year'] = $schoolYear; // ✅ ADDED: attach school year to the new section
+        $validated['school_year'] = $schoolYear;
 
-        // ✅ CHANGED: added school_year scope so same name is allowed in different years
         $existingSection = Section::where('name', $validated['name'])
             ->where('gradeLevel', $validated['gradeLevel'])
             ->where('school_year', $schoolYear)
@@ -69,7 +72,6 @@ class SectionController extends Controller
         }
 
         if (!empty($validated['teacher_id'])) {
-            // ✅ CHANGED: added school_year scope so a teacher can advise in different years
             $teacherHasSection = Section::where('teacher_id', $validated['teacher_id'])
                 ->where('gradeLevel', $validated['gradeLevel'])
                 ->where('school_year', $schoolYear)
@@ -89,7 +91,6 @@ class SectionController extends Controller
                 ->update(['advisory_grade' => $section->gradeLevel]);
         }
 
-        // $schoolYear already set above — no need to re-declare
         $subjects = Subject::where('gradeLevel', $section->gradeLevel)
             ->where('school_year', $schoolYear)
             ->get();
@@ -134,57 +135,51 @@ class SectionController extends Controller
 
     private function getCurrentSchoolYear(): string
     {
-        // return '2026-2027';
         $month = (int) date('n');
         $year  = (int) date('Y');
         return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
     public function destroy(Request $request, $id)
-{
-    $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
+    {
+        $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
-    // First, check if the section exists at all (ignoring school_year)
-    $section = Section::find($id);
-    if (!$section) {
-        return response()->json([
-            'message' => 'Section not found.'
-        ], 404);
-    }
-
-    // If it exists but belongs to a different school year, inform the user
-    if ($section->school_year !== $schoolYear) {
-        return response()->json([
-            'message' => "This section belongs to school year {$section->school_year}. Please switch to that school year to delete it."
-        ], 422);
-    }
-
-    // Now safe to proceed – the section matches the selected school year
-    $studentCount = $section->students()->where('school_year', $schoolYear)->count();
-    if ($studentCount > 0) {
-        return response()->json([
-            'message' => "Cannot delete section '{$section->name}'. It has {$studentCount} enrolled student(s) for {$schoolYear}. Please transfer or remove students first."
-        ], 422);
-    }
-
-    $sectionName = $section->name;
-    $teacherId   = $section->teacher_id;
-
-    $section->delete();
-
-    if ($teacherId) {
-        $otherSections = Section::where('teacher_id', $teacherId)
-            ->where('school_year', $schoolYear)
-            ->count();
-        if ($otherSections === 0) {
-            Teacher::where('id', $teacherId)->update(['advisory_grade' => null]);
+        $section = Section::find($id);
+        if (!$section) {
+            return response()->json(['message' => 'Section not found.'], 404);
         }
-    }
 
-    return response()->json([
-        'message' => "Section '{$sectionName}' deleted successfully for {$schoolYear}"
-    ], 200);
-}
+        if ($section->school_year !== $schoolYear) {
+            return response()->json([
+                'message' => "This section belongs to school year {$section->school_year}. Please switch to that school year to delete it."
+            ], 422);
+        }
+
+        $studentCount = $section->students()->where('school_year', $schoolYear)->count();
+        if ($studentCount > 0) {
+            return response()->json([
+                'message' => "Cannot delete section '{$section->name}'. It has {$studentCount} enrolled student(s) for {$schoolYear}. Please transfer or remove students first."
+            ], 422);
+        }
+
+        $sectionName = $section->name;
+        $teacherId   = $section->teacher_id;
+
+        $section->delete();
+
+        if ($teacherId) {
+            $otherSections = Section::where('teacher_id', $teacherId)
+                ->where('school_year', $schoolYear)
+                ->count();
+            if ($otherSections === 0) {
+                Teacher::where('id', $teacherId)->update(['advisory_grade' => null]);
+            }
+        }
+
+        return response()->json([
+            'message' => "Section '{$sectionName}' deleted successfully for {$schoolYear}"
+        ], 200);
+    }
 
     public function getRooms()
     {
