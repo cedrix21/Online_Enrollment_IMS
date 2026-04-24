@@ -12,25 +12,18 @@ class ForceJsonAndCors
         // 1. Force every request to be treated as JSON
         $request->headers->set('Accept', 'application/json');
 
-        // 2. Dynamically determine the origin from environment variable
+        // 2. Determine the allowed origin
         $origin = $request->headers->get('Origin');
+        $actualOrigin = $this->resolveOrigin($origin);
 
-        // Read allowed origins from ALLOWED_ORIGINS env var (comma-separated)
-        // Falls back to localhost for local development
-        $allowedOrigins = array_filter(array_map('trim', explode(',', env(
-            'ALLOWED_ORIGINS',
-            'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:8000'
-        ))));
-
-        $actualOrigin = in_array($origin, $allowedOrigins) ? $origin : ($allowedOrigins[0] ?? '*');
-
-        // 3. Handle OPTIONS Preflight immediately
+        // 3. Handle OPTIONS preflight immediately
         if ($request->isMethod('OPTIONS')) {
             return response('', 200)
                 ->header('Access-Control-Allow-Origin', $actualOrigin)
-                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
                 ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept')
-                ->header('Access-Control-Allow-Credentials', 'true');
+                ->header('Access-Control-Allow-Credentials', 'true')
+                ->header('Access-Control-Max-Age', '86400');
         }
 
         $response = $next($request);
@@ -38,11 +31,37 @@ class ForceJsonAndCors
         // 4. Attach CORS headers to every response
         if (isset($response->headers)) {
             $response->headers->set('Access-Control-Allow-Origin', $actualOrigin);
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
             $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
             $response->headers->set('Access-Control-Allow-Credentials', 'true');
         }
 
         return $response;
+    }
+
+    private function resolveOrigin(?string $origin): string
+    {
+        if (!$origin) {
+            return env('FRONTEND_URL', 'http://localhost:3000');
+        }
+
+        // Allow any Vercel preview or production deployment
+        if (preg_match('/^https:\/\/[\w-]+\.vercel\.app$/', $origin)) {
+            return $origin;
+        }
+
+        // Allow localhost for local development
+        if (preg_match('/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/', $origin)) {
+            return $origin;
+        }
+
+        // Allow explicitly listed origins from env var (comma-separated)
+        $explicitOrigins = array_filter(array_map('trim', explode(',', env('ALLOWED_ORIGINS', ''))));
+        if (in_array($origin, $explicitOrigins)) {
+            return $origin;
+        }
+
+        // Default fallback — return the frontend URL
+        return env('FRONTEND_URL', 'http://localhost:3000');
     }
 }
