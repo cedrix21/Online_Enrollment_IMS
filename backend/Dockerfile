@@ -23,9 +23,9 @@ RUN mkdir -p storage/framework/sessions \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Copy and prepare the start script
-COPY --chown=www-data:www-data docker-start.sh /usr/local/bin/docker-start.sh
-RUN chmod +x /usr/local/bin/docker-start.sh
+# Copy entrypoint script — serversideup runs all scripts in /etc/entrypoint.d/
+# before starting nginx + php-fpm (alphabetical order, so 99- runs last)
+COPY --chmod=755 entrypoint.d/99-laravel-deploy.sh /etc/entrypoint.d/99-laravel-deploy.sh
 
 # Switch back to www-data for security
 USER www-data
@@ -39,5 +39,5 @@ RUN php artisan storage:link
 # Expose port (serversideup uses 8080 by default)
 EXPOSE 8080
 
-# Run migrations + cache + start server
-CMD ["/usr/local/bin/docker-start.sh"]
+# No CMD needed — the base image entrypoint handles starting nginx + php-fpm
+# Our 99-laravel-deploy.sh runs automatically before the server starts
