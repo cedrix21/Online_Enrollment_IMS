@@ -160,6 +160,7 @@ class EnrollmentController extends Controller
 
     $validated = $request->validate($rules);
 
+    try {
     return DB::transaction(function () use ($request, $validated) {
         // Handle receipt upload (existing logic)
 
@@ -283,12 +284,19 @@ class EnrollmentController extends Controller
         }
 
         return response()->json([
-            'message' => 'Enrollment submitted successfully!',
+            'message'  => 'Enrollment submitted successfully!',
             'enrollment' => $enrollment->load('siblings'),
-        ], 201);
-    });
+                ], 201);
+            });
+         } catch (\Exception $e) {
+        Log::error('Submit Error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json([
+            'message' => 'Submission failed: ' . $e->getMessage(),
+        ], 500);
+    }
 }
-
 
 
     private function getSchoolYear(): string
