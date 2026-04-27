@@ -11,6 +11,9 @@ class BillingController extends Controller
     public function index()
     {
         $payments = Payment::with('student') // eager load student relationship
+            ->whereHas('enrollment', function ($query) {
+                $query->where('status', 'approved');
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
