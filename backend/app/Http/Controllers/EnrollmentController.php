@@ -465,23 +465,40 @@ class EnrollmentController extends Controller
             $query->where('paymentMethod', 'Cash');
         })->where('status', 'pending')->count();
 
-        // Count students with unpaid balance (not fully paid)
-        $unpaidStudents = Student::get()->filter(function ($student) use ($rates) {
-            $totalTuition = $rates[$student->gradeLevel] ?? 31540;
-            $totalPaid = $student->payments->sum('amount_paid');
-            return ($totalTuition - $totalPaid) > 0;
-        })->count();
+          $currentSchoolYear = $this->getSchoolYear();
+
+        $unpaidStudents = Student::where('status', 'active')
+            ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {
+                $q->where('school_year', $currentSchoolYear)
+                ->where('status', 'approved');
+            })
+            ->get()
+            ->filter(function ($student) use ($rates, $currentSchoolYear) {
+                // Get the enrollment for this school year
+                $enrollment = $student->enrollments()
+                    ->where('school_year', $currentSchoolYear)
+                    ->first();
+
+                $gradeLevel = $enrollment ? $enrollment->gradeLevel : $student->gradeLevel;
+                $totalTuition = $rates[$gradeLevel] ?? 31540;
+
+                // Sum only payments linked to the current year's enrollment
+                $totalPaid = $student->payments()
+                    ->whereHas('enrollment', function ($q) use ($currentSchoolYear) {
+                        $q->where('school_year', $currentSchoolYear);
+                    })
+                    ->sum('amount_paid');
+
+                return ($totalTuition - $totalPaid) > 0;
+            })
+            ->count();
 
         return response()->json([
             'total' => Enrollment::count(),
             'pending' => Enrollment::where('status', 'pending')->count(),
             'approved' => Enrollment::where('status', 'approved')->count(),
             'rejected' => Enrollment::where('status', 'rejected')->count(),
-
-            // Cash enrollments awaiting walk-in payment
             'cash_enrollments' => $cashEnrollments,
-
-            // Students with unpaid balance
             'unpaid_students' => $unpaidStudents,
         ]);
     }
