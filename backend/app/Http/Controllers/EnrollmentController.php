@@ -18,63 +18,59 @@ use Illuminate\Support\Facades\Schema;
 class EnrollmentController extends Controller
 {
     // NEW METHOD: Upload to Supabase
-    private function uploadToSupabase($file)
-    {
-        try {
-            $client = new Client([
-                'verify' => env('APP_ENV') === 'production'
-            ]);
+   private function uploadToSupabase($file, $bucket = 'receipts')
+{
+    try {
+        $client = new Client([
+            'verify' => env('APP_ENV') === 'production'
+        ]);
 
-            $supabaseUrl = env('SUPABASE_URL');
-            $supabaseKey = env('SUPABASE_KEY');
+        $supabaseUrl = env('SUPABASE_URL');
+        $supabaseKey = env('SUPABASE_KEY');
 
-            // Log for debugging
-            Log::info("Starting Supabase upload", [
-                'url' => $supabaseUrl,
-                'key_length' => strlen($supabaseKey),
-                'file_name' => $file->getClientOriginalName(),
-                'file_size' => $file->getSize()
-            ]);
+        Log::info("Starting Supabase upload to bucket: {$bucket}", [
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize()
+        ]);
 
-            // Generate unique filename
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $uploadUrl = "{$supabaseUrl}/storage/v1/object/receipts/{$fileName}";
+        // Generate unique filename
+        $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
 
-            Log::info("Upload URL: {$uploadUrl}");
+        Log::info("Upload URL: {$uploadUrl}");
 
-            // Upload to Supabase Storage
-            $response = $client->post($uploadUrl, [
-                'headers' => [
-                    'Authorization' => "Bearer {$supabaseKey}",
-                    'Content-Type' => $file->getMimeType(),
-                ],
-                'body' => file_get_contents($file->getRealPath())
-            ]);
+        $response = $client->post($uploadUrl, [
+            'headers' => [
+                'Authorization' => "Bearer {$supabaseKey}",
+                'Content-Type'  => $file->getMimeType(),
+            ],
+            'body' => file_get_contents($file->getRealPath())
+        ]);
 
-            $statusCode = $response->getStatusCode();
-            $responseBody = $response->getBody()->getContents();
+        $statusCode   = $response->getStatusCode();
+        $responseBody = $response->getBody()->getContents();
 
-            Log::info("Supabase response", [
-                'status' => $statusCode,
-                'body' => $responseBody
-            ]);
+        Log::info("Supabase response", [
+            'status' => $statusCode,
+            'body'   => $responseBody
+        ]);
 
-            if ($statusCode !== 200 && $statusCode !== 201) {
-                throw new \Exception("Upload failed with status code: {$statusCode}. Response: {$responseBody}");
-            }
-
-            // Return public URL
-            $publicUrl = "{$supabaseUrl}/storage/v1/object/public/receipts/{$fileName}";
-            Log::info("Generated public URL: {$publicUrl}");
-
-            return $publicUrl;
-        } catch (\Exception $e) {
-            Log::error("Supabase upload failed: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw new \Exception("File upload failed: " . $e->getMessage());
+        if ($statusCode !== 200 && $statusCode !== 201) {
+            throw new \Exception("Upload failed with status code: {$statusCode}. Response: {$responseBody}");
         }
+
+        // Return public URL
+        $publicUrl = "{$supabaseUrl}/storage/v1/object/public/{$bucket}/{$fileName}";
+        Log::info("Generated public URL: {$publicUrl}");
+
+        return $publicUrl;
+    } catch (\Exception $e) {
+        Log::error("Supabase upload failed: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        throw new \Exception("File upload failed: " . $e->getMessage());
     }
+}
 
 
 
@@ -178,7 +174,7 @@ class EnrollmentController extends Controller
         // Upload to Supabase instead of local storage
         $receiptPath = null;
         if ($request->hasFile('receipt_image')) {
-            $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
+            $receiptPath = $this->uploadToSupabase($request->file('receipt_image'), 'receipts');
         }
 
         // Determine student_id for continuing students
@@ -246,7 +242,7 @@ class EnrollmentController extends Controller
                 $file = $request->file($key);
                 //$path = $file->store("requirements/{$enrollment->id}", 'public');
                 // Instead of local storage, upload to Supabase
-                 $publicUrl = $this->uploadToSupabase($file);
+                $publicUrl = $this->uploadToSupabase($file, 'requirements');
                 EnrollmentRequirement::create([
                     'enrollment_id' => $enrollment->id,
                     'type'          => $type,
@@ -535,9 +531,10 @@ class EnrollmentController extends Controller
     try {
         $result = DB::transaction(function () use ($request, $validated) {
             // Handle receipt upload
+          
             $receiptPath = null;
             if ($request->hasFile('receipt_image')) {
-                $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
+                $receiptPath = $this->uploadToSupabase($request->file('receipt_image'), 'receipts');
             }
 
             // Determine student for continuing
