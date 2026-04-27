@@ -43,27 +43,27 @@ class PaymentController extends Controller
         // Validate files only if they exist
         if ($request->hasFile('requirement_psa')) {
             $request->validate([
-                'requirement_psa' => 'file|mimes:jpg,png,pdf|max:2048',
+                'requirement_psa' => 'file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
         }
         if ($request->hasFile('requirement_good_moral')) {
             $request->validate([
-                'requirement_good_moral' => 'file|mimes:jpg,png,pdf|max:2048',
+                'requirement_good_moral' => 'file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
         }
         if ($request->hasFile('requirement_report_card')) {
             $request->validate([
-                'requirement_report_card' => 'file|mimes:jpg,png,pdf|max:2048',
+                'requirement_report_card' => 'file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
         }
         if ($request->hasFile('requirement_picture_2x2')) {
             $request->validate([
-                'requirement_picture_2x2' => 'image|mimes:jpg,png|max:2048',
+                'requirement_picture_2x2' => 'image|mimes:jpg,jpeg,png|max:2048',
             ]);
         }
         if ($request->hasFile('requirement_picture_1x1')) {
             $request->validate([
-                'requirement_picture_1x1' => 'image|mimes:jpg,png|max:2048',
+                'requirement_picture_1x1' => 'image|mimes:jpg,jpeg,png|max:2048',
             ]);
         }
 
@@ -217,19 +217,19 @@ class PaymentController extends Controller
 
     // Validate files if present
     if ($request->hasFile('requirement_psa')) {
-        $request->validate(['requirement_psa' => 'file|mimes:jpg,png,pdf|max:2048']);
+        $request->validate(['requirement_psa' => 'file|mimes:jpg,jpeg,png,pdf|max:2048']);
     }
     if ($request->hasFile('requirement_good_moral')) {
-        $request->validate(['requirement_good_moral' => 'file|mimes:jpg,png,pdf|max:2048']);
+        $request->validate(['requirement_good_moral' => 'file|mimes:jpg,jpeg,png,pdf|max:2048']);
     }
     if ($request->hasFile('requirement_report_card')) {
-        $request->validate(['requirement_report_card' => 'file|mimes:jpg,png,pdf|max:2048']);
+        $request->validate(['requirement_report_card' => 'file|mimes:jpg,jpeg,png,pdf|max:2048']);
     }
     if ($request->hasFile('requirement_picture_2x2')) {
-        $request->validate(['requirement_picture_2x2' => 'image|mimes:jpg,png|max:2048']);
+        $request->validate(['requirement_picture_2x2' => 'image|mimes:jpg,jpeg,png|max:2048']);
     }
     if ($request->hasFile('requirement_picture_1x1')) {
-        $request->validate(['requirement_picture_1x1' => 'image|mimes:jpg,png|max:2048']);
+        $request->validate(['requirement_picture_1x1' => 'image|mimes:jpg,jpeg,png|max:2048']);
     }
 
     return DB::transaction(function () use ($request) {
