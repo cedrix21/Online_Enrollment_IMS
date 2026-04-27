@@ -195,8 +195,8 @@ class PaymentController extends Controller
                     'enrollment_id' => $enrollment->id,
                 ]);
             } catch (\Exception $e) {
-                Log::error('Payment Init Failed: ' . $e->getMessage());
-                return response()->json(['message' => $e->getMessage()], 500);
+                 Log::error('GCash Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                    return response()->json(['message' => $e->getMessage()], 500);
             }
         });
     }
