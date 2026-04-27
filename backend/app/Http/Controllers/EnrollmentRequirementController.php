@@ -13,12 +13,21 @@ class EnrollmentRequirementController extends Controller
         $requirements = EnrollmentRequirement::where('enrollment_id', $id)->get();
 
         foreach ($requirements as $req) {
-            $cleanPath = ltrim(str_replace('public/', '', $req->file_path), '/');
-            $req->url = asset('storage/' . $cleanPath);
+            // $cleanPath = ltrim(str_replace('public/', '', $req->file_path), '/');
+            // $req->url = asset('storage/' . $cleanPath);
+            // For Supabase, the file_path is already a public URL
+            if (filter_var($req->file_path, FILTER_VALIDATE_URL)) {
+                $req->url = $req->file_path;   // Already a full URL → use as‑is
+            } else {
+                $cleanPath = ltrim(str_replace('public/', '', $req->file_path), '/');
+                $req->url = asset('storage/' . $cleanPath); // Old local path → generate asset URL
+            }
         }
 
         return response()->json($requirements);
     }
+
+
 
     // PATCH /api/requirements/{id}/status
     public function updateStatus(Request $request, $id)

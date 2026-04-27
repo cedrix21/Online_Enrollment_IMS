@@ -166,12 +166,19 @@ class EnrollmentController extends Controller
 
     return DB::transaction(function () use ($request, $validated) {
         // Handle receipt upload (existing logic)
+
+        // $receiptPath = null;
+        // if ($request->hasFile('receipt_image')) {
+        //     $file = $request->file('receipt_image');
+        //     $fileName = time() . '_' . $file->getClientOriginalName();
+        //     $path = $file->storeAs('receipts', $fileName, 'public');
+        //     $receiptPath = $path;
+        // }
+
+        // Upload to Supabase instead of local storage
         $receiptPath = null;
         if ($request->hasFile('receipt_image')) {
-            $file = $request->file('receipt_image');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('receipts', $fileName, 'public');
-            $receiptPath = $path;
+            $receiptPath = $this->uploadToSupabase($request->file('receipt_image'));
         }
 
         // Determine student_id for continuing students
@@ -237,12 +244,14 @@ class EnrollmentController extends Controller
             $key = "requirement_{$type}";
             if ($request->hasFile($key)) {
                 $file = $request->file($key);
-                $path = $file->store("requirements/{$enrollment->id}", 'public');
+                //$path = $file->store("requirements/{$enrollment->id}", 'public');
+                // Instead of local storage, upload to Supabase
+                 $publicUrl = $this->uploadToSupabase($file);
                 EnrollmentRequirement::create([
                     'enrollment_id' => $enrollment->id,
                     'type'          => $type,
                     'type_label'    => $this->getRequirementLabel($type),
-                    'file_path'     => $path,
+                    'file_path'     => $publicUrl,
                     'original_name' => $file->getClientOriginalName(),
                     'status'        => 'pending',
                 ]);
