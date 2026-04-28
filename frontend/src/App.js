@@ -60,7 +60,10 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/enroll" element={<Enrollment />} />
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
-        <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
+        <Route
+          path="/enrollment/payment-success"
+          element={<PaymentSuccess />}
+        />
 
         {/* ── All authenticated users ── */}
         <Route
@@ -189,6 +192,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        
+        <Route path="/admin/activity-logs" element={<ActivityLogs />} />
 
         {/* ── Catch-all ── */}
         <Route path="*" element={<NotFound />} />

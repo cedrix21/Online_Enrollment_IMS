@@ -13,6 +13,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "spatie/laravel-activitylog": "^4.12",
         "symfony/http-client": "^7.4",
         "symfony/mailjet-mailer": "^7.4"
     },

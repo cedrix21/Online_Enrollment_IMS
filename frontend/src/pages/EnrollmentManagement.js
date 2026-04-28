@@ -7,15 +7,15 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import logo from "../assets/sics-logo.png";
 import { API_BASE_URL } from "../config";
-
+import { logActivity } from '../utils/activityLogger';
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 
 // ── Requirements Checklist Component ─────────────────────────────────────────
-const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
+  const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
-
+   
   // Map backend type to display label
   const getDisplayLabel = (type) => {
     const labels = {
@@ -335,6 +335,24 @@ const EnrollmentRow = memo(
   ),
 );
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function EnrollmentManagement() {
   const [user] = useState(() => {
@@ -367,6 +385,7 @@ export default function EnrollmentManagement() {
   const [pendingApprovalId, setPendingApprovalId] = useState(null);
   const [isApproving, setIsApproving] = useState(false);
   const [sectionsLoading, setSectionsLoading] = useState(false); 
+  const [pendingApprovalEnrollment, setPendingApprovalEnrollment] = useState(null);
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -415,43 +434,53 @@ useEffect(() => {
 
  const updateStatus = useCallback(
   async (id, status) => {
-    if (status === 'approved') {
-  const enrollment = enrollments.find(e => e.id === id);
-  setSectionsLoading(true);    
-  try {
-    const res = await API.get('/sections', {
-      params: {
-        gradeLevel: enrollment.gradeLevel,
-        school_year: enrollment.school_year,    
-        with_vacancy: true
-      }
-    });
-    const sections = res.data;
-    if (sections.length === 0) {
-      alert(`No sections with vacancy for ${enrollment.gradeLevel}.`);
-      return;
-    }
-    if (sections.length === 1) {
-      performApproval(id, sections[0].id);
-    } else {
-      setAvailableSections(sections);
-      setPendingApprovalId(id);
-      setSelectedSectionId('');
-      setShowSectionPicker(true);
-    }
-  } catch (err) {
-    alert('Failed to load sections.');
-  } finally {
-    setSectionsLoading(false);   // 🆕
-  }
-  return;
-}
+    // ✅ Define enrollment once at the top
+    const enrollment = enrollments.find(e => e.id === id);
+    if (!enrollment) return;
 
-    // Reject flow (unchanged)
+    // --- APPROVAL FLOW ---
+    if (status === 'approved') {
+      setSectionsLoading(true);
+      try {
+        const res = await API.get('/sections', {
+          params: {
+            gradeLevel: enrollment.gradeLevel,
+            school_year: enrollment.school_year,
+            with_vacancy: true
+          }
+        });
+        const sections = res.data;
+        if (sections.length === 0) {
+          alert(`No sections with vacancy for ${enrollment.gradeLevel}.`);
+          return;
+        }
+        if (sections.length === 1) {
+         performApproval(id, sections[0].id, enrollment); 
+        } else {
+          setAvailableSections(sections);
+          setPendingApprovalEnrollment(enrollment);
+          setPendingApprovalId(id);
+          setSelectedSectionId('');
+          setShowSectionPicker(true);
+        }
+      } catch (err) {
+        alert('Failed to load sections.');
+      } finally {
+        setSectionsLoading(false);
+      }
+      return; // stop here for approval flow
+    }
+
+    // --- REJECTION FLOW ---
     if (!window.confirm(`Are you sure you want to mark this as ${status}?`)) return;
     setEnrollments(prev => prev.map(e => e.id === id ? { ...e, status } : e));
     try {
       await API.put(`/enrollment/${id}/status`, { status });
+      // ✅ enrollment is now defined here
+      await logActivity('enrollment_rejected', {
+        enrollment_id: id,
+        student_name: `${enrollment.firstName} ${enrollment.lastName}`
+      });
       setMessage(`Enrollment ${status} successfully`);
       fetchEnrollments();
     } catch {
@@ -459,7 +488,7 @@ useEffect(() => {
       fetchEnrollments();
     }
   },
-  [enrollments],
+  [enrollments] // dependency array remains correct
 );
 
 const getSchoolYearOptions = () => {
@@ -477,34 +506,41 @@ const getSchoolYearOptions = () => {
 };
 
 
-  const performApproval = async (enrollmentId, sectionId) => {
-  if (!window.confirm(`Are you sure you want to approve this enrollment?`)) return;
-  
-  setIsApproving(true);
-  setEnrollments(prev => prev.map(e => e.id === enrollmentId ? { ...e, status: 'approved' } : e));
-  
-  try {
-    const enrollment = enrollments.find(e => e.id === enrollmentId);
-    if (enrollment?.payments?.[0]?.paymentMethod === 'Cash') {
-      const payment = enrollment.payments[0];
-      await API.put(`/admin/billing/payment/${payment.id}`, { amount_paid: 5000 });
+  const performApproval = async (enrollmentId, sectionId, enrollment) => {
+   
+    if (!window.confirm(`Are you sure you want to approve this enrollment?`)) return;
+    
+    setIsApproving(true);
+    setEnrollments(prev => prev.map(e => e.id === enrollmentId ? { ...e, status: 'approved' } : e));
+
+    try {
+      if (enrollment?.payments?.[0]?.paymentMethod === 'Cash') {
+        const payment = enrollment.payments[0];
+        await API.put(`/admin/billing/payment/${payment.id}`, { amount_paid: 5000 });
+      }
+      await API.put(`/enrollment/${enrollmentId}/status`, {
+        status: 'approved',
+        section_id: sectionId
+      });
+
+      await logActivity('enrollment_approved', {
+        enrollment_id: enrollmentId,
+        section_id: sectionId,
+        student_name: `${enrollment.firstName} ${enrollment.lastName}`
+      });
+      setMessage(`Enrollment approved successfully`);
+      fetchEnrollments();
+    } catch {
+      setMessage('Action failed');
+      fetchEnrollments();
+    } finally {
+      setIsApproving(false);
+      setShowSectionPicker(false);
+      setPendingApprovalId(null);
+      setSelectedSectionId('');
+      setPendingApprovalEnrollment(null);
     }
-    await API.put(`/enrollment/${enrollmentId}/status`, {
-      status: 'approved',
-      section_id: sectionId
-    });
-    setMessage(`Enrollment approved successfully`);
-    fetchEnrollments();
-  } catch {
-    setMessage('Action failed');
-    fetchEnrollments();
-  } finally {
-    setIsApproving(false);
-    setShowSectionPicker(false);
-    setPendingApprovalId(null);
-    setSelectedSectionId('');
-  }
-};
+  };
 
 
 
@@ -520,7 +556,14 @@ const getSchoolYearOptions = () => {
           field: requirementField,
           value,
         });
+        
         setMessage("Requirement updated successfully");
+
+        await logActivity('requirement_updated', {
+          enrollment_id: enrollmentId,
+          field: requirementField,
+          new_value: value
+      });
       } catch {
         setMessage("Failed to update requirement");
         fetchEnrollments();
@@ -653,9 +696,13 @@ const getSchoolYearOptions = () => {
     isRequirementsComplete,
   ]);
 
-  const handleViewEnrollment = useCallback((enrollment) => {
+const handleViewEnrollment = useCallback(async (enrollment) => {
     setSelectedEnrollment(enrollment);
-  }, []);
+    await logActivity('view_enrollment_profile', {
+        enrollment_id: enrollment.id,
+        student_name: `${enrollment.firstName} ${enrollment.lastName}`
+    });
+}, []);
 
   const generatePDF = useCallback((enrollment) => {
     requestAnimationFrame(() => {
@@ -1345,7 +1392,7 @@ const getSchoolYearOptions = () => {
               alert('Please select a section.');
               return;
             }
-            performApproval(pendingApprovalId, selectedSectionId);
+            performApproval(pendingApprovalId, selectedSectionId, pendingApprovalEnrollment);
           }}
           style={{ backgroundColor: '#b8860b', color: 'white', marginLeft: '10px' }}
           disabled={isApproving || sectionsLoading}

@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 class Section extends Model
 {
     use HasFactory, SoftDeletes;
@@ -18,6 +19,16 @@ class Section extends Model
         'students_count', 
         'school_year'  
     ];
+
+     use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'gradeLevel', 'teacher_id', 'capacity', 'students_count', 'school_year']) // Adjust these fields based on your actual column names
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * The Advisory Teacher for this section.

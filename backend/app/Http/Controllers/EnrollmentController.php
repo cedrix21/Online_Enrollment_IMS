@@ -14,6 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use GuzzleHttp\Client;
 use App\Models\EnrollmentRequirement;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class EnrollmentController extends Controller
 {
@@ -309,11 +310,11 @@ class EnrollmentController extends Controller
 
 
 
-   public function updateStatus(Request $request, $id)
+  public function updateStatus(Request $request, $id)
 {
     $request->validate([
         'status'     => 'required|in:approved,rejected',
-        'section_id' => 'nullable|exists:sections,id',   // 🆕
+        'section_id' => 'nullable|exists:sections,id',
     ]);
 
     $enrollment = Enrollment::findOrFail($id);
@@ -326,106 +327,103 @@ class EnrollmentController extends Controller
         $enrollment->status = $request->status;
         $enrollment->save();
 
-        if ($request->status === 'approved') {
-            // Determine which section to use
-            $section = null;
-            $schoolYear = $enrollment->school_year;
-
-            if ($request->filled('section_id')) {
-                // Use the section chosen by the admin, but verify it has capacity
-                $section = Section::where('id', $request->section_id)
-                    ->where('gradeLevel', $enrollment->gradeLevel)
-                    ->where('school_year', $schoolYear)
-                    ->whereColumn('students_count', '<', 'capacity')
-                    ->first();
-
-                if (!$section) {
-                    throw new \Exception("Selected section is full or invalid.");
-                }
-            } else {
-                // Fallback: first available section
-                $section = Section::where('gradeLevel', $enrollment->gradeLevel)
-                 ->where('school_year', $schoolYear)    
-                    ->whereColumn('students_count', '<', 'capacity')
-                    ->first();
-
-                if (!$section) {
-                    throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
-                }
-            }
-
-            // Check if enrollment already linked to a student (continuing)
-            $studentId = Schema::hasColumn('enrollments', 'student_id')
-                ? $enrollment->student_id
-                : null;
-
-            if ($studentId) {
-                // Continuing student: use existing student record
-                $student = Student::findOrFail($studentId);
-                $student->update([
-                    'section_id'  => $section->id,
-                    'gradeLevel'  => $enrollment->gradeLevel,
-                    'school_year' => Schema::hasColumn('enrollments', 'school_year')
-                        ? $enrollment->school_year
-                        : $this->getSchoolYear(),
-                    'status'      => 'active',
-                ]);
-                $formattedId = $student->studentId;
-            } else {
-                // New student or transferee: create new student record
-                $year = date('Y');
-                $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
-                $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
-
-                $studentData = [
-                    'studentId'   => $formattedId,
-                    'firstName'   => $enrollment->firstName,
-                    'lastName'    => $enrollment->lastName,
-                    'middleName'  => $enrollment->middleName,
-                    'nickname'    => $enrollment->nickname,
-                    'email'       => $enrollment->email,
-                    'gradeLevel'  => $enrollment->gradeLevel,
-                    'gender'      => $enrollment->gender,
-                    'dateOfBirth' => $enrollment->dateOfBirth,
-                    'section_id'  => $section->id,
-                    'school_year' => Schema::hasColumn('enrollments', 'school_year')
-                        ? $enrollment->school_year
-                        : $this->getSchoolYear(),
-                    'status'      => 'active',
-                ];
-
-                if (Schema::hasColumn('students', 'enrollment_id')) {
-                    $studentData['enrollment_id'] = $enrollment->id;
-                }
-
-                $student = Student::create($studentData);
-
-                if (Schema::hasColumn('enrollments', 'student_id')) {
-                    $enrollment->student_id = $student->id;
-                    $enrollment->save();
-                }
-            }
-
-            // Update payment with student_id
-            $enrollment->payments()->update([
-                'student_id'      => $student->id,
-                'payment_status'  => 'completed',
-            ]);
-
-            $section->increment('students_count');
-
-            $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $student->studentId ?? $formattedId);
-
-            return response()->json([
-                'message'     => "Approved, assigned to {$section->name}. {$emailStatus}",
-                'generatedId' => $student->studentId ?? $formattedId,
-            ]);
+        // --- REJECTION FLOW ---
+        if ($request->status === 'rejected') {
+            activity()
+                ->performedOn($enrollment)
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'student_name' => $enrollment->firstName . ' ' . $enrollment->lastName,
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent()
+                ])
+                ->log('Enrollment rejected');
+            return response()->json(['message' => 'Enrollment rejected']);
         }
 
-        return response()->json(['message' => 'Enrollment rejected']);
+        // --- APPROVAL FLOW (only remaining option) ---
+        $schoolYear = $enrollment->school_year;
+        $section = null;
+
+        if ($request->filled('section_id')) {
+            $section = Section::where('id', $request->section_id)
+                ->where('gradeLevel', $enrollment->gradeLevel)
+                ->where('school_year', $schoolYear)
+                ->whereColumn('students_count', '<', 'capacity')
+                ->first();
+            if (!$section) throw new \Exception("Selected section is full or invalid.");
+        } else {
+            $section = Section::where('gradeLevel', $enrollment->gradeLevel)
+                ->where('school_year', $schoolYear)
+                ->whereColumn('students_count', '<', 'capacity')
+                ->first();
+            if (!$section) throw new \Exception("No vacancy for {$enrollment->gradeLevel}.");
+        }
+
+        // Check if enrollment already linked to a student (continuing)
+        $studentId = Schema::hasColumn('enrollments', 'student_id') ? $enrollment->student_id : null;
+
+        if ($studentId) {
+            $student = Student::findOrFail($studentId);
+            $student->update([
+                'section_id'  => $section->id,
+                'gradeLevel'  => $enrollment->gradeLevel,
+                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getSchoolYear(),
+                'status'      => 'active',
+            ]);
+            $formattedId = $student->studentId;
+        } else {
+            $year = date('Y');
+            $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
+            $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $studentData = [
+                'studentId'   => $formattedId,
+                'firstName'   => $enrollment->firstName,
+                'lastName'    => $enrollment->lastName,
+                'middleName'  => $enrollment->middleName,
+                'nickname'    => $enrollment->nickname,
+                'email'       => $enrollment->email,
+                'gradeLevel'  => $enrollment->gradeLevel,
+                'gender'      => $enrollment->gender,
+                'dateOfBirth' => $enrollment->dateOfBirth,
+                'section_id'  => $section->id,
+                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getSchoolYear(),
+                'status'      => 'active',
+            ];
+            if (Schema::hasColumn('students', 'enrollment_id')) $studentData['enrollment_id'] = $enrollment->id;
+            $student = Student::create($studentData);
+            if (Schema::hasColumn('enrollments', 'student_id')) {
+                $enrollment->student_id = $student->id;
+                $enrollment->save();
+            }
+        }
+
+        $enrollment->payments()->update([
+            'student_id'      => $student->id,
+            'payment_status'  => 'completed',
+        ]);
+        $section->increment('students_count');
+
+        // ✅ Only now log the approval with safe student name
+        activity()
+            ->performedOn($enrollment)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'student_name' => $enrollment->firstName . ' ' . $enrollment->lastName,
+                'assigned_section' => $section->name,
+                'student_id' => $student->studentId,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ])
+            ->log('Enrollment approved');
+
+        $emailStatus = $this->sendEnrollmentEmail($enrollment, $section, $student->studentId ?? $formattedId);
+        return response()->json([
+            'message'     => "Approved, assigned to {$section->name}. {$emailStatus}",
+            'generatedId' => $student->studentId ?? $formattedId,
+        ]);
     });
 }
-
     public function updateRequirement(Request $request, $id)
     {
         $validFields = ['psa_received', 'id_picture_received', 'good_moral_received', 'report_card_received', 'kids_note_installed'];

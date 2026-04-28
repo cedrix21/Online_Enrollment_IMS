@@ -3,7 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 class Payment extends Model
 {
     protected $fillable = [
@@ -17,6 +18,16 @@ class Payment extends Model
         'payment_date',
         'payment_status',
     ];
+
+     use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['enrollment_id', 'student_id', 'amount_paid', 'paymentMethod', 'reference_number', 'payment_type', 'receipt_path', 'payment_date', 'payment_status']) // Adjust these fields based on your actual column names
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
     // Relationships
     public function student()
     {

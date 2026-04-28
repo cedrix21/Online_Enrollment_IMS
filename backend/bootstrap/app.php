@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    
+    ->withSchedule(function ($schedule) {
+        $schedule->command('activity-log:clean')->daily();
+    })
+
     ->withMiddleware(function (Middleware $middleware) {
         // 1. PREPEND - This makes it the "Outer" layer.
         // It catches the request BEFORE anything else can fail.
@@ -33,7 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // 5. Sanctum stateful support
         $middleware->statefulApi();
+
+        $middleware->appendToGroup('web', [
+        \App\Http\Middleware\LogUserActivity::class,
+    ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
+    

@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Enrollment extends Model
 {
+    
     use HasFactory;
 
     protected $fillable = [
@@ -42,6 +45,46 @@ class Enrollment extends Model
         'enrollmentDate',
         'status',
     ];
+
+    use LogsActivity;
+     public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['student_id',           // new
+        'school_year',          // new
+        'firstName',
+        'lastName',
+        'middleName',
+        'nickname',
+        'email',
+        'gradeLevel',
+        'gender',
+        'dateOfBirth',
+        'registrationType',
+        'handedness',
+        'fatherName',
+        'fatherContact',
+        'fatherOccupation',
+        'fatherEmail',
+        'fatherAddress',
+        'motherName',
+        'motherContact',
+        'motherOccupation',
+        'motherEmail',
+        'motherAddress',
+        'emergencyContact',
+        'medicalConditions',
+        'psa_received',
+        'id_picture_received',
+        'good_moral_received',
+        'report_card_received',
+        'kids_note_installed',
+        'enrollmentDate',
+        'status',]) // Adjust these fields based on your actual column names
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+    
 
     protected $attributes = [
         'status' => 'pending',

@@ -161,4 +161,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/tuition-fees/{id}',               [TuitionFeeController::class, 'update']);
         Route::delete('/tuition-fees/{id}',            [TuitionFeeController::class, 'destroy']);
     });
+
+
+    // Activity Logs – Admin 
+    Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin')->get('/admin/activity-logs', function (Request $request) {
+        $logs = Spatie\Activitylog\Models\Activity::with('causer')
+            ->when($request->user_id, fn($q) => $q->where('causer_id', $request->user_id))
+            ->when($request->action, fn($q) => $q->where('description', 'like', "%{$request->action}%"))
+            ->when($request->log_name, fn($q) => $q->where('log_name', $request->log_name))
+            ->when($request->from_date, fn($q) => $q->whereDate('created_at', '>=', $request->from_date))
+            ->when($request->to_date, fn($q) => $q->whereDate('created_at', '<=', $request->to_date))
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+        return response()->json($logs);
+    });
+    Route::middleware('auth:sanctum')->post('/activity-logs', [App\Http\Controllers\Api\ActivityLogController::class, 'store']);
 });
+
