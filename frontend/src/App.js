@@ -29,6 +29,7 @@ import EnrolledStudents from "./pages/EnrolledStudents";
 import Form137 from "./pages/Form137";
 import TuitionFeeManagement from "./pages/TuitionFeeManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import ActivityLogs from "./pages/ActivityLogs";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -192,7 +193,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route path="/admin/activity-logs" element={<ActivityLogs />} />
 
         {/* ── Catch-all ── */}

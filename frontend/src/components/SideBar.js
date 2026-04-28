@@ -12,6 +12,7 @@ import {
   FaBookOpen,
   FaUserGraduate,
   FaMoneyBillWave,
+  FaHistory,
 } from "react-icons/fa";
 import "./SideBar.css";
 
@@ -140,8 +141,20 @@ export default function Sidebar() {
               <FaMoneyBillWave />
               <span>Tuition Fees</span>
             </Link>
+
+
+              <Link 
+                to="/admin/activity-logs" 
+                className={location.pathname.includes("/admin/activity-logs") ? "active" : ""}
+              >
+                <FaHistory  />
+                <span>Activity Logs</span>
+              </Link>
+        
           </>
+         
         )}
+
 
       </nav>
     </aside>
