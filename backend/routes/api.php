@@ -17,7 +17,6 @@ use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
 
-
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -35,137 +34,131 @@ Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
 
 /*
 |--------------------------------------------------------------------------
-| Protected Routes (require authentication)
+| Protected Routes — All authenticated users
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/tuition-fees',         [TuitionFeeController::class, 'index']);
-    Route::get('/tuition-fees/{id}',    [TuitionFeeController::class, 'show']);
-    Route::post('/tuition-fees',        [TuitionFeeController::class, 'store']);
-    Route::put('/tuition-fees/{id}',    [TuitionFeeController::class, 'update']);
-    Route::delete('/tuition-fees/{id}', [TuitionFeeController::class, 'destroy']);
-});
-
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::put('/user/update-credentials', [AuthController::class, 'updateCredentials']);
     Route::get('/user', fn (Request $request) => response()->json($request->user()));
 
-    // ──────────────────────────────────────────────────────────────
-    // STUDENT RECORDS (manual) – must come before any student routes
-    // ──────────────────────────────────────────────────────────────
-    Route::apiResource('student-records', StudentRecordController::class)
-        ->only(['index', 'store', 'update', 'destroy']);
-
-    // ──────────────────────────────────────────────────────────────
-    // STUDENT ROUTES – custom first, parameterized later
-    // ──────────────────────────────────────────────────────────────
-    
-    // ✅ FIX: LRN update route MUST come before /students/{id}
-    Route::post('/students/{id}/update-info', [StudentController::class, 'updateStudentInfo']);
-    
-    // Custom (non‑parameterized) – must be placed before students/{id}
-    Route::get('/students/current-year', [StudentController::class, 'getCurrentYearList']);
-    
-    // Standard student endpoints (parameterized)
-    Route::get('/students', [StudentController::class, 'index']);
-    Route::post('/students', [StudentController::class, 'store']);
-    Route::put('/students/{id}', [StudentController::class, 'update']);
-    Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    Route::get('/students/search', [StudentController::class, 'searchByEmail']);
-    Route::get('/students/{id}/enrollments', [StudentController::class, 'getEnrollments']);
-    Route::put('/students/{studentId}/transfer', [StudentController::class, 'transferToSection']);
-    // ──────────────────────────────────────────────────────────────
-    // SUBJECT MANAGEMENT
-    // ──────────────────────────────────────────────────────────────
-    Route::get('/subjects', [SubjectController::class, 'index']);
-    Route::post('/subjects', [SubjectController::class, 'store']);
-    Route::put('/subjects/{id}', [SubjectController::class, 'update']);
-    Route::delete('/subjects/{id}', [SubjectController::class, 'destroy']);
-    Route::get('/subjects/grade/{gradeLevel}', [SubjectController::class, 'getByGrade']);
-    Route::get('/teacher-load', [TeacherController::class, 'getAllAssignments']);
-
-    // ──────────────────────────────────────────────────────────────
-    // TEACHER MANAGEMENT & SUBJECT ASSIGNMENTS
-    // ──────────────────────────────────────────────────────────────
-    Route::prefix('teachers')->group(function () {
-        Route::get('/', [TeacherController::class, 'index']);
-        Route::post('/', [TeacherController::class, 'store']);
-        Route::put('/{id}', [TeacherController::class, 'update']);
-        Route::post('/{teacherId}/assign-subject', [TeacherController::class, 'assignSubject']);
-        Route::get('/{teacherId}/assignments', [TeacherController::class, 'getAssignments']);
-        Route::get('/subjects/available', [TeacherController::class, 'getAvailableSubjects']);
-        Route::delete('/subject-assignments/{id}', [TeacherController::class, 'removeAssignment']);
-        Route::get('/teachers/{teacherId}/schedule', [TeacherController::class, 'getTeacherSchedule']);
-    });
-
-    // ──────────────────────────────────────────────────────────────
-    // SECTIONS & SCHEDULING
-    // ──────────────────────────────────────────────────────────────
-    Route::get('/sections', [SectionController::class, 'index']);
-    Route::post('/sections', [SectionController::class, 'store']);
-    Route::get('/sections/{id}', [SectionController::class, 'show']);
-    Route::delete('/sections/{id}', [SectionController::class, 'destroy']);
-    Route::get('/rooms', [SectionController::class, 'getRooms']);
-    Route::get('/time-slots', [SectionController::class, 'getTimeSlots']);
-    Route::get('/schedules', [ScheduleController::class, 'index']);
-    Route::post('/schedules', [ScheduleController::class, 'store']);
-    Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
-    Route::get('/sections/{id}/subjects', [SectionController::class, 'getSectionSubjects']);
-    Route::get('/teachers/{id}/schedule', [ScheduleController::class, 'getTeacherSchedule']);
-
-    // ──────────────────────────────────────────────────────────────
-    // BILLING MANAGEMENT
-    // ──────────────────────────────────────────────────────────────
-    Route::prefix('admin/billing')->group(function () {
-        Route::get('/student/{studentId}', [BillingController::class, 'getStudentLedger']);
-        Route::post('/student/{studentId}/pay', [BillingController::class, 'addPayment']);
-        Route::put('/payment/{id}', [BillingController::class, 'updatePayment']);
-    });
-
-    // ──────────────────────────────────────────────────────────────
-    // PAYMENT VERIFICATION
-    // ──────────────────────────────────────────────────────────────
     Route::get('/payment/verify', [PaymentController::class, 'verifyPayment']);
 
-    // ──────────────────────────────────────────────────────────────
-    // TEACHER PORTAL (role: teacher)
-    // ──────────────────────────────────────────────────────────────
+    /*
+    |--------------------------------------------------------------------------
+    | Teacher Portal — role: teacher
+    |--------------------------------------------------------------------------
+    */
     Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':teacher')->group(function () {
-        Route::get('/teacher/info', [GradeController::class, 'getTeacherInfo']);
-        Route::get('/teacher/students', [GradeController::class, 'getTeacherStudents']);
-        Route::get('/teacher/subjects', [GradeController::class, 'getTeacherSubjects']);
-        Route::get('/teacher/grades', [GradeController::class, 'getGrades']);
-        Route::get('/teacher/grades/subject/{subjectId}', [GradeController::class, 'getSubjectGrades']);
-        Route::post('/teacher/grades', [GradeController::class, 'submitGrade']);
-        Route::get('/teacher/dashboard', [TeacherPortalController::class, 'getDashboardData']);
-        Route::post('/teacher/grades/bulk', [TeacherPortalController::class, 'bulkSaveGrades']);
+        Route::get('/teacher/info',                           [GradeController::class, 'getTeacherInfo']);
+        Route::get('/teacher/students',                       [GradeController::class, 'getTeacherStudents']);
+        Route::get('/teacher/subjects',                       [GradeController::class, 'getTeacherSubjects']);
+        Route::get('/teacher/grades',                         [GradeController::class, 'getGrades']);
+        Route::get('/teacher/grades/subject/{subjectId}',     [GradeController::class, 'getSubjectGrades']);
+        Route::post('/teacher/grades',                        [GradeController::class, 'submitGrade']);
+        Route::get('/teacher/dashboard',                      [TeacherPortalController::class, 'getDashboardData']);
+        Route::post('/teacher/grades/bulk',                   [TeacherPortalController::class, 'bulkSaveGrades']);
     });
 
-    // ──────────────────────────────────────────────────────────────
-    // ADMIN/REGISTRAR ROUTES (role: admin, registrar)
-    // ──────────────────────────────────────────────────────────────
+    /*
+    |--------------------------------------------------------------------------
+    | Admin + Registrar — shared features
+    |--------------------------------------------------------------------------
+    */
     Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin,registrar')->group(function () {
+
+        // Student Records
+        Route::apiResource('student-records', StudentRecordController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
+
+        // Students
+        Route::post('/students/{id}/update-info',    [StudentController::class, 'updateStudentInfo']);
+        Route::get('/students/current-year',         [StudentController::class, 'getCurrentYearList']);
+        Route::get('/students',                      [StudentController::class, 'index']);
+        Route::post('/students',                     [StudentController::class, 'store']);
+        Route::put('/students/{id}',                 [StudentController::class, 'update']);
+        Route::delete('/students/{id}',              [StudentController::class, 'destroy']);
+        Route::get('/students/search',               [StudentController::class, 'searchByEmail']);
+        Route::get('/students/{id}/enrollments',     [StudentController::class, 'getEnrollments']);
+        Route::put('/students/{studentId}/transfer', [StudentController::class, 'transferToSection']);
+
         // Enrollment Management
-        Route::get('/enrollments/summary', [EnrollmentController::class, 'summary']);
-        Route::get('/enrollments', [EnrollmentController::class, 'index']);
-        Route::put('/enrollment/{id}/status', [EnrollmentController::class, 'updateStatus']);
-        Route::put('/enrollment/{id}/requirement', [EnrollmentController::class, 'updateRequirement']);
-        Route::post('/admin/enroll-student', [EnrollmentController::class, 'storeAndApprove']);
+        Route::get('/enrollments/summary',             [EnrollmentController::class, 'summary']);
+        Route::get('/enrollments',                     [EnrollmentController::class, 'index']);
+        Route::put('/enrollment/{id}/status',          [EnrollmentController::class, 'updateStatus']);
+        Route::put('/enrollment/{id}/requirement',     [EnrollmentController::class, 'updateRequirement']);
+        Route::post('/admin/enroll-student',           [EnrollmentController::class, 'storeAndApprove']);
 
-        // Grade Management
-        Route::get('/admin/grades', [GradeController::class, 'getAllGrades']);
-        Route::put('/admin/grades/{gradeId}', [GradeController::class, 'updateGrade']);
-        Route::get('/admin/grades/statistics', [GradeController::class, 'getGradeStatistics']);
+        // Enrollment Requirements
+        Route::get('/enrollments/{id}/requirements',   [EnrollmentRequirementController::class, 'index']);
+        Route::put('/requirements/{id}/status',        [EnrollmentRequirementController::class, 'updateStatus']);
 
-        // Subject Management
-        Route::get('/admin/subjects', [SubjectController::class, 'index']);
+        // Load Slips / Form 137 — sections & schedules (read-only for registrar)
+        Route::get('/sections',                        [SectionController::class, 'index']);
+        Route::get('/sections/{id}',                   [SectionController::class, 'show']);
+        Route::get('/sections/{id}/subjects',          [SectionController::class, 'getSectionSubjects']);
+        Route::get('/schedules',                       [ScheduleController::class, 'index']);
+        Route::get('/teachers/{id}/schedule',          [ScheduleController::class, 'getTeacherSchedule']);
+        Route::get('/rooms',                           [SectionController::class, 'getRooms']);
+        Route::get('/time-slots',                      [SectionController::class, 'getTimeSlots']);
 
-        // Payment Reports
-        Route::get('/admin/payments', [BillingController::class, 'index']);
+        // Subjects (read-only for registrar — for dropdowns)
+        Route::get('/subjects',                        [SubjectController::class, 'index']);
+        Route::get('/subjects/grade/{gradeLevel}',     [SubjectController::class, 'getByGrade']);
+        Route::get('/admin/subjects',                  [SubjectController::class, 'index']);
+
+        // Teachers — read access for both admin and registrar
+        // (registrar needs teacher list for load slips and dashboard)
+        Route::get('/teachers',                        [TeacherController::class, 'index']);
+        Route::get('/teacher-load',                    [TeacherController::class, 'getAllAssignments']);
+        Route::get('/teachers/{teacherId}/assignments',[TeacherController::class, 'getAssignments']);
+        Route::get('/teachers/subjects/available',     [TeacherController::class, 'getAvailableSubjects']);
+
+        // Billing & Payments
+        Route::get('/admin/billing/student/{studentId}',    [BillingController::class, 'getStudentLedger']);
+        Route::post('/admin/billing/student/{studentId}/pay', [BillingController::class, 'addPayment']);
+        Route::put('/admin/billing/payment/{id}',           [BillingController::class, 'updatePayment']);
+        Route::get('/admin/payments',                       [BillingController::class, 'index']);
+
+        // Grades (read-only for registrar)
+        Route::get('/admin/grades',                    [GradeController::class, 'getAllGrades']);
+        Route::get('/admin/grades/statistics',         [GradeController::class, 'getGradeStatistics']);
     });
 
-    Route::get('/enrollments/{id}/requirements', [EnrollmentRequirementController::class, 'index']);
-    Route::put('/requirements/{id}/status',[EnrollmentRequirementController::class, 'updateStatus']);
+    /*
+    |--------------------------------------------------------------------------
+    | Admin only — full management access
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin')->group(function () {
 
-}); 
+        // Section Management (create, delete)
+        Route::post('/sections',                       [SectionController::class, 'store']);
+        Route::delete('/sections/{id}',                [SectionController::class, 'destroy']);
+
+        // Schedule Management
+        Route::post('/schedules',                      [ScheduleController::class, 'store']);
+        Route::delete('/schedules/{id}',               [ScheduleController::class, 'destroy']);
+
+        // Subject Management (create, update, delete)
+        Route::post('/subjects',                       [SubjectController::class, 'store']);
+        Route::put('/subjects/{id}',                   [SubjectController::class, 'update']);
+        Route::delete('/subjects/{id}',                [SubjectController::class, 'destroy']);
+
+        // Teacher Management — write operations (admin only)
+        Route::post('/teachers',                               [TeacherController::class, 'store']);
+        Route::put('/teachers/{id}',                           [TeacherController::class, 'update']);
+        Route::post('/teachers/{teacherId}/assign-subject',    [TeacherController::class, 'assignSubject']);
+        Route::delete('/teachers/subject-assignments/{id}',    [TeacherController::class, 'removeAssignment']);
+
+        // Grade Management (update)
+        Route::put('/admin/grades/{gradeId}',          [GradeController::class, 'updateGrade']);
+
+        // Tuition Fee Management
+        Route::get('/tuition-fees',                    [TuitionFeeController::class, 'index']);
+        Route::get('/tuition-fees/{id}',               [TuitionFeeController::class, 'show']);
+        Route::post('/tuition-fees',                   [TuitionFeeController::class, 'store']);
+        Route::put('/tuition-fees/{id}',               [TuitionFeeController::class, 'update']);
+        Route::delete('/tuition-fees/{id}',            [TuitionFeeController::class, 'destroy']);
+    });
+});

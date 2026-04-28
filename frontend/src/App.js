@@ -27,9 +27,8 @@ import SubjectManagement from "./pages/SubjectManagement";
 import PaymentReports from "./pages/PaymentReports";
 import EnrolledStudents from "./pages/EnrolledStudents";
 import Form137 from "./pages/Form137";
-import TuitionFeeManagement from "./pages/TuitionFeeManagement";  
+import TuitionFeeManagement from "./pages/TuitionFeeManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
-
 
 function App() {
   const [user, setUser] = useState(null);
@@ -56,13 +55,14 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public route */}
+        {/* ── Public ── */}
         <Route path="/login" element={<Login />} />
-
-        {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/enroll" element={<Enrollment />} />
+        <Route path="/enrollment-qr" element={<EnrollmentQR />} />
+        <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
 
-        {/* Protected routes */}
+        {/* ── All authenticated users ── */}
         <Route
           path="/dashboard"
           element={
@@ -71,10 +71,18 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/enroll" element={<Enrollment />} />
 
-        <Route path="/enrollment-qr" element={<EnrollmentQR />} />
+        {/* ── Teacher only ── */}
+        <Route
+          path="/teacher-advisory"
+          element={
+            <ProtectedRoute roles={["teacher"]}>
+              <TeacherAdvisory />
+            </ProtectedRoute>
+          }
+        />
 
+        {/* ── Admin + Registrar ── */}
         <Route
           path="/enrollment-management"
           element={
@@ -91,37 +99,11 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
-          path="/students"
+          path="/enrolled-students"
           element={
             <ProtectedRoute roles={["admin", "registrar"]}>
-              <StudentRecords />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/subject-management"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <SubjectManagement />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/teachers"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <TeacherDirectory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/section-management"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <SectionManagement />
+              <EnrolledStudents />
             </ProtectedRoute>
           }
         />
@@ -130,53 +112,6 @@ function App() {
           element={
             <ProtectedRoute roles={["admin", "registrar"]}>
               <LoadSlip />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/teacher-advisory"
-          element={
-            <ProtectedRoute roles={["teacher"]}>
-              <TeacherAdvisory />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/evaluation"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <EvaluationManagement />
-            </ProtectedRoute>
-          }
-        />
-
-        
-
-        <Route
-          path="/admin/billing"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <BillingManagement user={user} />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/payment-reports"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <PaymentReports />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/enrolled-students"
-          element={
-            <ProtectedRoute roles={["admin", "registrar"]}>
-              <EnrolledStudents />
             </ProtectedRoute>
           }
         />
@@ -189,16 +124,73 @@ function App() {
           }
         />
         <Route
-          path="/tuition-fees"
+          path="/admin/billing"
           element={
             <ProtectedRoute roles={["admin", "registrar"]}>
+              <BillingManagement user={user} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment-reports"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <PaymentReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute roles={["admin", "registrar"]}>
+              <StudentRecords />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Admin only ── */}
+        <Route
+          path="/teachers"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <TeacherDirectory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/section-management"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <SectionManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/subject-management"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <SubjectManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/evaluation"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <EvaluationManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tuition-fees"
+          element={
+            <ProtectedRoute roles={["admin"]}>
               <TuitionFeeManagement />
             </ProtectedRoute>
           }
         />
-        <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
 
-          {/* Catch-all route for any other invalid URLs */}
+        {/* ── Catch-all ── */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

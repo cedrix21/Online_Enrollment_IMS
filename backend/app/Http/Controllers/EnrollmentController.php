@@ -466,6 +466,7 @@ class EnrollmentController extends Controller
         })->where('status', 'pending')->count();
 
           $currentSchoolYear = $this->getSchoolYear();
+         
 
         $unpaidStudents = Student::where('status', 'active')
             ->whereHas('enrollments', function ($q) use ($currentSchoolYear) {

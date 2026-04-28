@@ -8,18 +8,15 @@ import SummaryCards from "../components/SummaryCards";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import LoadingScreen from "../components/LoadingScreen";
 
-// Lazy load non-critical components
 const Announcements = lazy(() => import("../components/Announcements"));
 const Events = lazy(() => import("../components/Events"));
 const DashboardCards = lazy(() => import("../components/DashboardCards"));
 
-// Cache keys
 const CACHE_KEYS = {
-  SUMMARY: 'dashboard_summary',
-  TEACHERS: 'dashboard_teachers'
+  SUMMARY:  "dashboard_summary",
+  TEACHERS: "dashboard_teachers",
 };
 
-// Memoized Teacher Stat Card
 const TeacherStatCard = memo(({ teacherCount, onClick }) => (
   <div className="teacher-stat-card" onClick={onClick}>
     <div className="stat-content">
@@ -35,10 +32,9 @@ const TeacherStatCard = memo(({ teacherCount, onClick }) => (
   </div>
 ));
 
-// Skeleton loader
 const SummarySkeleton = () => (
   <div className="summary-container">
-    {[1, 2, 3, 4, 5].map(i => (
+    {[1, 2, 3, 4, 5].map((i) => (
       <div key={i} className="summary-card skeleton-card">
         <div className="summary-content">
           <div className="summary-info">
@@ -61,27 +57,19 @@ export default function Dashboard() {
       return null;
     }
   });
-  
-  const [summary, setSummary] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    cash_enrollments: 0,
-    unpaid_students: 0
-  });
-  
-  const [teacherCount, setTeacherCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  const navigate = useNavigate();
 
-  const isAdminOrRegistrar = useMemo(
+  const navigate  = useNavigate();
+  const [summary, setSummary]           = useState(null);
+  const [teacherCount, setTeacherCount] = useState(0);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+
+  const isAdmin             = useMemo(() => user?.role === "admin", [user?.role]);
+  const isAdminOrRegistrar  = useMemo(
     () => user?.role === "admin" || user?.role === "registrar",
     [user?.role]
   );
 
-  // Parallel data fetching with caching
   useEffect(() => {
     if (!user) {
       navigate("/login");
@@ -96,15 +84,15 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Check cache first
-        const cachedSummary = localStorage.getItem(CACHE_KEYS.SUMMARY);
+
+        // Check cache
+        const cachedSummary  = localStorage.getItem(CACHE_KEYS.SUMMARY);
         const cachedTeachers = localStorage.getItem(CACHE_KEYS.TEACHERS);
-        const cacheTime = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
+        const cacheTime      = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
 
         if (cachedSummary && cachedTeachers && cacheTime) {
           const age = Date.now() - parseInt(cacheTime);
-          if (age < 5 * 60 * 1000) { // 5 minutes cache
+          if (age < 5 * 60 * 1000) {
             setSummary(JSON.parse(cachedSummary));
             setTeacherCount(JSON.parse(cachedTeachers));
             setLoading(false);
@@ -112,39 +100,39 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch fresh data in parallel
-        const [teachersRes, enrollmentsRes] = await Promise.all([
-          API.get("/teachers"),
-          API.get("/enrollments")
-        ]);
+        // FIX: Only fetch /teachers if user is admin — registrar is not allowed
+        const requests = [API.get("/enrollments")];
+        if (isAdmin) requests.push(API.get("/teachers"));
 
-        const teachers = teachersRes.data;
+        const [enrollmentsRes, teachersRes] = await Promise.all(requests);
+
         const enrollments = enrollmentsRes.data;
+        const teachers    = isAdmin ? teachersRes.data : [];
 
-        // Process data
         const newSummary = {
-          pending: enrollments.filter(e => e.status === 'pending').length,
-          approved: enrollments.filter(e => e.status === 'approved').length,
-          rejected: enrollments.filter(e => e.status === 'rejected').length,
-          cash_enrollments: enrollments.filter(e => 
-            e.payments?.[0]?.paymentMethod === 'Cash' && e.status === 'pending'
+          pending: enrollments.filter((e) => e.status === "pending").length,
+          approved: enrollments.filter((e) => e.status === "approved").length,
+          rejected: enrollments.filter((e) => e.status === "rejected").length,
+          cash_enrollments: enrollments.filter(
+            (e) =>
+              e.payments?.[0]?.paymentMethod === "Cash" &&
+              e.status === "pending"
           ).length,
-          unpaid_students: enrollments.filter(e => 
-            e.payments?.[0]?.paymentMethod !== 'Cash' && e.status === 'pending'
-          ).length
+          unpaid_students: enrollments.filter(
+            (e) =>
+              e.payments?.[0]?.paymentMethod !== "Cash" &&
+              e.status === "pending"
+          ).length,
         };
 
         const newTeacherCount = teachers.length;
 
-        // Update state
         setSummary(newSummary);
         setTeacherCount(newTeacherCount);
 
-        // Cache results
         localStorage.setItem(CACHE_KEYS.SUMMARY, JSON.stringify(newSummary));
         localStorage.setItem(CACHE_KEYS.TEACHERS, JSON.stringify(newTeacherCount));
         localStorage.setItem(`${CACHE_KEYS.SUMMARY}_time`, Date.now().toString());
-
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError("Failed to load dashboard data");
@@ -154,7 +142,16 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [user, navigate, isAdminOrRegistrar]);
+  }, [user, navigate, isAdminOrRegistrar, isAdmin]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await API.post("/logout");
+    } catch {}
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  }, [navigate]);
 
   if (!user) return <LoadingScreen />;
 
@@ -163,8 +160,7 @@ export default function Dashboard() {
       <SideBar user={user} />
       <div className="main-content">
         <TopBar user={user} />
-        
-        {/* This div handles all scrolling */}
+
         <div className="content-scroll-area">
           {isAdminOrRegistrar && (
             <>
@@ -175,29 +171,24 @@ export default function Dashboard() {
               ) : (
                 <>
                   <SummaryCards summary={summary} />
-                  <div className="summary-grid" style={{ marginTop: "20px" }}>
-                    <TeacherStatCard 
-                      teacherCount={teacherCount} 
-                      onClick={() => navigate("/teachers")}
-                    />
-                  </div>
+
+                  {/* Teacher stat card — admin only */}
+                  {isAdmin && (
+                    <div className="summary-grid" style={{ marginTop: "20px" }}>
+                      <TeacherStatCard
+                        teacherCount={teacherCount}
+                        onClick={() => navigate("/teachers")}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </>
           )}
-          
+
           <Suspense fallback={<div className="loading-placeholder">Loading...</div>}>
             <DashboardCards role={user.role} />
           </Suspense>
-          
-          {/* <div className="bottom-section">
-            <Suspense fallback={<div className="loading-placeholder">Loading announcements...</div>}>
-              <Announcements />
-            </Suspense>
-            <Suspense fallback={<div className="loading-placeholder">Loading events...</div>}>
-              <Events />
-            </Suspense>
-          </div> */}
 
           <button className="logout-button" onClick={handleLogout}>
             Logout
@@ -207,19 +198,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-// Add handleLogout function
-const handleLogout = async () => {
-  try {
-    await API.post("/logout");
-  } catch (err) {
-    console.warn("Server logout failed");
-  } finally {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem(CACHE_KEYS.SUMMARY);
-    localStorage.removeItem(CACHE_KEYS.TEACHERS);
-    localStorage.removeItem(`${CACHE_KEYS.SUMMARY}_time`);
-    window.location.href = "/login";
-  }
-};
