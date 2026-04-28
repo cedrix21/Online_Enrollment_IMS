@@ -82,76 +82,69 @@ export default function Dashboard() {
     }
 
     const fetchData = async () => {
-      try {
-        setLoading(true);
+  try {
+    setLoading(true);
 
-        // Check cache
-        const cachedSummary  = localStorage.getItem(CACHE_KEYS.SUMMARY);
-        const cachedTeachers = localStorage.getItem(CACHE_KEYS.TEACHERS);
-        const cacheTime      = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
+    // Check cache
+    const cachedSummary  = localStorage.getItem(CACHE_KEYS.SUMMARY);
+    const cachedTeachers = localStorage.getItem(CACHE_KEYS.TEACHERS);
+    const cacheTime      = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
 
-        if (cachedSummary && cachedTeachers && cacheTime) {
-          const age = Date.now() - parseInt(cacheTime);
-          if (age < 5 * 60 * 1000) {
-            setSummary(JSON.parse(cachedSummary));
-            setTeacherCount(JSON.parse(cachedTeachers));
-            setLoading(false);
-            return;
-          }
-        }
-
-        // FIX: Only fetch /teachers if user is admin — registrar is not allowed
-        const requests = [API.get("/enrollments")];
-        if (isAdmin) requests.push(API.get("/teachers"));
-
-        const [enrollmentsRes, teachersRes] = await Promise.all(requests);
-
-        const enrollments = enrollmentsRes.data;
-        const teachers    = isAdmin ? teachersRes.data : [];
-
-        const newSummary = {
-          pending: enrollments.filter((e) => e.status === "pending").length,
-          approved: enrollments.filter((e) => e.status === "approved").length,
-          rejected: enrollments.filter((e) => e.status === "rejected").length,
-          cash_enrollments: enrollments.filter(
-            (e) =>
-              e.payments?.[0]?.paymentMethod === "Cash" &&
-              e.status === "pending"
-          ).length,
-          unpaid_students: enrollments.filter(
-            (e) =>
-              e.payments?.[0]?.paymentMethod !== "Cash" &&
-              e.status === "pending"
-          ).length,
-        };
-
-        const newTeacherCount = teachers.length;
-
-        setSummary(newSummary);
-        setTeacherCount(newTeacherCount);
-
-        localStorage.setItem(CACHE_KEYS.SUMMARY, JSON.stringify(newSummary));
-        localStorage.setItem(CACHE_KEYS.TEACHERS, JSON.stringify(newTeacherCount));
-        localStorage.setItem(`${CACHE_KEYS.SUMMARY}_time`, Date.now().toString());
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data");
-      } finally {
+    if (cachedSummary && cachedTeachers && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age < 5 * 60 * 1000) {
+        setSummary(JSON.parse(cachedSummary));
+        setTeacherCount(JSON.parse(cachedTeachers));
         setLoading(false);
+        return;
       }
-    };
+    }
+
+    // 1. Fetch the summary from backend – it already contains correct unpaid_students
+    const summaryRes = await API.get("/enrollments/summary");
+    const newSummary = summaryRes.data;   // { pending, approved, rejected, cash_enrollments, unpaid_students }
+
+    // 2. Fetch teachers ONLY if admin
+    let newTeacherCount = 0;
+    if (isAdmin) {
+      try {
+        const teachersRes = await API.get("/teachers");
+        newTeacherCount = teachersRes.data.length;
+      } catch (teacherErr) {
+        console.warn("Could not load teachers", teacherErr);
+      }
+    }
+
+    setSummary(newSummary);
+    setTeacherCount(newTeacherCount);
+
+    // Cache
+    localStorage.setItem(CACHE_KEYS.SUMMARY, JSON.stringify(newSummary));
+    localStorage.setItem(CACHE_KEYS.TEACHERS, JSON.stringify(newTeacherCount));
+    localStorage.setItem(`${CACHE_KEYS.SUMMARY}_time`, Date.now().toString());
+  } catch (err) {
+    console.error("Error fetching dashboard data:", err);
+    setError("Failed to load dashboard data");
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchData();
   }, [user, navigate, isAdminOrRegistrar, isAdmin]);
 
   const handleLogout = useCallback(async () => {
-    try {
-      await API.post("/logout");
-    } catch {}
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  }, [navigate]);
+  try {
+    await API.post("/logout");
+  } catch {}
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  // Clear dashboard cache
+  localStorage.removeItem(CACHE_KEYS.SUMMARY);
+  localStorage.removeItem(CACHE_KEYS.TEACHERS);
+  localStorage.removeItem(`${CACHE_KEYS.SUMMARY}_time`);
+  navigate("/login");
+}, [navigate]);
 
   if (!user) return <LoadingScreen />;
 
