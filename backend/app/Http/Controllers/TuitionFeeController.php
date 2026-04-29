@@ -6,9 +6,11 @@ use App\Models\TuitionFee;
 use App\Models\MiscFeeItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Traits\SchoolYearTrait;
 
 class TuitionFeeController extends Controller
 {
+    use SchoolYearTrait;
     // GET /api/tuition-fees — all fees (admin)
     public function index(Request $request)
     {
@@ -24,7 +26,7 @@ class TuitionFeeController extends Controller
     // GET /api/tuition-fees/public — for enrollment page (active only)
     public function public(Request $request)
     {
-        $schoolYear = $request->school_year ?? $this->currentSchoolYear();
+        $schoolYear = $request->school_year ?? $this->getCurrentSchoolYear();
 
         $fees = TuitionFee::with('miscItems')
             ->where('school_year', $schoolYear)
@@ -171,11 +173,5 @@ class TuitionFeeController extends Controller
         ];
     }
 
-    private function currentSchoolYear(): string
-    {
-        // return '2026-2027';
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return $month >= 6 ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-    }
+
 }

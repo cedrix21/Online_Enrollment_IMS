@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use App\Models\StudentRecord;
 use App\Models\Enrollment;
 use App\Models\Section;
+use App\Traits\SchoolYearTrait; 
 
 class StudentController extends Controller
 {
+    use SchoolYearTrait;
     public function index(Request $request)
 {
     $query = Student::with(['payments', 'section', 'currentEnrollment']);
@@ -137,7 +139,7 @@ public function getCurrentYearList(Request $request)
         });
     } else {
         if (!$schoolYear) {
-            $schoolYear = $this->getSchoolYear();
+            $schoolYear = $this->getCurrentSchoolYear();
         }
 
         // Enrollments for the selected school year
@@ -204,13 +206,6 @@ public function searchByEmail(Request $request)
     return response()->json($student);
 }
 
-private function getSchoolYear(): string
-{
-    // return '2026-2027';   // ← uncomment for testing
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-}
 /**
  * Find a student by their human-readable studentId (e.g., SICS-2025-0001)
  */

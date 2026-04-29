@@ -8,20 +8,22 @@ use App\Models\Grade;
 use App\Models\Schedule;   // 🆕
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\SchoolYearTrait;
 
 class TeacherPortalController extends Controller
 {
+    use SchoolYearTrait;
    public function getDashboardData(Request $request)
 {
     try {
         $user = Auth::user();
         $teacher = Teacher::where('email', $user->email)->firstOrFail();
 
-        $currentSchoolYear = $this->getCurrentSchoolYear();
+        $getCurrentSchoolYear = $this->getCurrentSchoolYear();
 
         // Grade levels this teacher teaches (subject assignments)
         $assignments = $teacher->assignments()
-            ->where('school_year', $currentSchoolYear)
+            ->where('school_year', $getCurrentSchoolYear)
             ->with('subject')
             ->get();
 
@@ -35,13 +37,13 @@ class TeacherPortalController extends Controller
         // Get sections where the teacher has schedules for these subjects
         $scheduledSectionIds = Schedule::whereIn('subject_id', $subjectIds)
             ->where('teacher_id', $teacher->id)
-            ->where('school_year', $currentSchoolYear)
+            ->where('school_year', $getCurrentSchoolYear)
             ->pluck('section_id')
             ->unique();
 
         // 🆕 Get only subjects that have at least one schedule this year
         $scheduledSubjectIds = Schedule::where('teacher_id', $teacher->id)
-            ->where('school_year', $currentSchoolYear)
+            ->where('school_year', $getCurrentSchoolYear)
             ->pluck('subject_id')
             ->unique();
 
@@ -50,7 +52,7 @@ class TeacherPortalController extends Controller
             ? Student::select('id', 'studentId', 'firstName', 'lastName', 'gradeLevel', 'section_id')
                 ->whereIn('gradeLevel', $gradeLevels)
                 ->whereIn('section_id', $scheduledSectionIds)
-                ->whereHas('enrollments', fn($q) => $q->where('school_year', $currentSchoolYear))
+                ->whereHas('enrollments', fn($q) => $q->where('school_year', $getCurrentSchoolYear))
                 ->where('status', 'active')
                 ->with('section:id,name')
                 ->orderBy('lastName')
@@ -75,7 +77,7 @@ class TeacherPortalController extends Controller
                 ->whereHas('student', fn($q) => 
                 $q->whereIn('gradeLevel', $gradeLevels)
                     ->whereIn('section_id', $scheduledSectionIds)
-                    ->whereHas('enrollments', fn($e) => $e->where('school_year', $currentSchoolYear)))
+                    ->whereHas('enrollments', fn($e) => $e->where('school_year', $getCurrentSchoolYear)))
                 ->get()
             : collect();
 
@@ -85,7 +87,7 @@ class TeacherPortalController extends Controller
         // Find schedules for this assignment
         $schedules = Schedule::where('subject_assignment_id', $assignment->id)
             ->where('teacher_id', $teacher->id)
-            ->where('school_year', $currentSchoolYear)
+            ->where('school_year', $getCurrentSchoolYear)
             ->get();
 
         foreach ($schedules as $schedule) {
@@ -131,16 +133,6 @@ class TeacherPortalController extends Controller
     }
 }
 
-/**
- * Helper to get current school year (e.g., 2025-2026)
- */
-private function getCurrentSchoolYear(): string
-{
-    //  return '2026-2027';
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-}
 
     /**
      * Bulk save grades (batch operation)

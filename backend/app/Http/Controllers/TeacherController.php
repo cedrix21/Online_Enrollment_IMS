@@ -11,9 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\Schedule;
+use App\Traits\SchoolYearTrait;
 
 class TeacherController extends Controller
 {
+    use SchoolYearTrait;
     // Get all teachers with their assignments
     public function index(Request $request)
 {
@@ -31,14 +33,6 @@ class TeacherController extends Controller
     ])->get();
 
     return response()->json($teachers);
-}
-
-private function getCurrentSchoolYear(): string
-{
-    // return '2026-2027';
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
 }
 
 

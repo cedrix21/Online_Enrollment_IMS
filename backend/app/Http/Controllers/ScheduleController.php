@@ -10,10 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Section;
+use App\Traits\SchoolYearTrait;
 
 
 class ScheduleController extends Controller
 {
+    use SchoolYearTrait;
 public function index(Request $request)
 {
     $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
@@ -32,13 +34,6 @@ public function index(Request $request)
     return response()->json($schedules);
 }
 
-    private function getCurrentSchoolYear(): string
-    {
-        // return '2026-2027';
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-    }
 
     public function store(Request $request)
     {
@@ -61,12 +56,12 @@ public function index(Request $request)
             $gradeLevel = Section::find($sectionId)->gradeLevel;
             $sectionsCount = Section::where('gradeLevel', $gradeLevel)->count();
 
-           $currentSchoolYear = $this->getCurrentSchoolYear();
+           $getCurrentSchoolYear = $this->getCurrentSchoolYear();
 
                 if ($sectionsCount === 1) {
                     $subjectAlreadyScheduled = Schedule::whereHas('section', fn($q) => $q->where('gradeLevel', $gradeLevel))
                         ->where('subject_id', $request->subject_id)
-                        ->where('school_year', $currentSchoolYear)   // 🆕 ADD THIS LINE
+                        ->where('school_year', $getCurrentSchoolYear)   // 🆕 ADD THIS LINE
                         ->exists();
 
                     if ($subjectAlreadyScheduled) {
@@ -78,7 +73,7 @@ public function index(Request $request)
 
                  $subjectAlreadyInSection = Schedule::where('section_id', $sectionId)
                 ->where('subject_id', $request->subject_id)
-                ->where('school_year', $currentSchoolYear)
+                ->where('school_year', $getCurrentSchoolYear)
                 ->exists();
 
             if ($subjectAlreadyInSection) {
@@ -88,7 +83,7 @@ public function index(Request $request)
             }
 
             // Use a transaction to ensure atomic operations
-            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId,$currentSchoolYear) {
+            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId,$getCurrentSchoolYear) {
                 $createdSchedules = [];
 
                 foreach ($request->days as $day) {
@@ -96,7 +91,7 @@ public function index(Request $request)
                     $roomConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('room_id', $roomId)
-                         ->where('school_year', $currentSchoolYear)
+                         ->where('school_year', $getCurrentSchoolYear)
                         ->exists();
                     if ($roomConflict) {
                         return response()->json(['message' => "Room conflict on $day."], 422);
@@ -106,7 +101,7 @@ public function index(Request $request)
                     $teacherConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('teacher_id', $teacherId)
-                         ->where('school_year', $currentSchoolYear)
+                         ->where('school_year', $getCurrentSchoolYear)
                         ->exists();
                     if ($teacherConflict) {
                         $teacher = Teacher::find($teacherId);
@@ -117,7 +112,7 @@ public function index(Request $request)
                     $sectionConflict = Schedule::where('day', $day)
                         ->where('time_slot_id', $timeSlotId)
                         ->where('section_id', $sectionId)
-                         ->where('school_year', $currentSchoolYear)
+                         ->where('school_year', $getCurrentSchoolYear)
                         ->exists();
                     if ($sectionConflict) {
                         return response()->json(['message' => "Section already has a class on $day at this time."], 422);
@@ -127,7 +122,7 @@ public function index(Request $request)
                     $subjectExists = Schedule::where('section_id', $sectionId)
                         ->where('subject_id', $request->subject_id)
                         ->where('day', $day)
-                         ->where('school_year', $currentSchoolYear)
+                         ->where('school_year', $getCurrentSchoolYear)
                         ->exists();
                     if ($subjectExists) {
                         return response()->json(['message' => "This subject is already scheduled for this section on $day."], 422);
@@ -136,7 +131,7 @@ public function index(Request $request)
                     $existing = Schedule::where('section_id', $sectionId)
                     ->where('subject_assignment_id', $subjectAssignmentId)
                     ->where('day', $day)
-                    ->where('school_year', $currentSchoolYear)
+                    ->where('school_year', $getCurrentSchoolYear)
                     ->exists();
 
                 if ($existing) {

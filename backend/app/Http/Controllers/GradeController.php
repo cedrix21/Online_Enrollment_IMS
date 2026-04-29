@@ -8,9 +8,11 @@ use App\Models\SubjectAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Schedule;
+use App\Traits\SchoolYearTrait;
 
 class GradeController extends Controller
 {
+    use SchoolYearTrait;
     // ═══════════════════════════════════════════════════════════════════
     // TEACHER PORTAL METHODS
     // ═══════════════════════════════════════════════════════════════════
@@ -378,11 +380,4 @@ public function getAllGrades(Request $request)
     }
 
 
-    private function getCurrentSchoolYear(): string
-{
-    // return '2026-2027';
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-}
 }

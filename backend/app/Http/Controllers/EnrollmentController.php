@@ -15,9 +15,12 @@ use GuzzleHttp\Client;
 use App\Models\EnrollmentRequirement;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\SchoolYearTrait;
 
 class EnrollmentController extends Controller
 {
+    use SchoolYearTrait;
+
     // NEW METHOD: Upload to Supabase
    private function uploadToSupabase($file, $bucket = 'receipts')
 {
@@ -190,12 +193,12 @@ class EnrollmentController extends Controller
             // Optionally update student's current grade level and school year
             $student->update([
                 'gradeLevel' => $validated['gradeLevel'],
-                'school_year' => $this->getSchoolYear(),
+                'school_year' => $this->getCurrentSchoolYear(),
             ]);
         }
 
         // Determine school year (if column exists)
-        $schoolYear = $this->getSchoolYear();
+        $schoolYear = $this->getCurrentSchoolYear();
 
         // Create enrollment
         $enrollmentData = [
@@ -312,16 +315,6 @@ class EnrollmentController extends Controller
 }
 
 
-    private function getSchoolYear(): string
-    {
-        // return '2026-2027';
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-    }
-
-
-
   public function updateStatus(Request $request, $id)
 {
     $request->validate([
@@ -380,7 +373,7 @@ class EnrollmentController extends Controller
             $student->update([
                 'section_id'  => $section->id,
                 'gradeLevel'  => $enrollment->gradeLevel,
-                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getSchoolYear(),
+                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
                 'status'      => 'active',
             ]);
             $formattedId = $student->studentId;
@@ -399,7 +392,7 @@ class EnrollmentController extends Controller
                 'gender'      => $enrollment->gender,
                 'dateOfBirth' => $enrollment->dateOfBirth,
                 'section_id'  => $section->id,
-                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getSchoolYear(),
+                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
                 'status'      => 'active',
             ];
             if (Schema::hasColumn('students', 'enrollment_id')) $studentData['enrollment_id'] = $enrollment->id;
@@ -475,7 +468,7 @@ class EnrollmentController extends Controller
             $query->where('paymentMethod', 'Cash');
         })->where('status', 'pending')->count();
 
-          $currentSchoolYear = $this->getSchoolYear();
+          $currentSchoolYear = $this->getCurrentSchoolYear();
          
 
         $unpaidStudents = Student::where('status', 'active')
@@ -583,11 +576,11 @@ class EnrollmentController extends Controller
                 // Update student's current info
                 $student->update([
                     'gradeLevel' => $validated['gradeLevel'],
-                    'school_year' => $request->school_year ?? $this->getSchoolYear(),
+                    'school_year' => $request->school_year ?? $this->getCurrentSchoolYear(),
                 ]);
             }
 
-            $schoolYear = $request->school_year ?? $this->getSchoolYear();
+            $schoolYear = $request->school_year ?? $this->getCurrentSchoolYear();
 
             // Create enrollment
             $enrollmentData = [

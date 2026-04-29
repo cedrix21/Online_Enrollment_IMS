@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Enrollment;
+use App\Traits\SchoolYearTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,9 +14,9 @@ use Spatie\Activitylog\Facades\Activity;
 use GuzzleHttp\Exception\ConnectException;             
 use GuzzleHttp\Exception\RequestException;
 
-
 class PaymentController extends Controller
 {
+    use SchoolYearTrait;
     private $paymongo_secret_key;
     private $paymongo_public_key;
     private $base_url = 'https://api.paymongo.com/v1';
@@ -90,7 +91,7 @@ class PaymentController extends Controller
 
             $enrollmentData = $validated;
             unset($enrollmentData['amount_paid']);
-            $enrollmentData['school_year'] = $request->school_year ?? $this->getSchoolYear();
+            $enrollmentData['school_year'] = $request->school_year ?? $this->getCurrentSchoolYear();
 
             // Create enrollment
             $enrollment = Enrollment::create($enrollmentData);
@@ -275,7 +276,7 @@ class PaymentController extends Controller
             unset($enrollmentData['amount_paid']);
 
             // Add school year
-            $enrollmentData['school_year'] = $request->school_year ?? $this->getSchoolYear();
+            $enrollmentData['school_year'] = $request->school_year ?? $this->getCurrentSchoolYear();
 
             // Create enrollment (once)
             $enrollment = Enrollment::create($enrollmentData);
@@ -425,14 +426,6 @@ class PaymentController extends Controller
         }
 
         return $http;
-    }
-
-    private function getSchoolYear(): string
-    {
-        // return '2026-2027';
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
     private function storeRequirement(Request $request, $field, Enrollment $enrollment, $type, $label)

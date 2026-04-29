@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 use App\Models\Student;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use App\Traits\SchoolYearTrait;
 
 
 class BillingController extends Controller
 {
+     use SchoolYearTrait;
     public function index()
     {
         $payments = Payment::with('student') // eager load student relationship
@@ -171,14 +173,7 @@ class BillingController extends Controller
     ]);
     }
 
-    // Helper to get current school year
-private function getCurrentSchoolYear(): string
-{
-    // return '2026-2027';
-    $month = (int) date('n');
-    $year  = (int) date('Y');
-    return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
-}
+   
 
     public function updatePayment(Request $request, $id)
     {

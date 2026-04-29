@@ -2,20 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\SchoolYearTrait;
 
 class SchoolYearController extends Controller
 {
+    use SchoolYearTrait;
+
     public function getCurrentYear()
     {
         return response()->json([
-            'school_year' => $this->calculateSchoolYear()
+            'school_year' => $this->getCurrentSchoolYear()
         ]);
-    }
-
-    private function calculateSchoolYear(): string
-    {
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 }

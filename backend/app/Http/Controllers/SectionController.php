@@ -8,10 +8,11 @@ use App\Models\TimeSlot;
 use Illuminate\Http\Request;
 use App\Models\Subject;
 use App\Models\Teacher;
-use Illuminate\Support\Facades\DB;
+use App\Traits\SchoolYearTrait;
 
 class SectionController extends Controller
 {
+    use SchoolYearTrait;
     public function index(Request $request)
     {
         $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
@@ -131,13 +132,6 @@ class SectionController extends Controller
         ->findOrFail($id);
 
         return response()->json($section);
-    }
-
-    private function getCurrentSchoolYear(): string
-    {
-        $month = (int) date('n');
-        $year  = (int) date('Y');
-        return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
     }
 
     public function destroy(Request $request, $id)
