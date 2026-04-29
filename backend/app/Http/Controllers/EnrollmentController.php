@@ -290,9 +290,21 @@ class EnrollmentController extends Controller
                 ], 201);
             });
          } catch (\Exception $e) {
+        // Log the failure with full context
+        activity()
+            ->withProperties([
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'input' => $request->except(['receipt_image', 'requirement_psa', 'requirement_good_moral', 'requirement_report_card', 'requirement_picture_2x2', 'requirement_picture_1x1']),
+                'trace' => $e->getTraceAsString(),
+            ])
+            ->log('enrollment_submission_failed');
+
         Log::error('Submit Error: ' . $e->getMessage(), [
             'trace' => $e->getTraceAsString(),
         ]);
+        
         return response()->json([
             'message' => 'Submission failed: ' . $e->getMessage(),
         ], 500);

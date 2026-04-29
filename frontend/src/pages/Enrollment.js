@@ -15,6 +15,7 @@ export default function Enrollment() {
   const [gcashRedirectUrl,   setGcashRedirectUrl]   = useState("");
   const [continuingStudentId, setContinuingStudentId] = useState("");
   const [studentIdValid, setStudentIdValid] = useState(null); 
+  const [errorMessage, setErrorMessage] = useState("");
   // ── Requirement files (all optional) ─────────────────────────
   const [requirementFiles, setRequirementFiles] = useState({
     psa:          null,
@@ -128,10 +129,12 @@ export default function Enrollment() {
   // ── GCash handler ─────────────────────────────────────────────
   const handleGCashPayment = async () => {
     if (!amountPaid || parseFloat(amountPaid) < 5000) {
-      alert("Please enter a valid payment amount (Minimum ₱5000)");
+      setErrorMessage("Please enter a valid payment amount (Minimum ₱5000)");
       return;
     }
     setProcessingPayment(true);
+
+    setErrorMessage("");
     try {
       const dataToSend = new FormData();
       Object.keys(formData).forEach(key => {
@@ -182,9 +185,9 @@ export default function Enrollment() {
     console.error("Response data:", err.response?.data);
     // Show detailed validation errors
     if (err.response?.data?.errors) {
-        alert(JSON.stringify(err.response.data.errors, null, 2));
+        setErrorMessage(JSON.stringify(err.response.data.errors, null, 2));
     } else {
-        alert(err.response?.data?.message || "Failed to initiate payment.");
+        setErrorMessage(err.response?.data?.message || "Failed to initiate payment.");
     }
     setProcessingPayment(false);
 }
@@ -248,23 +251,24 @@ const verifyStudentId = async () => {
 };
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
+    setErrorMessage("");
     e.preventDefault();
     if (loading) return;
-    if (!paymentMethod) { alert("Please select a payment method."); return; }
+    if (!paymentMethod) { setErrorMessage("Please select a payment method."); return; }
 
     if (paymentMethod === "GCash") {
-      if (!amountPaid) { alert("Please enter the payment amount"); return; }
+      if (!amountPaid) { setErrorMessage("Please enter the payment amount"); return; }
       handleGCashPayment();
       return;
     }
 
     if (paymentMethod === "Bank Transfer") {
       if (!paymentRef || !receiptFile || !amountPaid) {
-        alert("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
+        setErrorMessage("Please complete the payment details: Reference Number, Amount, and Receipt Image.");
         return;
       }
       if (receiptFile.size > 2048 * 1024) {
-        alert("Receipt image must be less than 2MB");
+        setErrorMessage("Receipt image must be less than 2MB");
         return;
       }
     
@@ -324,7 +328,7 @@ const verifyStudentId = async () => {
       window.scrollTo(0, 0);
     } catch (err) {
       console.error("Submission Error:", err.response?.data);
-      alert(err.response?.data?.message || "Error submitting form.");
+      setErrorMessage(err.response?.data?.message || "Error submitting form.");
     } finally {
       setLoading(false);
     }
@@ -424,6 +428,20 @@ const verifyStudentId = async () => {
               <h2>SICS ENROLLMENT FORM</h2>
               <p>S.Y. {schoolYear}</p>
             </div>
+
+            {errorMessage && (
+            <div className="error-message" style={{
+              backgroundColor: '#ffebee',
+              color: '#c62828',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              borderLeft: '4px solid #c62828',
+              fontSize: '0.9rem'
+            }}>
+              ❌ {errorMessage}
+            </div>
+          )}
 
             <form onSubmit={handleSubmit} className="enrollment-grid-form">
 

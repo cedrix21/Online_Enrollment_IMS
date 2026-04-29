@@ -286,4 +286,12 @@
     gap: 15px;
     margin-top: 10px;
 }
-
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+  font-size: 0.9rem;
+}
