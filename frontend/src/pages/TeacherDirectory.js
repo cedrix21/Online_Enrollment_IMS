@@ -14,6 +14,7 @@ import {
   FaSyncAlt,
 } from "react-icons/fa";
 import "./TeacherDirectory.css";
+import { useCurrentSchoolYear } from "../hooks/useCurrentSchoolYear";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CONSTANTS
@@ -69,7 +70,6 @@ const sortTeachersByAdvisory = (teachers) => {
     return (a.lastName || '').localeCompare(b.lastName || '');
   });
 };
-
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MEMOIZED COMPONENTS
@@ -184,7 +184,15 @@ const TeacherCard = memo(({
   );
 });
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MAIN COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export default function TeacherDirectory() {
+  // ✅ Use the hook to get the authoritative current school year
+  const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
+
   const [user] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("user")) || null;
@@ -219,12 +227,14 @@ export default function TeacherDirectory() {
   const [assignmentForm, setAssignmentForm] = useState(INITIAL_ASSIGNMENT_FORM);
   const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
   const [assignedSubjectIdsForTeacher, setAssignedSubjectIdsForTeacher] = useState(new Set());
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
-  const month = new Date().getMonth() + 1;
-  const year = new Date().getFullYear();
-  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-});
   const [sections, setSections] = useState([]);
+
+  // ✅ Initialise selectedSchoolYear when currentSchoolYear becomes available
+  useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(currentSchoolYear);
+    }
+  }, [currentSchoolYear, selectedSchoolYear]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Cache helpers
@@ -235,6 +245,7 @@ export default function TeacherDirectory() {
   }, []);
 
   const fetchData = useCallback(async (force = false) => {
+    if (!selectedSchoolYear) return; // Don't fetch until year is known
     try {
       setLoading(true);
       setTeacherLoad([]);
@@ -256,11 +267,11 @@ export default function TeacherDirectory() {
       }
 
       const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
-      API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
-      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
-      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-    ]);
+        API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
+        API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+        API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+        API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+      ]);
 
       const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
       const data = {
@@ -283,55 +294,59 @@ export default function TeacherDirectory() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolYear,invalidateCache]);
+  }, [selectedSchoolYear, invalidateCache]);
 
   useEffect(() => {
-     invalidateCache();     
-  fetchData(true); 
-}, [selectedSchoolYear]);
+    if (selectedSchoolYear) {
+      invalidateCache();
+      fetchData(true);
+    }
+  }, [selectedSchoolYear, invalidateCache, fetchData]);
 
-  // Memoized Maps
-  // Memoized map of grade level → array of { teacher, sectionName }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Memoized Maps (unchanged)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const gradeAdvisers = useMemo(() => {
-  const map = new Map();
-  teachers.forEach((t) => {
-    if (t.advisory_grade) {
-      const sectionName = t.advisory_section?.name || 'Unnamed Section'; 
-      const entry = { teacher: t, sectionName };
-      if (!map.has(t.advisory_grade)) {
-        map.set(t.advisory_grade, [entry]);
-      } else {
-        map.get(t.advisory_grade).push(entry);
+    const map = new Map();
+    teachers.forEach((t) => {
+      if (t.advisory_grade) {
+        const sectionName = t.advisory_section?.name || 'Unnamed Section'; 
+        const entry = { teacher: t, sectionName };
+        if (!map.has(t.advisory_grade)) {
+          map.set(t.advisory_grade, [entry]);
+        } else {
+          map.get(t.advisory_grade).push(entry);
+        }
       }
-    }
-  });
-  return map;
-}, [teachers]);
+    });
+    return map;
+  }, [teachers]);
 
-const sectionsByGrade = useMemo(() => {
-  const map = new Map();
-  sections.forEach(section => {
-    const grade = section.gradeLevel;
-    if (!map.has(grade)) {
-      map.set(grade, []);
-    }
-    map.get(grade).push(section);
-  });
-  return map;
-}, [sections]);
+  const sectionsByGrade = useMemo(() => {
+    const map = new Map();
+    sections.forEach(section => {
+      const grade = section.gradeLevel;
+      if (!map.has(grade)) {
+        map.set(grade, []);
+      }
+      map.get(grade).push(section);
+    });
+    return map;
+  }, [sections]);
 
 
-const availableSubjectsForAssignment = useMemo(() => {
-  return availableSubjects.filter(
-    (subject) => !assignedSubjectIdsForTeacher.has(subject.id)
-  );
-}, [availableSubjects, assignedSubjectIdsForTeacher]);
+  const availableSubjectsForAssignment = useMemo(() => {
+    return availableSubjects.filter(
+      (subject) => !assignedSubjectIdsForTeacher.has(subject.id)
+    );
+  }, [availableSubjects, assignedSubjectIdsForTeacher]);
 
 
   const isGradeTakenByOthers = useCallback((grade, currentTeacherId) => {
-  const entries = gradeAdvisers.get(grade) || [];
-  return entries.some(entry => entry.teacher.id !== currentTeacherId);
-}, [gradeAdvisers]);
+    const entries = gradeAdvisers.get(grade) || [];
+    return entries.some(entry => entry.teacher.id !== currentTeacherId);
+  }, [gradeAdvisers]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Event Handlers
@@ -549,6 +564,10 @@ const openScheduleModal = useCallback((teacher) => {
   }
 }, [selectedSchoolYear]);
 
+if (yearLoading || !selectedSchoolYear) {
+    return <div className="loading-spinner">Loading school year...</div>;
+  }
+  
   return (
     <div className="dashboard-layout">
       <SideBar user={user} />

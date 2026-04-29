@@ -4,10 +4,14 @@ import TopBar from '../components/TopBar';
 import StudentBilling from '../components/StudentBilling';
 import API from '../api/api';
 import './BillingManagement.css';
+import { logActivity } from '../utils/activityLogger';
 import { useLocation } from 'react-router-dom';
 import { FaTimes } from 'react-icons/fa';
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
 const BillingManagement = ({ user }) => {
+    const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
     const [students, setStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -21,11 +25,6 @@ const BillingManagement = ({ user }) => {
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
-    const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
-  const month = new Date().getMonth() + 1;
-  const year = new Date().getFullYear();
-  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-});
 
     // Define tuition rates
     const rates = {
@@ -40,7 +39,15 @@ const BillingManagement = ({ user }) => {
     };
 
     useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear) {
+        setSelectedSchoolYear(currentSchoolYear);
+    }
+    }, [currentSchoolYear, selectedSchoolYear]);
+
+   useEffect(() => {
+    if (selectedSchoolYear) {
         fetchStudents();
+    }
     }, [selectedSchoolYear]);
 
     useEffect(() => {
@@ -72,28 +79,36 @@ const BillingManagement = ({ user }) => {
 };
 
     const handleSelectStudent = async (student) => {
-  if (selectedStudent?.id === student.id) {
-    setSelectedStudent(null);
-    setPayments([]);
-    setTotalTuition(25000);
-    setBooksSummary({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
-    return;
-  }
+    // Deselect if already selected
+    if (selectedStudent?.id === student.id) {
+        setSelectedStudent(null);
+        setPayments([]);
+        setTotalTuition(25000);
+        setBooksSummary({ total: 0, paid: 0, balance: 0, status: 'unpaid' });
+        return;
+    }
 
-  setSelectedStudent(student);
-  setLedgerLoading(true);
-  try {
-    const res = await API.get(`/admin/billing/student/${student.id}`, {
-      params: { school_year: selectedSchoolYear }
-    });
-    setPayments(res.data.ledger || []);
-    setTotalTuition(res.data.summary.total_tuition);
-    setBooksSummary(res.data.summary.books);
-  } catch (err) {
-    console.error("Error fetching ledger", err);
-  } finally {
-    setLedgerLoading(false);
-  }
+    setSelectedStudent(student);
+    setLedgerLoading(true);
+    try {
+        const res = await API.get(`/admin/billing/student/${student.id}`, {
+            params: { school_year: selectedSchoolYear }
+        });
+        setPayments(res.data.ledger || []);
+        setTotalTuition(res.data.summary.total_tuition);
+        setBooksSummary(res.data.summary.books);
+
+        // Log the view (successful ledger load)
+        await logActivity('view_billing_ledger', {
+            student_id: student.id,
+            student_name: `${student.firstName} ${student.lastName}`,
+            school_year: selectedSchoolYear,
+        });
+    } catch (err) {
+        console.error("Error fetching ledger", err);
+    } finally {
+        setLedgerLoading(false);
+    }
 };
 
 useEffect(() => {
@@ -131,6 +146,10 @@ useEffect(() => {
 
         return matchesSearch;
     });
+
+    if (yearLoading || !selectedSchoolYear) {
+  return <div>Loading school year...</div>;
+}
 
     return (
         <div className="dashboard-layout">
@@ -226,6 +245,7 @@ useEffect(() => {
 
                                     <StudentBilling 
                                         studentId={selectedStudent.id}
+                                        studentName={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
                                         payments={payments}
                                         onPaymentAdded={handlePaymentAdded}
                                         totalTuition={totalTuition}

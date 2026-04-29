@@ -26,6 +26,7 @@ Route::post('/enrollment/submit', [EnrollmentController::class, 'submit']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/tuition-fees/public', [TuitionFeeController::class, 'public']);
 Route::get('/students/by-id/{studentId}', [StudentController::class, 'findByStudentId']);
+Route::get('/current-school-year', [App\Http\Controllers\SchoolYearController::class, 'getCurrentYear']);
 
 // PayMongo public routes
 Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);

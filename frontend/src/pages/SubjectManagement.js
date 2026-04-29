@@ -11,6 +11,7 @@ import {
   FaSearch
 } from "react-icons/fa";
 import "./SubjectManagement.css";
+import { useCurrentSchoolYear } from "../hooks/useCurrentSchoolYear";
 
 // ─── Base subject templates (without grade prefix) ─────────────────────────
 const BASE_SUBJECTS = [
@@ -48,11 +49,14 @@ const getGradePrefix = (gradeLevel) => {
 };
 
 export default function SubjectManagement() {
+  // ✅ Use the hook to get the authoritative current school year
+  const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
+
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const [subjects, setSubjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
-  const [schoolYear, setSchoolYear] = useState("2025-2026");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -65,7 +69,7 @@ export default function SubjectManagement() {
     subjectName: "",
     subjectCode: "",
     gradeLevel: "",
-    school_year: "2025-2026",
+    school_year: "",
     description: "",
   });
 
@@ -81,21 +85,32 @@ export default function SubjectManagement() {
     "Grade 6"
   ];
 
+  // ✅ Initialise selectedSchoolYear when currentSchoolYear becomes available
   useEffect(() => {
-    fetchSubjects();
-  }, [schoolYear]);
+    if (currentSchoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(currentSchoolYear);
+    }
+  }, [currentSchoolYear, selectedSchoolYear]);
+
+  // Fetch subjects when selectedSchoolYear changes (only after it is set)
+  useEffect(() => {
+    if (selectedSchoolYear) {
+      fetchSubjects();
+    }
+  }, [selectedSchoolYear]);
 
   const fetchSubjects = async () => {
+    if (!selectedSchoolYear) return;
     try {
       setLoading(true);
-      const res = await API.get("/subjects", { params: { school_year: schoolYear } });
+      const res = await API.get("/subjects", { params: { school_year: selectedSchoolYear } });
       setSubjects(res.data);
       setError("");
     } catch (err) {
       console.error("Error:", err.response?.data);
-      const errorMsg = err.response?.data?.message || "Failed to save subject";
-      setError(errorMsg);   // ← already done
-    }finally {
+      const errorMsg = err.response?.data?.message || "Failed to load subjects";
+      setError(errorMsg);
+    } finally {
       setLoading(false);
     }
   };
@@ -107,7 +122,7 @@ export default function SubjectManagement() {
       subjectName: "",
       subjectCode: "",
       gradeLevel: "",
-      school_year: schoolYear,
+      school_year: selectedSchoolYear,
       description: "",
     });
     setShowModal(true);
@@ -120,7 +135,7 @@ export default function SubjectManagement() {
       subjectName: subject.subjectName,
       subjectCode: subject.subjectCode,
       gradeLevel: subject.gradeLevel,
-      school_year: subject.school_year || schoolYear,
+      school_year: subject.school_year || selectedSchoolYear,
       description: subject.description || "",
     });
     setShowModal(true);
@@ -132,12 +147,10 @@ export default function SubjectManagement() {
     const prefix = getGradePrefix(formData.gradeLevel);
     if (!prefix) return [];
 
-    // Get existing subject codes for this grade level
     const existingCodes = subjects
       .filter(sub => sub.gradeLevel === formData.gradeLevel)
       .map(sub => sub.subjectCode);
 
-    // Filter base subjects that are not yet created
     return BASE_SUBJECTS
       .filter(base => !existingCodes.includes(`${prefix}-${base.code}`))
       .map(base => ({
@@ -184,8 +197,6 @@ export default function SubjectManagement() {
       } else {
         await API.post("/subjects", formData);
         setSuccess("Subject created successfully!");
-        
-        // Reset form for next entry, keeping grade level and school year
         setFormData({
           subjectName: "",
           subjectCode: "",
@@ -193,9 +204,7 @@ export default function SubjectManagement() {
           school_year: formData.school_year,
           description: "",
         });
-        
         await fetchSubjects();
-        // Modal stays open for bulk entry
       }
     } catch (err) {
       console.error("Error:", err.response?.data);
@@ -237,6 +246,11 @@ export default function SubjectManagement() {
     return acc;
   }, {});
 
+  // ✅ Loading guard – after all hooks
+  if (yearLoading || !selectedSchoolYear) {
+    return <div className="loading-spinner">Loading school year...</div>;
+  }
+
   return (
     <div className="dashboard-layout">
       <SideBar user={user} />
@@ -257,8 +271,8 @@ export default function SubjectManagement() {
               <div className="header-actions">
                 <select
                   className="school-year-select"
-                  value={schoolYear}
-                  onChange={(e) => setSchoolYear(e.target.value)}
+                  value={selectedSchoolYear}
+                  onChange={(e) => setSelectedSchoolYear(e.target.value)}
                 >
                   {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
                     <option key={y} value={y}>{y}</option>

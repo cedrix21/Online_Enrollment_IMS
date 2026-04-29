@@ -3,15 +3,19 @@ import API from "../api/api";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import "./Enrollment.css";
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
 export default function AdminEnrollment() {
-  const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
-  const [schoolYear, setSchoolYear] = useState(() => {
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  });
+  const { schoolYear, loading: yearLoading } = useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
 
+  useEffect(() => {
+    if (schoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(schoolYear);
+    }
+  }, [schoolYear, selectedSchoolYear]);
+
+  const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const [tuitionFees, setTuitionFees] = useState({});
   const [feesLoading, setFeesLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -55,6 +59,8 @@ export default function AdminEnrollment() {
   const [continuingStudentId, setContinuingStudentId] = useState("");
   const [studentIdValid, setStudentIdValid] = useState(null);
 
+
+
   useEffect(() => {
     const fetchFees = async () => {
       try {
@@ -68,6 +74,11 @@ export default function AdminEnrollment() {
     };
     fetchFees();
   }, []);
+
+
+    if (yearLoading) {
+    return <div className="loading-spinner">Loading school year...</div>;
+  }
 
   const fmtPeso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 
@@ -150,13 +161,13 @@ export default function AdminEnrollment() {
     setLoading(true);
     setMessage("");
     setSuccessMessage("");
-    const payload = { ...formData, school_year: schoolYear };
+    const payload = { ...formData, school_year: selectedSchoolYear  };
     if (formData.registrationType === 'Continuing') {
       payload.studentId = continuingStudentId;
     }
     try {
       const response = await API.post("/admin/enroll-student", payload);
-      setSuccessMessage(`✅ Success! Student ID: ${response.data.studentId} has been created and approved for school year ${schoolYear}.`);
+      setSuccessMessage(`✅ Success! Student ID: ${response.data.studentId} has been created and approved for school year ${selectedSchoolYear }.`);
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Could not register student.";
@@ -179,7 +190,7 @@ export default function AdminEnrollment() {
                   OFFICE USE ONLY
                 </span>
                 <h2>INTERNAL STUDENT REGISTRATION</h2>
-                <p>S.Y. {schoolYear}</p>
+                <p>S.Y. {selectedSchoolYear }</p>
               </div>
 
               {message && (
@@ -221,8 +232,8 @@ export default function AdminEnrollment() {
 
                       <input
                         type="text"
-                        value={schoolYear}
-                        onChange={(e) => setSchoolYear(e.target.value)}
+                        value={selectedSchoolYear }
+                        onChange={(e) => setSelectedSchoolYear(e.target.value)}
                         placeholder="School Year (e.g., 2025-2026)"
                         required
                       />

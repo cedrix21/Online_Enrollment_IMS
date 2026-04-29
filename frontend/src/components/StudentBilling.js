@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import './StudentBilling.css';
+import { logActivity } from '../utils/activityLogger';
 
 // --- Skeleton Components (same as before) ---
 const SummaryCardSkeleton = () => (
@@ -61,7 +62,7 @@ const isPastGracePeriod = () => {
 
 
 // --- Modal Component (unchanged) ---
-const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose,schoolYear  }) => {
+const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, schoolYear }) => {
     const [loading, setLoading] = useState(false);
     const [baseAmount, setBaseAmount] = useState('');
     const [bookAmount, setBookAmount] = useState('');
@@ -116,6 +117,18 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose,schoolYear  }) =
         try {
             const results = await Promise.all(promises);
             const newPayments = results.map(r => r.data.payment);
+
+            // Log the payment(s) – use a single log entry describing the batch
+            await logActivity('payment_added', {
+                student_id: studentId,
+                student_name: studentName,
+                amount: (monthlyTotal + books).toFixed(2),
+                payment_method: paymentData.paymentMethod,
+                reference: paymentData.reference_number || 'N/A',
+                school_year: schoolYear,
+                payment_type: (monthly > 0 && books > 0) ? 'Monthly + Books' : (monthly > 0 ? 'Monthly Installment' : 'Books'),
+            });
+
             alert("Payment(s) recorded successfully!");
             onPaymentSuccess(newPayments);
             onClose();
@@ -240,7 +253,7 @@ const AddPaymentModal = ({ studentId, onPaymentSuccess, onClose,schoolYear  }) =
 
 
 // --- MAIN COMPONENT ---
-const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPaymentAdded, loading = false,  selectedSchoolYear  }) => {
+const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000, books, onPaymentAdded, loading = false, selectedSchoolYear }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
@@ -357,6 +370,7 @@ const StudentBilling = ({ studentId, payments, totalTuition = 25000, books, onPa
             {isModalOpen && (
                 <AddPaymentModal
                     studentId={studentId}
+                    studentName={studentName} 
                     onClose={() => setIsModalOpen(false)}
                     onPaymentSuccess={onPaymentAdded}
                     schoolYear={selectedSchoolYear} 

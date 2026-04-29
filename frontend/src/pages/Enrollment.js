@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import API from "../api/api";
 import "./Enrollment.css";
 import "./LoadingSpinner.css";
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
 export default function Enrollment() {
+  const { schoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [isSubmitted,        setIsSubmitted]        = useState(false);
   const [loading,            setLoading]            = useState(false);
   const [showPrivacy,        setShowPrivacy]        = useState(true);
@@ -16,6 +18,7 @@ export default function Enrollment() {
   const [continuingStudentId, setContinuingStudentId] = useState("");
   const [studentIdValid, setStudentIdValid] = useState(null); 
   const [errorMessage, setErrorMessage] = useState("");
+
   // ── Requirement files (all optional) ─────────────────────────
   const [requirementFiles, setRequirementFiles] = useState({
     psa:          null,
@@ -47,14 +50,7 @@ export default function Enrollment() {
     fetchFees();
   }, []);
 
-  // ── School year ───────────────────────────────────────────────
-  const getCurrentSchoolYear = () => {
-    // return '2026-2027';
-    const month = new Date().getMonth() + 1;
-    const year  = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  };
-  const [schoolYear] = useState(getCurrentSchoolYear());
+
 
   // ── Form state ────────────────────────────────────────────────
   const [formData, setFormData] = useState({
@@ -350,6 +346,11 @@ const verifyStudentId = async () => {
     updatedSiblings[index][e.target.name] = e.target.value;
     setFormData({ ...formData, siblings: updatedSiblings });
   };
+
+    if (yearLoading) {
+  return <div className="loading-spinner">Loading school year...</div>;
+}
+
 
   // ── Render ────────────────────────────────────────────────────
   return (

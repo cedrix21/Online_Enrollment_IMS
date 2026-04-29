@@ -6,6 +6,7 @@ import TopBar from "../components/TopBar";
 import { useNavigate } from "react-router-dom";
 import { FaSyncAlt, FaSearch, FaPrint } from "react-icons/fa";
 import printReportCard from "../components/printReportCard";
+import { useCurrentSchoolYear } from "../hooks/useCurrentSchoolYear";
 
 // GPA calculation – simple average of all grades
 const calculateGPA = (grades) => {
@@ -322,6 +323,8 @@ const GradeModal = memo(({
 const EvaluationManagement = () => {
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const navigate = useNavigate();
+  const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
 
   // Data states
   const [allGrades, setAllGrades] = useState([]);
@@ -349,16 +352,17 @@ const EvaluationManagement = () => {
   // Teacher name state (dynamic)
   const [teacherName, setTeacherName] = useState('');
 
-  // 🆕 School year filter
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  });
+   useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(currentSchoolYear);
+    }
+  }, [currentSchoolYear, selectedSchoolYear]);
+
+
   // ────────────────────────────────────────────────────────────
   // Data fetching
   // ────────────────────────────────────────────────────────────
-  useEffect(() => {
+   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
@@ -372,47 +376,50 @@ const EvaluationManagement = () => {
   }, []);
 
   const fetchAllGrades = async (showRefreshing = false) => {
-  try {
-    if (showRefreshing) {
-      setRefreshing(true);
-      setSuccess("Refreshing data...");
-    } else {
-      setLoading(true);
-    }
-
-    const res = await API.get("/admin/grades", {
-      params: { school_year: selectedSchoolYear }
-    });
-    const gradesData = res.data.data || [];
-    setAllGrades(gradesData);
-
-    setError("");
-    if (showRefreshing) {
-      setSuccess("Data refreshed successfully!");
-      setTimeout(() => setSuccess(""), 2000);
-    }
-  } catch (err) {
-    console.error("Error fetching grades:", err);
-    if (err.response?.status === 404 || err.response?.data?.message?.includes("No grades found")) {
-      setAllGrades([]);
+    if (!selectedSchoolYear) return; // Don't fetch until we have a year
+    try {
       if (showRefreshing) {
-        setSuccess("No grades available yet");
+        setRefreshing(true);
+        setSuccess("Refreshing data...");
+      } else {
+        setLoading(true);
+      }
+
+      const res = await API.get("/admin/grades", {
+        params: { school_year: selectedSchoolYear }
+      });
+      const gradesData = res.data.data || [];
+      setAllGrades(gradesData);
+
+      setError("");
+      if (showRefreshing) {
+        setSuccess("Data refreshed successfully!");
         setTimeout(() => setSuccess(""), 2000);
       }
-    } else if (err.response?.status !== 401) {
-      setError("Failed to fetch grades: " + (err.response?.data?.message || err.message));
+    } catch (err) {
+      console.error("Error fetching grades:", err);
+      if (err.response?.status === 404 || err.response?.data?.message?.includes("No grades found")) {
+        setAllGrades([]);
+        if (showRefreshing) {
+          setSuccess("No grades available yet");
+          setTimeout(() => setSuccess(""), 2000);
+        }
+      } else if (err.response?.status !== 401) {
+        setError("Failed to fetch grades: " + (err.response?.data?.message || err.message));
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
-useEffect(() => {
-  fetchAllGrades();
-   setFilterSection("all");
-}, [selectedSchoolYear,selectedGradeLevel]);
+  };
 
-
+  // ✅ Only fetch grades when selectedSchoolYear is available
+  useEffect(() => {
+    if (selectedSchoolYear) {
+      fetchAllGrades();
+    }
+    setFilterSection("all");
+  }, [selectedSchoolYear, selectedGradeLevel]);
 
   const handleRefresh = () => fetchAllGrades(true);
 
@@ -427,6 +434,7 @@ useEffect(() => {
       setAllSubjects([]);
     }
   };
+
 
   // ────────────────────────────────────────────────────────────
   // Memoized derived data
@@ -650,6 +658,10 @@ useEffect(() => {
     });
   }, [selectedStudent, teacherName, studentGrades, allSubjects]);
 
+  if (yearLoading || !selectedSchoolYear) {
+    return <div className="loading-spinner">Loading school year...</div>;
+  }
+  
   // ────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────

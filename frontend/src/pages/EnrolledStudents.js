@@ -3,40 +3,37 @@ import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
 import API from '../api/api';
 import { logActivity } from '../utils/activityLogger'; 
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 import './EnrolledStudents.css';
 import { FaSearch, FaFileExcel, FaPlus, FaTrash, FaEdit, FaPencilAlt } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
 const EnrolledStudents = () => {
-  function getCurrentSchoolYear() {
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  }
-
-  const currentSchoolYear = getCurrentSchoolYear();
+  const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
 
   const getPastSchoolYears = () => {
+    if (!currentSchoolYear) return [];
+    const [start] = currentSchoolYear.split('-');
+    const currentStart = parseInt(start);
     const years = [];
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    const currentStart = month >= 6 ? year : year - 1;
     for (let i = 1; i <= 10; i++) {
-      const start = currentStart - i;
-      years.push(`${start}-${start + 1}`);
+      const startYear = currentStart - i;
+      years.push(`${startYear}-${startYear + 1}`);
     }
     return years;
   };
 
-  function getNextSchoolYear() {
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    const currentStart = month >= 6 ? year : year - 1;
+  const getNextSchoolYear = () => {
+    if (!currentSchoolYear) return '';
+    const [start] = currentSchoolYear.split('-');
+    const currentStart = parseInt(start);
     return `${currentStart + 1}-${currentStart + 2}`;
-  }
+  };
 
   const pastSchoolYears = getPastSchoolYears();
   const nextSchoolYear = getNextSchoolYear();
+
+  // ✅ All useState hooks – before any conditional return
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +44,7 @@ const EnrolledStudents = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [formData, setFormData] = useState({
-    studentId: '', firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
+    studentId: '', firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0] || '',
   });
   const [lrnModalOpen, setLrnModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -55,10 +52,64 @@ const EnrolledStudents = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // ✅ useEffect hooks – before conditional return
   useEffect(() => {
-    fetchStudents();
+    if (currentSchoolYear && !filterSchoolYear) {
+      setFilterSchoolYear(currentSchoolYear);
+    }
+  }, [currentSchoolYear, filterSchoolYear]);
+
+  useEffect(() => {
+    if (filterSchoolYear) {
+      fetchStudents();
+    }
   }, [filterSchoolYear]);
 
+  // ✅ useMemo hooks – before conditional return
+  const gradeLevels = useMemo(() => {
+    const levels = [...new Set(students.map(s => s.gradeLevel))].filter(Boolean);
+    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
+    return levels.sort((a, b) => (order[a] || 99) - (order[b] || 99));
+  }, [students]);
+
+  const schoolYears = useMemo(() => {
+  if (!currentSchoolYear) return [];   // 👈 add this guard
+  const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
+  const trimmedPastYears = pastSchoolYears.map(y => y.trim());
+  const trimmedCurrent = currentSchoolYear.trim();
+  const trimmedNext = nextSchoolYear.trim();
+  const allYears = new Set([...yearsFromRecords, ...trimmedPastYears, trimmedCurrent, trimmedNext]);
+  return Array.from(allYears).sort().reverse();
+}, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
+
+  const filteredStudents = useMemo(() => {
+    let filtered = students;
+    if (filterGrade !== 'all') filtered = filtered.filter(s => s.gradeLevel === filterGrade);
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) || (s.studentId && s.studentId.toLowerCase().includes(term)));
+    }
+    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
+    return filtered.sort((a, b) => {
+      const gradeDiff = (order[a.gradeLevel] || 99) - (order[b.gradeLevel] || 99);
+      if (gradeDiff !== 0) return gradeDiff;
+      return (a.lastName || '').localeCompare(b.lastName || '');
+    });
+  }, [students, filterGrade, searchTerm]);
+
+
+  useEffect(() => {
+  if (pastSchoolYears[0]) {
+    setFormData(prev => ({ ...prev, schoolYear: pastSchoolYears[0] }));
+  }
+  }, [pastSchoolYears]);
+
+  // ✅ Conditional return AFTER all hooks
+  if (yearLoading) {
+    return <div className="loading-spinner">Loading school year...</div>;
+  }
+
+  // ✅ Functions (non‑hooks) can be declared after the conditional return
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -218,35 +269,6 @@ const EnrolledStudents = () => {
     }
   };
 
-  const gradeLevels = useMemo(() => {
-    const levels = [...new Set(students.map(s => s.gradeLevel))].filter(Boolean);
-    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
-    return levels.sort((a, b) => (order[a] || 99) - (order[b] || 99));
-  }, [students]);
-
-  const schoolYears = useMemo(() => {
-    const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
-    const trimmedPastYears = pastSchoolYears.map(y => y.trim());
-    const trimmedCurrent = currentSchoolYear.trim();
-    const trimmedNext = nextSchoolYear.trim();
-    const allYears = new Set([...yearsFromRecords, ...trimmedPastYears, trimmedCurrent, trimmedNext]);
-    return Array.from(allYears).sort().reverse();
-  }, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
-
-  const filteredStudents = useMemo(() => {
-    let filtered = students;
-    if (filterGrade !== 'all') filtered = filtered.filter(s => s.gradeLevel === filterGrade);
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) || (s.studentId && s.studentId.toLowerCase().includes(term)));
-    }
-    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
-    return filtered.sort((a, b) => {
-      const gradeDiff = (order[a.gradeLevel] || 99) - (order[b.gradeLevel] || 99);
-      if (gradeDiff !== 0) return gradeDiff;
-      return (a.lastName || '').localeCompare(b.lastName || '');
-    });
-  }, [students, filterGrade, searchTerm]);
 
   const exportToExcel = () => {
     const data = filteredStudents.map(s => ({

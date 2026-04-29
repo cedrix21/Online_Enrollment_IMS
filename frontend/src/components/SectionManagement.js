@@ -14,6 +14,7 @@
     FaExchangeAlt 
   } from "react-icons/fa";
   import "./SectionManagement.css";
+  import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // CONSTANTS - Outside component (prevents recreation on every render)
@@ -753,6 +754,9 @@ console.log('=== ScheduleModal Filter ===');
   // MAIN COMPONENT
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   export default function SectionManagement() {
+    const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
+    const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
+
     const [user] = useState(() => {
       try {
         return JSON.parse(localStorage.getItem("user")) || null;
@@ -784,83 +788,76 @@ console.log('=== ScheduleModal Filter ===');
     // Form State
     const [newSchedule, setNewSchedule] = useState(INITIAL_SCHEDULE_FORM);
     const [newSection, setNewSection] = useState(INITIAL_SECTION_FORM);
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => {
-    const month = new Date().getMonth() + 1;
-    const year = new Date().getFullYear();
-    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-  });
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(currentSchoolYear);
+    }
+  }, [currentSchoolYear, selectedSchoolYear]);
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // MEMOIZED VALUES
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const groupedSchedules = useMemo(() => {
-      if (!selectedSection?.schedules) return [];
-      
-      const grouped = selectedSection.schedules.reduce((acc, current) => {
-        const key = `${current.subject_id}-${current.time_slot_id}-${current.room_id}`;
-        
-        if (!acc[key]) {
-          acc[key] = {
-            ...current,
-            days: [current.day],
-            ids: [current.id],
-          };
-        } else {
-          acc[key].days.push(current.day);
-          acc[key].ids.push(current.id);
-        }
-        return acc;
-      }, {});
-      
-      return Object.values(grouped);
-    }, [selectedSection?.schedules]);
+    if (!selectedSection?.schedules) return [];
+    const grouped = selectedSection.schedules.reduce((acc, current) => {
+      const key = `${current.subject_id}-${current.time_slot_id}-${current.room_id}`;
+      if (!acc[key]) {
+        acc[key] = { ...current, days: [current.day], ids: [current.id] };
+      } else {
+        acc[key].days.push(current.day);
+        acc[key].ids.push(current.id);
+      }
+      return acc;
+    }, {});
+    return Object.values(grouped);
+  }, [selectedSection?.schedules]);
 
-    // ⚡ PERFORMANCE: Map-based schedule lookup for O(1) conflict detection
-    const occupiedSchedulesMap = useMemo(() => {
-      const map = new Map();
-      occupiedSchedules.forEach(sched => {
-        const key = `${sched.day}-${sched.time_slot_id}-${sched.section_id}-${sched.teacher_id}-${sched.room_id}`;
-        map.set(key, sched);
-      });
-      return map;
-    }, [occupiedSchedules]);
+  const occupiedSchedulesMap = useMemo(() => {
+    const map = new Map();
+    occupiedSchedules.forEach(sched => {
+      const key = `${sched.day}-${sched.time_slot_id}-${sched.section_id}-${sched.teacher_id}-${sched.room_id}`;
+      map.set(key, sched);
+    });
+    return map;
+  }, [occupiedSchedules]);
 
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // DATA FETCHING
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const fetchData = useCallback(async () => {
+    if (!selectedSchoolYear) return; // Don't fetch until we have a year
+    try {
+      setLoading(true);
+      const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
+        API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+        API.get("/teachers"),
+        API.get("/rooms"),
+        API.get("/time-slots"),
+        API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
+      ]);
 
-   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// DATA FETCHING
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const fetchData = useCallback(async () => {
-  try {
-    setLoading(true);
-    const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
-      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-      API.get("/teachers"),
-      API.get("/rooms"),
-      API.get("/time-slots"),
-      API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-    ]);
+      const sortedSections = sortSectionsByGrade(secRes.data);
+      setSections(sortedSections);
+      setTeachers(teachRes.data);
+      setRooms(roomRes.data);
+      setTimeSlots(slotRes.data);
+      setOccupiedSchedules(schedRes.data);
+    } catch (err) {
+      console.error("Error fetching data", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedSchoolYear]);
 
-    const sortedSections = sortSectionsByGrade(secRes.data);
-    setSections(sortedSections);
-    setTeachers(teachRes.data);
-    setRooms(roomRes.data);
-    setTimeSlots(slotRes.data);
-    setOccupiedSchedules(schedRes.data);
-  } catch (err) {
-    console.error("Error fetching data", err); 
-  } finally {
-    setLoading(false);
-  }
-}, [selectedSchoolYear]);
-
-// ✅ Fetch data whenever school year changes
-useEffect(() => {
-  fetchData();
-}, [fetchData]); // fetchData is stable because of useCallback with selectedSchoolYear dependency
-
+  useEffect(() => {
+    if (selectedSchoolYear) {
+      fetchData();
+    }
+  }, [fetchData, selectedSchoolYear]);
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // HANDLERS
@@ -1192,11 +1189,11 @@ const handleOpenScheduleModal = useCallback(async (section) => {
 
     
 
-
-
-
-
     const conflictMessages = useMemo(() => getConflictMessages(), [getConflictMessages]);
+
+     if (yearLoading || !selectedSchoolYear) {
+    return <div className="loading-spinner">Loading school year...</div>;
+    }
 
     return (
       <div className="dashboard-layout">

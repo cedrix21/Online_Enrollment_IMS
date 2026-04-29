@@ -4,6 +4,7 @@ import API from '../api/api';
 import './TuitionFeeManagement.css';
 import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
 const GRADE_LEVELS = [
   'Nursery', 'Kindergarten 1', 'Kindergarten 2',
@@ -24,32 +25,51 @@ const emptyForm = {
   misc_items:    [],
 };
 
+
+
 export default function TuitionFeeManagement() {
+  const { schoolYear, loading: yearLoading } = useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
   const [fees,       setFees]       = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
-  const [schoolYear, setSchoolYear] = useState('2026-2027');
   const [modal,      setModal]      = useState(null);   // null | 'create' | 'edit'
   const [selected,   setSelected]   = useState(null);
   const [form,       setForm]       = useState(emptyForm);
   const [expandedId, setExpandedId] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
 
   // ── fetch ────────────────────────────────────────────────
+  useEffect(() => {
+    if (schoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(schoolYear);
+    }
+  }, [schoolYear, selectedSchoolYear]);
+
+
+  // Fetch fees whenever selectedSchoolYear changes
   const fetchFees = useCallback(async () => {
+    if (!selectedSchoolYear) return;
     setLoading(true);
     try {
-      const res = await API.get('/tuition-fees', { params: { school_year: schoolYear } });
+      const res = await API.get('/tuition-fees', { params: { school_year: selectedSchoolYear } });
       setFees(res.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [schoolYear]);
+  }, [selectedSchoolYear]);
 
-  useEffect(() => { fetchFees(); }, [fetchFees]);
+  useEffect(() => {
+    fetchFees();
+  }, [fetchFees]);
+
+  if (yearLoading) {
+    return <div>Loading school year...</div>;
+  }
 
   // ── form helpers ─────────────────────────────────────────
   const openCreate = () => {
@@ -170,8 +190,8 @@ export default function TuitionFeeManagement() {
         <div className="tfm-header-actions">
           <select
             className="tfm-sy-select"
-            value={schoolYear}
-            onChange={e => setSchoolYear(e.target.value)}
+            value={selectedSchoolYear || ''}
+            onChange={e => setSelectedSchoolYear(e.target.value)}
           >
             {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
               <option key={y} value={y}>{y}</option>
@@ -189,7 +209,7 @@ export default function TuitionFeeManagement() {
         <div className="tfm-loading">Loading fees...</div>
       ) : fees.length === 0 ? (
         <div className="tfm-empty">
-          No fees found for SY {schoolYear}.{' '}
+          No fees found for SY {selectedSchoolYear}.{' '}
           <span className="tfm-empty-link" onClick={openCreate}>Add one now →</span>
         </div>
       ) : (

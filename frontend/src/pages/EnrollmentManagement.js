@@ -416,7 +416,7 @@ export default function EnrollmentManagement() {
       setFilterPaymentMethod(location.state.paymentFilter);
   }, [location.state?.filter, location.state?.paymentFilter]);
 
-  const fetchEnrollments = async () => {
+const fetchEnrollments = useCallback(async () => {
   setIsLoading(true);
   try {
     const res = await API.get("/enrollments", {
@@ -428,12 +428,12 @@ export default function EnrollmentManagement() {
   } finally {
     setIsLoading(false);
   }
-};
+}, [filterSchoolYear]);
 
 
 useEffect(() => {
   fetchEnrollments();
-}, [filterSchoolYear]);
+}, [fetchEnrollments]);
 
 
  const updateStatus = useCallback(
