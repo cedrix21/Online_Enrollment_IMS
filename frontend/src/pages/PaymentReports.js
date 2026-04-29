@@ -168,7 +168,7 @@ const PaymentReports = () => {
                             <div className="filter-group">
                                 <label>Search</label>
                                 <div className="search-box">
-                                    <FaSearch className="search-icon" />
+                                    <FaSearch className="search-icons" />
                                     <input
                                         type="text"
                                         placeholder="Student name, ID, ref #"

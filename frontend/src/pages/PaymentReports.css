@@ -78,9 +78,9 @@
     width: 100%;
 }
 
-.search-icon {
+.search-icons {
     position: absolute;
-    left: 8px;
+    right: 10px; 
     color: #999;
 }
 
