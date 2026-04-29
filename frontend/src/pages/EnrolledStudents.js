@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
 import API from '../api/api';
+import { logActivity } from '../utils/activityLogger'; 
 import './EnrolledStudents.css';
 import { FaSearch, FaFileExcel, FaPlus, FaTrash, FaEdit, FaPencilAlt } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
@@ -65,6 +66,10 @@ const EnrolledStudents = () => {
       setStudents(res.data);
     } catch (err) {
       console.error('Error fetching student records', err);
+      await logActivity('fetch_students_error', {
+        school_year: filterSchoolYear,
+        error: err.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -76,11 +81,22 @@ const EnrolledStudents = () => {
       await API.delete(`/student-records/${id}`);
       setSuccessMessage(`✅ ${studentName} deleted.`);
       setTimeout(() => setSuccessMessage(''), 3000);
+      await logActivity('delete_student_record', {
+        record_id: id,
+        student_name: studentName,
+        school_year: filterSchoolYear,
+      });
       fetchStudents();
     } catch (err) {
       console.error('Error deleting student record', err);
-      setErrorMessage('Failed to delete. ' + (err.response?.data?.message || ''));
+      const errorMsg = err.response?.data?.message || '';
+      setErrorMessage('Failed to delete. ' + errorMsg);
       setTimeout(() => setErrorMessage(''), 4000);
+      await logActivity('delete_student_record_error', {
+        record_id: id,
+        student_name: studentName,
+        error: errorMsg,
+      });
     }
   };
 
@@ -113,11 +129,32 @@ const EnrolledStudents = () => {
         await API.put(`/student-records/${editingRecord.id}`, formData);
         setSuccessMessage('✅ Record updated successfully!');
         setTimeout(() => setSuccessMessage(''), 3000);
+        
+        try{
+            await logActivity('update_student_record', {
+          record_id: editingRecord.id,
+          student_id: formData.studentId,
+          student_name: `${formData.lastName}, ${formData.firstName}`,
+          school_year: formData.schoolYear,
+        });
+        }catch (logErr) {
+          console.warn('Logging failed', logErr);
+        }
         closeModal();
       } else {
         await API.post('/student-records', formData);
         setSuccessMessage('✅ Record added! You can add another.');
         setTimeout(() => setSuccessMessage(''), 3000);
+        try{
+            await logActivity('add_student_record', {
+          student_id: formData.studentId,
+          student_name: `${formData.lastName}, ${formData.firstName}`,
+          grade_level: formData.gradeLevel,
+          school_year: formData.schoolYear,
+        });
+        }catch (logErr) {
+          console.warn('Logging failed', logErr);
+        }
         setFormData({
           firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
         });
@@ -125,8 +162,14 @@ const EnrolledStudents = () => {
       fetchStudents();
     } catch (err) {
       console.error('Error saving record', err);
-      setErrorMessage('Failed to save. ' + (err.response?.data?.message || ''));
+      const errorMsg = err.response?.data?.message || '';
+      setErrorMessage('Failed to save. ' + errorMsg);
       setTimeout(() => setErrorMessage(''), 4000);
+      await logActivity('save_student_record_error', {
+        action: editingRecord ? 'update' : 'add',
+        data: formData,
+        error: errorMsg,
+      });
     }
   };
 
@@ -154,6 +197,12 @@ const EnrolledStudents = () => {
       });
       setSuccessMessage('✅ LRN / Contact updated!');
       setTimeout(() => setSuccessMessage(''), 3000);
+      await logActivity('update_student_lrn_contact', {
+        student_id: selectedStudent.id,
+        student_name: `${selectedStudent.lastName}, ${selectedStudent.firstName}`,
+        new_lrn: lrnInput,
+        new_contact: contactInput,
+      });
       closeLrnModal();
       fetchStudents();
     } catch (err) {
@@ -161,6 +210,11 @@ const EnrolledStudents = () => {
       const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
       setErrorMessage('Failed to update: ' + errorMsg);
       setTimeout(() => setErrorMessage(''), 4000);
+      await logActivity('update_student_lrn_contact_error', {
+        student_id: selectedStudent.id,
+        student_name: `${selectedStudent.lastName}, ${selectedStudent.firstName}`,
+        error: errorMsg,
+      });
     }
   };
 
@@ -368,7 +422,7 @@ const EnrolledStudents = () => {
                   name="contactNumber"
                   value={formData.contactNumber}
                   onChange={handleInputChange}
-                  required
+                 
                 />
               </div>
               <div className="form-group">

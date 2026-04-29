@@ -21,7 +21,7 @@ class StudentRecordController extends Controller
             'lastName' => 'required|string',
             'gradeLevel' => 'required|string',
             'lrn' => 'nullable|string',
-            'contactNumber' => 'required|string',
+            'contactNumber' => 'nullable|string',
             'schoolYear' => 'required|string',
         ]);
 
@@ -53,7 +53,7 @@ class StudentRecordController extends Controller
         'lastName' => 'required|string',
         'gradeLevel' => 'required|string',
         'lrn' => 'nullable|string',
-        'contactNumber' => 'required|string',
+        'contactNumber' => 'nullable|string',
         'schoolYear' => 'required|string',
     ]);
 

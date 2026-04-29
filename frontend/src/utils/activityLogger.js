@@ -1,12 +1,13 @@
 // frontend/src/utils/activityLogger.js
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 export const logActivity = async (action, metadata = {}) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-        await axios.post('/api/activity-logs', {
+        await axios.post(`${API_BASE_URL}/api/activity-logs`, {
             action,
             metadata: {
                 page: window.location.pathname,
