@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import API from '../api/api';
 
 const CACHE_KEY = 'current_school_year';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day – school year rarely changes
+const CACHE_TIME_KEY = 'current_school_year_time';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day
 
 export const useCurrentSchoolYear = () => {
     const [schoolYear, setSchoolYear] = useState(null);
@@ -10,27 +11,19 @@ export const useCurrentSchoolYear = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Check cache first
-        const cached = localStorage.getItem(CACHE_KEY);
-        const cachedTime = localStorage.getItem(`${CACHE_KEY}_time`);
-        if (cached && cachedTime && (Date.now() - parseInt(cachedTime) < CACHE_DURATION)) {
-            setSchoolYear(cached);
-            setLoading(false);
-            return;
-        }
-
-        // Fetch from backend
         const fetchSchoolYear = async () => {
             try {
                 const res = await API.get('/current-school-year');
                 const year = res.data.school_year;
                 setSchoolYear(year);
-                localStorage.setItem(CACHE_KEY, year);
-                localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
+                // Only store in cache if not in development
+                if (process.env.NODE_ENV !== 'development') {
+                    localStorage.setItem(CACHE_KEY, year);
+                    localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+                }
             } catch (err) {
                 console.error('Failed to fetch current school year', err);
                 setError(err);
-                // Fallback to client-side calculation
                 const fallbackYear = getFallbackSchoolYear();
                 setSchoolYear(fallbackYear);
             } finally {
@@ -38,13 +31,27 @@ export const useCurrentSchoolYear = () => {
             }
         };
 
+        // In development, always bypass cache and fetch fresh
+        if (process.env.NODE_ENV === 'development') {
+            fetchSchoolYear();
+            return;
+        }
+
+        // In production, check cache first
+        const cached = localStorage.getItem(CACHE_KEY);
+        const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+        if (cached && cachedTime && (Date.now() - parseInt(cachedTime) < CACHE_DURATION)) {
+            setSchoolYear(cached);
+            setLoading(false);
+            return;
+        }
+
         fetchSchoolYear();
     }, []);
 
     return { schoolYear, loading, error };
 };
 
-// Fallback client-side logic (same as backend)
 function getFallbackSchoolYear() {
     const month = new Date().getMonth() + 1;
     const year = new Date().getFullYear();

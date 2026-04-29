@@ -12,6 +12,7 @@ trait SchoolYearTrait
      */
     protected function getCurrentSchoolYear(): string
     {
+        // return '2026-2027';
         $month = (int) date('n');
         $year  = (int) date('Y');
         return ($month >= 6) ? "{$year}-" . ($year + 1) : ($year - 1) . "-{$year}";
