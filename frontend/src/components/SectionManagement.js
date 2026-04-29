@@ -1191,10 +1191,6 @@ const handleOpenScheduleModal = useCallback(async (section) => {
 
     const conflictMessages = useMemo(() => getConflictMessages(), [getConflictMessages]);
 
-     if (yearLoading || !selectedSchoolYear) {
-    return <div className="loading-spinner">Loading school year...</div>;
-    }
-
     return (
       <div className="dashboard-layout">
         <SideBar user={user} />
@@ -1205,6 +1201,9 @@ const handleOpenScheduleModal = useCallback(async (section) => {
             className="content-scroll-area"
             style={{ padding: "20px", overflowY: "auto", flex: 1 }}
           >
+            {yearLoading || !selectedSchoolYear ? (
+            <div className="loading-school-year">Loading school year...</div>
+          ) : (
             <div className="management-container">
               <div className="management-header">
                 <div className="title-group">
@@ -1231,11 +1230,12 @@ const handleOpenScheduleModal = useCallback(async (section) => {
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
-                <button className="add-btn" onClick={() => setShowModal(true)}>
-                  <FaPlus /> New Section
-                </button>
+                  <button className="add-btn" onClick={() => setShowModal(true)}>
+                    <FaPlus /> New Section
+                  </button>
+                </div>
               </div>
-              </div>
+
               {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
               {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
@@ -1248,26 +1248,9 @@ const handleOpenScheduleModal = useCallback(async (section) => {
                   textAlign: "center"
                 }}>
                   <div>
-                    <div style={{
-                      fontSize: "3rem",
-                      marginBottom: "20px",
-                      color: "#b8860b"
-                    }}>
-                      ⏳
-                    </div>
-                    <h3 style={{ 
-                      color: "#333", 
-                      fontWeight: 600,
-                      marginBottom: "10px"
-                    }}>
-                      Loading Sections
-                    </h3>
-                    <p style={{ 
-                      color: "#666", 
-                      fontSize: "0.95rem" 
-                    }}>
-                      Fetching classroom data...
-                    </p>
+                    <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
+                    <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Sections</h3>
+                    <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching classroom data...</p>
                   </div>
                 </div>
               ) : (
@@ -1284,7 +1267,8 @@ const handleOpenScheduleModal = useCallback(async (section) => {
                 </div>
               )}
             </div>
-          </div>
+          )}
+        </div>
 
           {/* Modals */}
           {showStudentModal && (

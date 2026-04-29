@@ -564,10 +564,7 @@ const openScheduleModal = useCallback((teacher) => {
   }
 }, [selectedSchoolYear]);
 
-if (yearLoading || !selectedSchoolYear) {
-    return <div className="loading-spinner">Loading school year...</div>;
-  }
-  
+
   return (
     <div className="dashboard-layout">
       <SideBar user={user} />
@@ -575,8 +572,11 @@ if (yearLoading || !selectedSchoolYear) {
         <TopBar user={user} />
 
         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
-          <div className="directory-container">
-            <div className="directory-header">
+          {yearLoading || !selectedSchoolYear ? (
+            <div className="loading-school-year">Loading school year...</div>
+          ) : (
+            <div className="directory-container">
+              <div className="directory-header">
                 <div className="title-group">
                   <FaChalkboardTeacher
                     className="title-icon"
@@ -613,37 +613,38 @@ if (yearLoading || !selectedSchoolYear) {
               {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
               {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
-            {loading ? (
-              <div style={{ 
-                display: "flex", 
-                justifyContent: "center", 
-                alignItems: "center",
-                minHeight: "400px",
-                textAlign: "center"
-              }}>
-                <div>
-                  <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
-                  <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Faculty</h3>
-                  <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching faculty directory...</p>
+              {loading ? (
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "center", 
+                  alignItems: "center",
+                  minHeight: "400px",
+                  textAlign: "center"
+                }}>
+                  <div>
+                    <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
+                    <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Faculty</h3>
+                    <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching faculty directory...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="teacher-grid">
-                {teachers.map((teacher) => (
-                  <TeacherCard
-                    key={teacher.id}
-                    teacher={teacher}
-                    isExpanded={expandedTeacher === teacher.id}
-                    onToggleExpand={toggleExpandTeacher}
-                    onAssign={openAssignModal}
-                    onEdit={openEditModal}
-                    onRemoveAssignment={handleRemoveAssignment}
-                    onViewSchedule={openScheduleModal}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="teacher-grid">
+                  {teachers.map((teacher) => (
+                    <TeacherCard
+                      key={teacher.id}
+                      teacher={teacher}
+                      isExpanded={expandedTeacher === teacher.id}
+                      onToggleExpand={toggleExpandTeacher}
+                      onAssign={openAssignModal}
+                      onEdit={openEditModal}
+                      onRemoveAssignment={handleRemoveAssignment}
+                      onViewSchedule={openScheduleModal}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {showModal && (

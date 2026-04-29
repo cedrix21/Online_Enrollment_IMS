@@ -25,8 +25,6 @@ const emptyForm = {
   misc_items:    [],
 };
 
-
-
 export default function TuitionFeeManagement() {
   const { schoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
@@ -39,7 +37,6 @@ export default function TuitionFeeManagement() {
   const [expandedId, setExpandedId] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  
 
   // ── fetch ────────────────────────────────────────────────
   useEffect(() => {
@@ -47,7 +44,6 @@ export default function TuitionFeeManagement() {
       setSelectedSchoolYear(schoolYear);
     }
   }, [schoolYear, selectedSchoolYear]);
-
 
   // Fetch fees whenever selectedSchoolYear changes
   const fetchFees = useCallback(async () => {
@@ -67,13 +63,9 @@ export default function TuitionFeeManagement() {
     fetchFees();
   }, [fetchFees]);
 
-  if (yearLoading) {
-    return <div>Loading school year...</div>;
-  }
-
   // ── form helpers ─────────────────────────────────────────
   const openCreate = () => {
-    setForm({ ...emptyForm, school_year: schoolYear, misc_items: [] });
+    setForm({ ...emptyForm, school_year: selectedSchoolYear, misc_items: [] });
     setSelected(null);
     setModal('create');
   };
@@ -179,296 +171,295 @@ export default function TuitionFeeManagement() {
       <div className="main-content">
         <TopBar user={user} />
         <div className="content-scroll-area">
-          <div className="tfm-page">
-
-      {/* Header */}
-      <div className="tfm-header">
-        <div>
-          <h1 className="tfm-title">Tuition Fee Management</h1>
-          <p className="tfm-subtitle">Manage tuition and miscellaneous fees per grade level</p>
-        </div>
-        <div className="tfm-header-actions">
-          <select
-            className="tfm-sy-select"
-            value={selectedSchoolYear || ''}
-            onChange={e => setSelectedSchoolYear(e.target.value)}
-          >
-            {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <button className="tfm-add-btn" onClick={openCreate}>+ Add Fee</button>
-        </div>
-      </div>
-
-      {errorMessage && <div className="tfm-error" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>❌ {errorMessage}</div>}
-      {successMessage && <div className="tfm-success" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>✅ {successMessage}</div>}
-
-      {/* Content */}
-      {loading ? (
-        <div className="tfm-loading">Loading fees...</div>
-      ) : fees.length === 0 ? (
-        <div className="tfm-empty">
-          No fees found for SY {selectedSchoolYear}.{' '}
-          <span className="tfm-empty-link" onClick={openCreate}>Add one now →</span>
-        </div>
-      ) : (
-        <div className="tfm-grid">
-          {fees.map(fee => (
-            <div key={fee.id} className={`tfm-card ${!fee.is_active ? 'tfm-card--inactive' : ''}`}>
-
-              {/* Card header */}
-              <div className="tfm-card-header">
+          {yearLoading || !selectedSchoolYear ? (
+            <div className="loading-school-year">Loading school year...</div>
+          ) : (
+            <div className="tfm-page">
+              {/* Header */}
+              <div className="tfm-header">
                 <div>
-                  <div className="tfm-grade-label">{fee.grade_level}</div>
-                  <div className="tfm-sy-badge">SY {fee.school_year}</div>
+                  <h1 className="tfm-title">Tuition Fee Management</h1>
+                  <p className="tfm-subtitle">Manage tuition and miscellaneous fees per grade level</p>
                 </div>
-                <div className="tfm-card-actions">
-                  <button
-                    onClick={() => toggleActive(fee)}
-                    className={`tfm-status-badge ${fee.is_active ? 'tfm-status-badge--active' : 'tfm-status-badge--inactive'}`}
+                <div className="tfm-header-actions">
+                  <select
+                    className="tfm-sy-select"
+                    value={selectedSchoolYear}
+                    onChange={e => setSelectedSchoolYear(e.target.value)}
                   >
-                    {fee.is_active ? 'Active' : 'Inactive'}
-                  </button>
-                  <button onClick={() => openEdit(fee)} className="tfm-icon-btn">✏️</button>
-                  <button onClick={() => handleDelete(fee)} className="tfm-icon-btn tfm-icon-btn--danger">🗑️</button>
+                    {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  <button className="tfm-add-btn" onClick={openCreate}>+ Add Fee</button>
                 </div>
               </div>
 
-              {/* Totals */}
-              <div className="tfm-totals-row">
-                <div className="tfm-total-box">
-                  <div className="tfm-total-label">Total Fee</div>
-                  <div className="tfm-total-val">{fmt(fee.total_fee)}</div>
-                </div>
-                <div className="tfm-total-box">
-                  <div className="tfm-total-label">Down Payment</div>
-                  <div className="tfm-total-val">{fmt(fee.down_payment)}</div>
-                </div>
-                <div className="tfm-total-box tfm-total-box--highlight">
-                  <div className="tfm-total-label tfm-total-label--light">Monthly</div>
-                  <div className="tfm-total-val tfm-total-val--light">{fmt(fee.monthly_payment)}</div>
-                </div>
-              </div>
+              {errorMessage && <div className="tfm-error" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>❌ {errorMessage}</div>}
+              {successMessage && <div className="tfm-success" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>✅ {successMessage}</div>}
 
-              {/* Breakdown */}
-              <div className="tfm-breakdown">
-                <div className="tfm-breakdown-row">
-                  <span>Tuition Fee</span><span>{fmt(fee.tuition_fee)}</span>
+              {/* Content – fees list or empty state */}
+              {loading ? (
+                <div className="tfm-loading">Loading fees...</div>
+              ) : fees.length === 0 ? (
+                <div className="tfm-empty">
+                  No fees found for SY {selectedSchoolYear}.{' '}
+                  <span className="tfm-empty-link" onClick={openCreate}>Add one now →</span>
                 </div>
-                {fee.korean_fee > 0 && (
-                  <div className="tfm-breakdown-row">
-                    <span>Korean Language Fee</span><span>{fmt(fee.korean_fee)}</span>
-                  </div>
-                )}
-                <div className="tfm-breakdown-row">
-                  <span>Miscellaneous Fee</span><span>{fmt(fee.misc_total)}</span>
-                </div>
-              </div>
+              ) : (
+                <div className="tfm-grid">
+                  {fees.map(fee => (
+                    <div key={fee.id} className={`tfm-card ${!fee.is_active ? 'tfm-card--inactive' : ''}`}>
+                      {/* Card header */}
+                      <div className="tfm-card-header">
+                        <div>
+                          <div className="tfm-grade-label">{fee.grade_level}</div>
+                          <div className="tfm-sy-badge">SY {fee.school_year}</div>
+                        </div>
+                        <div className="tfm-card-actions">
+                          <button
+                            onClick={() => toggleActive(fee)}
+                            className={`tfm-status-badge ${fee.is_active ? 'tfm-status-badge--active' : 'tfm-status-badge--inactive'}`}
+                          >
+                            {fee.is_active ? 'Active' : 'Inactive'}
+                          </button>
+                          <button onClick={() => openEdit(fee)} className="tfm-icon-btn">✏️</button>
+                          <button onClick={() => handleDelete(fee)} className="tfm-icon-btn tfm-icon-btn--danger">🗑️</button>
+                        </div>
+                      </div>
 
-              {/* Misc toggle */}
-              <button
-                className="tfm-misc-toggle"
-                onClick={() => setExpandedId(expandedId === fee.id ? null : fee.id)}
-              >
-                {expandedId === fee.id ? '▲ Hide' : '▼ View'} Misc Breakdown ({fee.misc_items.length} items)
-              </button>
+                      {/* Totals */}
+                      <div className="tfm-totals-row">
+                        <div className="tfm-total-box">
+                          <div className="tfm-total-label">Total Fee</div>
+                          <div className="tfm-total-val">{fmt(fee.total_fee)}</div>
+                        </div>
+                        <div className="tfm-total-box">
+                          <div className="tfm-total-label">Down Payment</div>
+                          <div className="tfm-total-val">{fmt(fee.down_payment)}</div>
+                        </div>
+                        <div className="tfm-total-box tfm-total-box--highlight">
+                          <div className="tfm-total-label tfm-total-label--light">Monthly</div>
+                          <div className="tfm-total-val tfm-total-val--light">{fmt(fee.monthly_payment)}</div>
+                        </div>
+                      </div>
 
-              {expandedId === fee.id && (
-                <div className="tfm-misc-list">
-                  {fee.misc_items.map((m, i) => (
-                    <div key={i} className="tfm-misc-item">
-                      <span>{m.label}</span>
-                      <span>{fmt(m.amount)}</span>
+                      {/* Breakdown */}
+                      <div className="tfm-breakdown">
+                        <div className="tfm-breakdown-row">
+                          <span>Tuition Fee</span><span>{fmt(fee.tuition_fee)}</span>
+                        </div>
+                        {fee.korean_fee > 0 && (
+                          <div className="tfm-breakdown-row">
+                            <span>Korean Language Fee</span><span>{fmt(fee.korean_fee)}</span>
+                          </div>
+                        )}
+                        <div className="tfm-breakdown-row">
+                          <span>Miscellaneous Fee</span><span>{fmt(fee.misc_total)}</span>
+                        </div>
+                      </div>
+
+                      {/* Misc toggle */}
+                      <button
+                        className="tfm-misc-toggle"
+                        onClick={() => setExpandedId(expandedId === fee.id ? null : fee.id)}
+                      >
+                        {expandedId === fee.id ? '▲ Hide' : '▼ View'} Misc Breakdown ({fee.misc_items.length} items)
+                      </button>
+
+                      {expandedId === fee.id && (
+                        <div className="tfm-misc-list">
+                          {fee.misc_items.map((m, i) => (
+                            <div key={i} className="tfm-misc-item">
+                              <span>{m.label}</span>
+                              <span>{fmt(m.amount)}</span>
+                            </div>
+                          ))}
+                          <div className="tfm-misc-item tfm-misc-item--total">
+                            <span>Total Misc</span>
+                            <span>{fmt(fee.misc_total)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
-                  <div className="tfm-misc-item tfm-misc-item--total">
-                    <span>Total Misc</span>
-                    <span>{fmt(fee.misc_total)}</span>
+                </div>
+              )}
+
+              {/* ══ Modal ══ */}
+              {modal && (
+                <div className="tfm-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+                  <div className="tfm-modal">
+                    <div className="tfm-modal-header">
+                      <h2 className="tfm-modal-title">
+                        {modal === 'create' ? 'Add New Fee' : `Edit — ${selected?.grade_level}`}
+                      </h2>
+                      <button className="tfm-close-btn" onClick={closeModal}>✕</button>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="tfm-modal-body">
+                      {/* Grade level & school year */}
+                      <div className="tfm-form-row">
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">Grade Level</label>
+                          <select
+                            className="tfm-input"
+                            value={form.grade_level}
+                            onChange={e => setField('grade_level', e.target.value)}
+                            required
+                            disabled={modal === 'edit'}
+                          >
+                            <option value=''>Select grade</option>
+                            {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
+                          </select>
+                        </div>
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">School Year</label>
+                          <input
+                            className="tfm-input"
+                            value={form.school_year}
+                            onChange={e => setField('school_year', e.target.value)}
+                            placeholder='e.g. 2026-2027'
+                            required
+                            disabled={modal === 'edit'}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tuition + Korean */}
+                      <div className="tfm-form-row">
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">Tuition Fee (₱)</label>
+                          <input
+                            type='number' step='0.01' min='0'
+                            className="tfm-input"
+                            value={form.tuition_fee}
+                            onChange={e => setField('tuition_fee', e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">Korean Language Fee (₱)</label>
+                          <input
+                            type='number' step='0.01' min='0'
+                            className="tfm-input"
+                            value={form.korean_fee}
+                            onChange={e => setField('korean_fee', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Down payment + monthly terms */}
+                      <div className="tfm-form-row">
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">Down Payment (₱)</label>
+                          <input
+                            type='number' step='0.01' min='0'
+                            className="tfm-input"
+                            value={form.down_payment}
+                            onChange={e => setField('down_payment', e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="tfm-form-group">
+                          <label className="tfm-label">Monthly Terms (months)</label>
+                          <input
+                            type='number' min='1'
+                            className="tfm-input"
+                            value={form.monthly_terms}
+                            onChange={e => setField('monthly_terms', e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Active */}
+                      <div className="tfm-checkbox-row">
+                        <input
+                          type='checkbox'
+                          id='is_active'
+                          checked={form.is_active}
+                          onChange={e => setField('is_active', e.target.checked)}
+                        />
+                        <label htmlFor='is_active'>Active (visible on enrollment form)</label>
+                      </div>
+
+                      {/* Live preview */}
+                      <div className="tfm-preview">
+                        <div className="tfm-preview-row">
+                          <span>Misc Total</span><span>{fmt(miscTotal)}</span>
+                        </div>
+                        <div className="tfm-preview-row tfm-preview-row--total">
+                          <span>Total Fee</span><span>{fmt(totalFee)}</span>
+                        </div>
+                        <div className="tfm-preview-row">
+                          <span>Remaining Balance</span><span>{fmt(remaining)}</span>
+                        </div>
+                        <div className="tfm-preview-row tfm-preview-row--bold">
+                          <span>Monthly Payment</span><span>{fmt(monthly)}</span>
+                        </div>
+                      </div>
+
+                      {/* Misc items */}
+                      <div className="tfm-misc-section">
+                        <div className="tfm-misc-section-header">
+                          <h3 className="tfm-misc-section-title">Miscellaneous Fee Items</h3>
+                          <button type='button' className="tfm-add-misc-btn" onClick={addMiscItem}>
+                            + Add Item
+                          </button>
+                        </div>
+
+                        {form.misc_items.length === 0 ? (
+                          <p className="tfm-misc-empty">No misc items yet. Click "+ Add Item" to add.</p>
+                        ) : (
+                          <div className="tfm-misc-items-list">
+                            {form.misc_items.map((item, i) => (
+                              <div key={i} className="tfm-misc-input-row">
+                                <input
+                                  className="tfm-input"
+                                  style={{ flex: 2 }}
+                                  placeholder='Fee label (e.g. Library Fee)'
+                                  value={item.label}
+                                  onChange={e => updateMiscItem(i, 'label', e.target.value)}
+                                  required
+                                />
+                                <input
+                                  type='number' step='0.01' min='0'
+                                  className="tfm-input"
+                                  style={{ flex: 1 }}
+                                  placeholder='Amount'
+                                  value={item.amount}
+                                  onChange={e => updateMiscItem(i, 'amount', e.target.value)}
+                                  required
+                                />
+                                <button
+                                  type='button'
+                                  className="tfm-remove-btn"
+                                  onClick={() => removeMiscItem(i)}
+                                >✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="tfm-modal-actions">
+                        <button type='button' className="tfm-cancel-btn" onClick={closeModal}>
+                          Cancel
+                        </button>
+                        <button type='submit' className="tfm-save-btn" disabled={saving}>
+                          {saving ? 'Saving...' : modal === 'create' ? 'Create Fee' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* ══ Modal ══ */}
-      {modal && (
-        <div className="tfm-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-          <div className="tfm-modal">
-
-            <div className="tfm-modal-header">
-              <h2 className="tfm-modal-title">
-                {modal === 'create' ? 'Add New Fee' : `Edit — ${selected?.grade_level}`}
-              </h2>
-              <button className="tfm-close-btn" onClick={closeModal}>✕</button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="tfm-modal-body">
-
-              {/* Grade level & school year */}
-              <div className="tfm-form-row">
-                <div className="tfm-form-group">
-                  <label className="tfm-label">Grade Level</label>
-                  <select
-                    className="tfm-input"
-                    value={form.grade_level}
-                    onChange={e => setField('grade_level', e.target.value)}
-                    required
-                    disabled={modal === 'edit'}
-                  >
-                    <option value=''>Select grade</option>
-                    {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
-                <div className="tfm-form-group">
-                  <label className="tfm-label">School Year</label>
-                  <input
-                    className="tfm-input"
-                    value={form.school_year}
-                    onChange={e => setField('school_year', e.target.value)}
-                    placeholder='e.g. 2026-2027'
-                    required
-                    disabled={modal === 'edit'}
-                  />
-                </div>
-              </div>
-
-              {/* Tuition + Korean */}
-              <div className="tfm-form-row">
-                <div className="tfm-form-group">
-                  <label className="tfm-label">Tuition Fee (₱)</label>
-                  <input
-                    type='number' step='0.01' min='0'
-                    className="tfm-input"
-                    value={form.tuition_fee}
-                    onChange={e => setField('tuition_fee', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="tfm-form-group">
-                  <label className="tfm-label">Korean Language Fee (₱)</label>
-                  <input
-                    type='number' step='0.01' min='0'
-                    className="tfm-input"
-                    value={form.korean_fee}
-                    onChange={e => setField('korean_fee', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Down payment + monthly terms */}
-              <div className="tfm-form-row">
-                <div className="tfm-form-group">
-                  <label className="tfm-label">Down Payment (₱)</label>
-                  <input
-                    type='number' step='0.01' min='0'
-                    className="tfm-input"
-                    value={form.down_payment}
-                    onChange={e => setField('down_payment', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="tfm-form-group">
-                  <label className="tfm-label">Monthly Terms (months)</label>
-                  <input
-                    type='number' min='1'
-                    className="tfm-input"
-                    value={form.monthly_terms}
-                    onChange={e => setField('monthly_terms', e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Active */}
-              <div className="tfm-checkbox-row">
-                <input
-                  type='checkbox'
-                  id='is_active'
-                  checked={form.is_active}
-                  onChange={e => setField('is_active', e.target.checked)}
-                />
-                <label htmlFor='is_active'>Active (visible on enrollment form)</label>
-              </div>
-
-              {/* Live preview */}
-              <div className="tfm-preview">
-                <div className="tfm-preview-row">
-                  <span>Misc Total</span><span>{fmt(miscTotal)}</span>
-                </div>
-                <div className="tfm-preview-row tfm-preview-row--total">
-                  <span>Total Fee</span><span>{fmt(totalFee)}</span>
-                </div>
-                <div className="tfm-preview-row">
-                  <span>Remaining Balance</span><span>{fmt(remaining)}</span>
-                </div>
-                <div className="tfm-preview-row tfm-preview-row--bold">
-                  <span>Monthly Payment</span><span>{fmt(monthly)}</span>
-                </div>
-              </div>
-
-              {/* Misc items */}
-              <div className="tfm-misc-section">
-                <div className="tfm-misc-section-header">
-                  <h3 className="tfm-misc-section-title">Miscellaneous Fee Items</h3>
-                  <button type='button' className="tfm-add-misc-btn" onClick={addMiscItem}>
-                    + Add Item
-                  </button>
-                </div>
-
-                {form.misc_items.length === 0 ? (
-                  <p className="tfm-misc-empty">No misc items yet. Click "+ Add Item" to add.</p>
-                ) : (
-                  <div className="tfm-misc-items-list">
-                    {form.misc_items.map((item, i) => (
-                      <div key={i} className="tfm-misc-input-row">
-                        <input
-                          className="tfm-input"
-                          style={{ flex: 2 }}
-                          placeholder='Fee label (e.g. Library Fee)'
-                          value={item.label}
-                          onChange={e => updateMiscItem(i, 'label', e.target.value)}
-                          required
-                        />
-                        <input
-                          type='number' step='0.01' min='0'
-                          className="tfm-input"
-                          style={{ flex: 1 }}
-                          placeholder='Amount'
-                          value={item.amount}
-                          onChange={e => updateMiscItem(i, 'amount', e.target.value)}
-                          required
-                        />
-                        <button
-                          type='button'
-                          className="tfm-remove-btn"
-                          onClick={() => removeMiscItem(i)}
-                        >✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="tfm-modal-actions">
-                <button type='button' className="tfm-cancel-btn" onClick={closeModal}>
-                  Cancel
-                </button>
-                <button type='submit' className="tfm-save-btn" disabled={saving}>
-                  {saving ? 'Saving...' : modal === 'create' ? 'Create Fee' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-          </div> {/* end tfm-page */}
-        </div> {/* end content-scroll-area */}
-      </div> {/* end main-content */}
-    </div>  /* end dashboard-layout */
+          )}
+        </div>  
+      </div>  
+    </div>   
   );
 }

@@ -246,10 +246,7 @@ export default function SubjectManagement() {
     return acc;
   }, {});
 
-  // ✅ Loading guard – after all hooks
-  if (yearLoading || !selectedSchoolYear) {
-    return <div className="loading-spinner">Loading school year...</div>;
-  }
+
 
   return (
     <div className="dashboard-layout">
@@ -257,9 +254,11 @@ export default function SubjectManagement() {
       <div className="main-content">
         <TopBar user={user} />
 
-        <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+        {yearLoading || !selectedSchoolYear ? (
+          <div className="loading-school-year">Loading school year...</div>
+        ) : (
           <div className="subject-management-container">
-            
             <div className="page-header">
               <div className="title-group">
                 <FaBookOpen className="title-icon" />
@@ -319,11 +318,9 @@ export default function SubjectManagement() {
             <div className="subjects-container">
               {gradeLevels.map((grade) => {
                 const gradeSubjects = subjectsByGrade[grade];
-                
                 if (gradeSubjects.length === 0 && filterGrade !== "all" && filterGrade !== grade) {
                   return null;
                 }
-
                 return (
                   <div key={grade} className="grade-section">
                     <div className="grade-header">
@@ -349,14 +346,12 @@ export default function SubjectManagement() {
                                 </span>
                               )}
                             </div>
-                            
                             <div className="subject-info">
                               <h4>{subject.subjectName}</h4>
                               {subject.description && (
                                 <p className="subject-description">{subject.description}</p>
                               )}
                             </div>
-
                             <div className="subject-actions">
                               <button
                                 className="edit-btn"
@@ -386,7 +381,8 @@ export default function SubjectManagement() {
               })}
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
         {showModal && (
           <div className="modal-overlay">

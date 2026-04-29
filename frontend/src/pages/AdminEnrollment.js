@@ -75,11 +75,6 @@ export default function AdminEnrollment() {
     fetchFees();
   }, []);
 
-
-    if (yearLoading) {
-    return <div className="loading-spinner">Loading school year...</div>;
-  }
-
   const fmtPeso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 
   const handleChange = (e) => {
@@ -185,24 +180,28 @@ export default function AdminEnrollment() {
         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
           <div className="enrollment-container" style={{ backgroundImage: "none", padding: "20px" }}>
             <div className="enrollment-card" style={{ maxWidth: "100%", backgroundColor: "#fff" }}>
-              <div className="form-header">
-                <span className="role-badge registrar" style={{ background: "#b8860b", color: "#fff", padding: "5px 10px", borderRadius: "4px", fontSize: "12px" }}>
-                  OFFICE USE ONLY
-                </span>
-                <h2>INTERNAL STUDENT REGISTRATION</h2>
-                <p>S.Y. {selectedSchoolYear }</p>
-              </div>
+              {yearLoading || !selectedSchoolYear ? (
+                <div className="loading-school-year">Loading school year...</div>
+              ) : (
+                <>
+                  <div className="form-header">
+                    <span className="role-badge registrar" style={{ background: "#b8860b", color: "#fff", padding: "5px 10px", borderRadius: "4px", fontSize: "12px" }}>
+                      OFFICE USE ONLY
+                    </span>
+                    <h2>INTERNAL STUDENT REGISTRATION</h2>
+                    <p>S.Y. {selectedSchoolYear}</p>
+                  </div>
 
-              {message && (
-                <div className="message" style={{ backgroundColor: "#f8d7da", color: "#721c24" }}>
-                  {message}
-                </div>
-              )}
-              {successMessage && (
-                <div className="message" style={{ backgroundColor: "#d4edda", color: "#155724" }}>
-                  {successMessage}
-                </div>
-              )}
+                  {message && (
+                    <div className="message" style={{ backgroundColor: "#f8d7da", color: "#721c24" }}>
+                      {message}
+                    </div>
+                  )}
+                  {successMessage && (
+                    <div className="message" style={{ backgroundColor: "#d4edda", color: "#155724" }}>
+                      {successMessage}
+                    </div>
+                  )}
 
               <form onSubmit={handleSubmit} className="enrollment-grid-form">
 
@@ -630,6 +629,8 @@ export default function AdminEnrollment() {
                   {loading ? "Processing..." : "Register & Approve Student"}
                 </button>
               </form>
+              </>
+            )}
             </div>
           </div>
         </div>

@@ -33,13 +33,12 @@ const EnrolledStudents = () => {
   const pastSchoolYears = getPastSchoolYears();
   const nextSchoolYear = getNextSchoolYear();
 
-  // ✅ All useState hooks – before any conditional return
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGrade, setFilterGrade] = useState('all');
-  const [filterSchoolYear, setFilterSchoolYear] = useState(currentSchoolYear);
+  const [filterSchoolYear, setFilterSchoolYear] = useState(null);
   const [contactInput, setContactInput] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -52,7 +51,6 @@ const EnrolledStudents = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // ✅ useEffect hooks – before conditional return
   useEffect(() => {
     if (currentSchoolYear && !filterSchoolYear) {
       setFilterSchoolYear(currentSchoolYear);
@@ -65,7 +63,6 @@ const EnrolledStudents = () => {
     }
   }, [filterSchoolYear]);
 
-  // ✅ useMemo hooks – before conditional return
   const gradeLevels = useMemo(() => {
     const levels = [...new Set(students.map(s => s.gradeLevel))].filter(Boolean);
     const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
@@ -73,14 +70,14 @@ const EnrolledStudents = () => {
   }, [students]);
 
   const schoolYears = useMemo(() => {
-  if (!currentSchoolYear) return [];   // 👈 add this guard
-  const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
-  const trimmedPastYears = pastSchoolYears.map(y => y.trim());
-  const trimmedCurrent = currentSchoolYear.trim();
-  const trimmedNext = nextSchoolYear.trim();
-  const allYears = new Set([...yearsFromRecords, ...trimmedPastYears, trimmedCurrent, trimmedNext]);
-  return Array.from(allYears).sort().reverse();
-}, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
+    if (!currentSchoolYear) return [];
+    const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
+    const trimmedPastYears = pastSchoolYears.map(y => y.trim());
+    const trimmedCurrent = currentSchoolYear.trim();
+    const trimmedNext = nextSchoolYear.trim();
+    const allYears = new Set([...yearsFromRecords, ...trimmedPastYears, trimmedCurrent, trimmedNext]);
+    return Array.from(allYears).sort().reverse();
+  }, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
 
   const filteredStudents = useMemo(() => {
     let filtered = students;
@@ -97,19 +94,12 @@ const EnrolledStudents = () => {
     });
   }, [students, filterGrade, searchTerm]);
 
-
   useEffect(() => {
-  if (pastSchoolYears[0]) {
-    setFormData(prev => ({ ...prev, schoolYear: pastSchoolYears[0] }));
-  }
+    if (pastSchoolYears[0]) {
+      setFormData(prev => ({ ...prev, schoolYear: pastSchoolYears[0] }));
+    }
   }, [pastSchoolYears]);
 
-  // ✅ Conditional return AFTER all hooks
-  if (yearLoading) {
-    return <div className="loading-spinner">Loading school year...</div>;
-  }
-
-  // ✅ Functions (non‑hooks) can be declared after the conditional return
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -180,14 +170,13 @@ const EnrolledStudents = () => {
         await API.put(`/student-records/${editingRecord.id}`, formData);
         setSuccessMessage('✅ Record updated successfully!');
         setTimeout(() => setSuccessMessage(''), 3000);
-        
         try{
             await logActivity('update_student_record', {
-          record_id: editingRecord.id,
-          student_id: formData.studentId,
-          student_name: `${formData.lastName}, ${formData.firstName}`,
-          school_year: formData.schoolYear,
-        });
+              record_id: editingRecord.id,
+              student_id: formData.studentId,
+              student_name: `${formData.lastName}, ${formData.firstName}`,
+              school_year: formData.schoolYear,
+            });
         }catch (logErr) {
           console.warn('Logging failed', logErr);
         }
@@ -198,11 +187,11 @@ const EnrolledStudents = () => {
         setTimeout(() => setSuccessMessage(''), 3000);
         try{
             await logActivity('add_student_record', {
-          student_id: formData.studentId,
-          student_name: `${formData.lastName}, ${formData.firstName}`,
-          grade_level: formData.gradeLevel,
-          school_year: formData.schoolYear,
-        });
+              student_id: formData.studentId,
+              student_name: `${formData.lastName}, ${formData.firstName}`,
+              grade_level: formData.gradeLevel,
+              school_year: formData.schoolYear,
+            });
         }catch (logErr) {
           console.warn('Logging failed', logErr);
         }
@@ -269,7 +258,6 @@ const EnrolledStudents = () => {
     }
   };
 
-
   const exportToExcel = () => {
     const data = filteredStudents.map(s => ({
       'Student ID': s.studentId || s.id,
@@ -304,66 +292,71 @@ const EnrolledStudents = () => {
               </div>
             </div>
 
-            {/* Error / Success messages */}
             {errorMessage && <div className="error-message" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>❌ {errorMessage}</div>}
             {successMessage && <div className="success-message" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>✅ {successMessage}</div>}
 
-            <div className="filters-bar">
-              <div className="search-box">
-                <FaSearch className="search-icon" />
-                <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              </div>
-              <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
-                <option value="all">All Grades</option>
-                {gradeLevels.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              <select value={filterSchoolYear} onChange={(e) => setFilterSchoolYear(e.target.value)}>
-                <option value="all">All School Years</option>
-                {schoolYears.map(sy => <option key={sy} value={sy}>{sy}</option>)}
-              </select>
-              <div className="student-count">{filteredStudents.length} record(s)</div>
-            </div>
-
-            {loading ? (
-              <div className="loading-spinner">Loading records...</div>
+            {yearLoading || !filterSchoolYear ? (
+              <div className="loading-school-year">Loading school year...</div>
             ) : (
-              <div className="table-responsive">
-                <table className="enrolled-table">
-                  <thead>
-                    <tr>
-                      <th>Student ID</th><th>Name</th><th>Grade Level</th><th>School Year</th><th>LRN</th><th>Contact Number</th><th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStudents.length > 0 ? (
-                      filteredStudents.map(s => (
-                        <tr key={`${s.source}-${s.id}`}>
-                          <td>{s.studentId || s.id}</td>
-                          <td>{s.lastName}, {s.firstName}</td>
-                          <td>{s.gradeLevel}</td>
-                          <td>{s.schoolYear}</td>
-                          <td>{s.lrn || '—'}</td>
-                          <td>{s.contactNumber}</td>
-                          <td className="action-cell">
-                            {s.source === 'manual' ? (
-                              <>
-                                <button className="btn-edit" onClick={() => openEditModal(s)} title="Edit record"><FaEdit /></button>
-                                {s.schoolYear !== currentSchoolYear && (
-                                  <button className="btn-delete" onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)} title="Delete record"><FaTrash /></button>
-                                )}
-                              </>
-                            ) : (
-                              <button className="btn-lrn-edit" onClick={() => openLrnModal(s)} title="Edit LRN / Contact"><FaPencilAlt /></button>
-                            )}
-                          </td>
+              <>
+                <div className="filters-bar">
+                  <div className="search-box">
+                    <FaSearch className="search-icon" />
+                    <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  </div>
+                  <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
+                    <option value="all">All Grades</option>
+                    {gradeLevels.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  <select value={filterSchoolYear} onChange={(e) => setFilterSchoolYear(e.target.value)}>
+                    <option value="all">All School Years</option>
+                    {schoolYears.map(sy => <option key={sy} value={sy}>{sy}</option>)}
+                  </select>
+                  <div className="student-count">{filteredStudents.length} record(s)</div>
+                </div>
+
+                {loading ? (
+                  <div className="loading-spinner">Loading records...</div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="enrolled-table">
+                      <thead>
+                        <tr>
+                          <th>Student ID</th><th>Name</th><th>Grade Level</th><th>School Year</th><th>LRN</th><th>Contact Number</th><th>Actions</th>
                         </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan="7" className="no-data">No records found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.length > 0 ? (
+                          filteredStudents.map(s => (
+                            <tr key={`${s.source}-${s.id}`}>
+                              <td>{s.studentId || s.id}</td>
+                              <td>{s.lastName}, {s.firstName}</td>
+                              <td>{s.gradeLevel}</td>
+                              <td>{s.schoolYear}</td>
+                              <td>{s.lrn || '—'}</td>
+                              <td>{s.contactNumber}</td>
+                              <td className="action-cell">
+                                {s.source === 'manual' ? (
+                                  <>
+                                    <button className="btn-edit" onClick={() => openEditModal(s)} title="Edit record"><FaEdit /></button>
+                                    {s.schoolYear !== currentSchoolYear && (
+                                      <button className="btn-delete" onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)} title="Delete record"><FaTrash /></button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <button className="btn-lrn-edit" onClick={() => openLrnModal(s)} title="Edit LRN / Contact"><FaPencilAlt /></button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan="7" className="no-data">No records found.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

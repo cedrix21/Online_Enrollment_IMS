@@ -658,9 +658,7 @@ const EvaluationManagement = () => {
     });
   }, [selectedStudent, teacherName, studentGrades, allSubjects]);
 
-  if (yearLoading || !selectedSchoolYear) {
-    return <div className="loading-spinner">Loading school year...</div>;
-  }
+
   
   // ────────────────────────────────────────────────────────────
   // Render
@@ -689,39 +687,42 @@ const EvaluationManagement = () => {
       <div className="main-content">
         <TopBar user={user} />
         <div className="content-scroll-area" style={{ padding: "20px" }}>
+        {yearLoading || !selectedSchoolYear ? (
+          <div className="loading-school-year">Loading school year...</div>
+        ) : (
           <div className="evaluation-container">
             <div className="evaluation-header">
-  <div>
-    <h1>Student Grade Evaluation</h1>
-    <p>Select a grade level and student to manage grades</p>
-  </div>
-  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-    <select
-      value={selectedSchoolYear}
-      onChange={(e) => setSelectedSchoolYear(e.target.value)}
-      style={{
-        padding: '8px 16px',
-        borderRadius: '6px',
-        border: '1px solid #b8860b',
-        background: '#fff',
-        fontSize: '0.9rem',
-        cursor: 'pointer'
-      }}
-    >
-      {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
-        <option key={y} value={y}>{y}</option>
-      ))}
-    </select>
-    <button
-      onClick={handleRefresh}
-      disabled={refreshing}
-      className="refresh-btn"
-    >
-      <FaSyncAlt className={refreshing ? "spinning" : ""} />
-      {refreshing ? " Refreshing..." : " Refresh"}
-    </button>
-  </div>
-</div>
+              <div>
+                <h1>Student Grade Evaluation</h1>
+                <p>Select a grade level and student to manage grades</p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <select
+                  value={selectedSchoolYear}
+                  onChange={(e) => setSelectedSchoolYear(e.target.value)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #b8860b',
+                    background: '#fff',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="refresh-btn"
+                >
+                  <FaSyncAlt className={refreshing ? "spinning" : ""} />
+                  {refreshing ? " Refreshing..." : " Refresh"}
+                </button>
+              </div>
+            </div>
 
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
@@ -791,29 +792,30 @@ const EvaluationManagement = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
+        )}
 
-      {modalOpen && selectedStudent && (
-        <GradeModal
-          student={selectedStudent}
-          grades={studentGrades}
-          quarter={selectedQuarter}
-          onQuarterChange={setSelectedQuarter}
-          onClose={closeModal}
-          onEditStart={handleEditStart}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          editingId={editingGradeId}
-          editData={editData}
-          onEditChange={handleEditChange}
-          onPrintReportCard={handlePrintReportCard}
-          
-        />
-      )}
-    </div>
-  );
-};
+        {modalOpen && selectedStudent && (
+          <GradeModal
+            student={selectedStudent}
+            grades={studentGrades}
+            quarter={selectedQuarter}
+            onQuarterChange={setSelectedQuarter}
+            onClose={closeModal}
+            onEditStart={handleEditStart}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            editingId={editingGradeId}
+            editData={editData}
+            onEditChange={handleEditChange}
+            onPrintReportCard={handlePrintReportCard}
+          />
+        )}
+      </div>
+    </div>      
+  </div>       
+);
+}
+      
 
 const getScoreBadgeClass = (score) => {
   if (score >= 90) return "score-excellent";
