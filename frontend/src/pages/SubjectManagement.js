@@ -92,9 +92,10 @@ export default function SubjectManagement() {
       setSubjects(res.data);
       setError("");
     } catch (err) {
-      console.error("Failed to fetch subjects");
-      setError("Failed to load subjects");
-    } finally {
+      console.error("Error:", err.response?.data);
+      const errorMsg = err.response?.data?.message || "Failed to save subject";
+      setError(errorMsg);   // ← already done
+    }finally {
       setLoading(false);
     }
   };

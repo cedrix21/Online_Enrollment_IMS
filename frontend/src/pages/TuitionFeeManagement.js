@@ -33,6 +33,8 @@ export default function TuitionFeeManagement() {
   const [selected,   setSelected]   = useState(null);
   const [form,       setForm]       = useState(emptyForm);
   const [expandedId, setExpandedId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // ── fetch ────────────────────────────────────────────────
   const fetchFees = useCallback(async () => {
@@ -118,7 +120,8 @@ export default function TuitionFeeManagement() {
       closeModal();
       fetchFees();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save.');
+      setErrorMessage(err.response?.data?.message || 'Failed to save.');
+      setTimeout(() => setErrorMessage(""), 4000);
     } finally {
       setSaving(false);
     }
@@ -131,7 +134,8 @@ export default function TuitionFeeManagement() {
       await API.delete(`/tuition-fees/${fee.id}`);
       fetchFees();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete.');
+      setErrorMessage(err.response?.data?.message || 'Failed to delete.');
+      setTimeout(() => setErrorMessage(""), 4000);
     }
   };
 
@@ -141,7 +145,8 @@ export default function TuitionFeeManagement() {
       await API.put(`/tuition-fees/${fee.id}`, { is_active: !fee.is_active });
       fetchFees();
     } catch {
-      alert('Failed to update status.');
+      setErrorMessage('Failed to update status.');
+      setTimeout(() => setErrorMessage(""), 4000);
     }
   };
 
@@ -175,6 +180,9 @@ export default function TuitionFeeManagement() {
           <button className="tfm-add-btn" onClick={openCreate}>+ Add Fee</button>
         </div>
       </div>
+
+      {errorMessage && <div className="tfm-error" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>❌ {errorMessage}</div>}
+      {successMessage && <div className="tfm-success" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '10px', borderRadius: '6px', marginBottom: '16px' }}>✅ {successMessage}</div>}
 
       {/* Content */}
       {loading ? (

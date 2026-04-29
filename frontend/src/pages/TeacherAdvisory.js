@@ -327,7 +327,8 @@ export default function TeacherAdvisory() {
 
   const handleSubmitAllGrades = useCallback(async () => {
     if (!selectedStudent) {
-      alert("Please select a student first");
+       setError("Please select a student first");
+      setTimeout(() => setError(""), 3000);
       return;
     }
 
@@ -349,7 +350,8 @@ export default function TeacherAdvisory() {
         .filter(Boolean);
 
       if (gradesToSubmit.length === 0) {
-        alert("No grades to save");
+        setError("No grades to save");
+        setTimeout(() => setError(""), 3000);
         return;
       }
 

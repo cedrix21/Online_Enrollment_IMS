@@ -138,7 +138,9 @@
   loading,
   sections,           
   schoolYear,        
-  onStudentTransferred
+  onStudentTransferred,
+  setErrorMessage,    
+  setSuccessMessage   
 }) => {
   const [activeTab, setActiveTab] = useState("schedule");
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -163,7 +165,8 @@
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
     if (!targetSectionId) {
-      alert("Please select a target section.");
+      setErrorMessage("Please select a target section.");
+      setTimeout(() => setErrorMessage(""), 3000);
       return;
     }
     setTransferLoading(true);
@@ -172,13 +175,15 @@
         target_section_id: targetSectionId,
         school_year: schoolYear,
       });
-      alert(`${selectedStudent.firstName} ${selectedStudent.lastName} transferred successfully!`);
+      setSuccessMessage(`${selectedStudent.firstName} ${selectedStudent.lastName} transferred successfully!`);
+      setTimeout(() => setSuccessMessage(""), 3000);
       setShowTransferModal(false);
       // Refresh student list
       if (onStudentTransferred) onStudentTransferred();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Transfer failed.");
+      setErrorMessage(err.response?.data?.message || "Transfer failed.");
+      setTimeout(() => setErrorMessage(""), 4000);
     } finally {
       setTransferLoading(false);
     }
@@ -476,8 +481,10 @@ const StudentRow = memo(({ student, index, showTransferButton, onTransfer }) => 
   conflictMessages,
   getScheduledTeacher,
   occupiedSchedules ,
-   loading,  
-    sections,
+  loading,  
+  sections,
+  setErrorMessage,   
+  setSuccessMessage  
 }) => {
   
   const filteredTeacherLoad = useMemo(() => {
@@ -782,6 +789,9 @@ console.log('=== ScheduleModal Filter ===');
     const year = new Date().getFullYear();
     return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
   });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // MEMOIZED VALUES
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -927,7 +937,8 @@ useEffect(() => {
         e.preventDefault();
 
         if (selectedDays.length === 0) {
-          alert("Please select at least one day for this schedule");
+          setErrorMessage("Please select at least one day for this schedule");
+         setTimeout(() => setErrorMessage(""), 3000);
           return;
         }
 
@@ -937,7 +948,8 @@ useEffect(() => {
         );
 
         if (conflictedSelectedDays.length > 0) {
-          alert(`Cannot save schedule. The following day(s) have conflicts: ${conflictedSelectedDays.join(", ")}. Please choose different days or adjust the time/room.`);
+          setErrorMessage(`Cannot save schedule. The following day(s) have conflicts: ${conflictedSelectedDays.join(", ")}. Please choose different days or adjust the time/room.`);
+          setTimeout(() => setErrorMessage(""), 4000);
           return;
         }
         const sectionsInThisGrade = sections.filter(
@@ -951,9 +963,10 @@ useEffect(() => {
                 Number(s.subject_id) === Number(newSchedule.subject_id)
             );
             if (subjectAlreadyScheduled) {
-              alert(
+              setErrorMessage(
                 "This subject is already scheduled in this grade level (only one section exists)."
               );
+              setTimeout(() => setErrorMessage(""), 4000);
               return;
             }
           }
@@ -982,12 +995,14 @@ useEffect(() => {
           setTeacherLoad(loadRes.data);
           setOccupiedSchedules(schedRes.data);
 
-          alert(`Schedule added successfully!`);
+          setSuccessMessage("Schedule added successfully!");
+          setTimeout(() => setSuccessMessage(""), 3000);
           setNewSchedule(INITIAL_SCHEDULE_FORM);
           setSelectedDays([]);
         } catch (err) {
           const msg = err.response?.data?.message || "Conflict or Error occurred.";
-          alert("Error: " + msg);
+          setErrorMessage(msg);
+          setTimeout(() => setErrorMessage(""), 4000);
         } finally {
           setIsSubmitting(false);
         }
@@ -1008,7 +1023,8 @@ useEffect(() => {
       
     } catch (err) {
       console.error("Error loading section details");
-      alert("Failed to load section details");
+      setErrorMessage("Failed to load section details");
+      setTimeout(() => setErrorMessage(""), 4000);
     } finally {
     setStudentModalLoading(false);   // 🆕
     setShowStudentModal(true);
@@ -1035,9 +1051,9 @@ const handleOpenScheduleModal = useCallback(async (section) => {
         
       } catch (err) {
         console.error("DETAILED ERROR:", err.response || err);
-        alert(
-          "Error loading data: " + (err.response?.data?.message || err.message),
-          )} finally {
+        setErrorMessage("Error loading data: " + (err.response?.data?.message || err.message));
+        setTimeout(() => setErrorMessage(""), 4000);
+      } finally {
           setScheduleModalLoading(false);   // 🆕
           setShowScheduleModal(true);
         }
@@ -1054,11 +1070,13 @@ const handleOpenScheduleModal = useCallback(async (section) => {
         setSections(prev => sortSectionsByGrade([...prev, res.data.section]));
         setShowModal(false);
         setNewSection(INITIAL_SECTION_FORM);
-        alert("Section created successfully!");
+        setSuccessMessage("Section created successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
       } catch (err) {
         console.error("Create error:", err);
         const errorMsg = err.response?.data?.message || "Failed to create section.";
-        alert(errorMsg);
+        setErrorMessage(errorMsg);
+        setTimeout(() => setErrorMessage(""), 4000);
       }
     }, [newSection,selectedSchoolYear]);
 
@@ -1074,11 +1092,13 @@ const handleOpenScheduleModal = useCallback(async (section) => {
           params: { school_year: selectedSchoolYear }
         });
         setSections(prev => prev.filter(s => s.id !== section.id));
-        alert(`Section "${section.name}" deleted for ${selectedSchoolYear} successfully!`);
+        setSuccessMessage(`Section "${section.name}" deleted for ${selectedSchoolYear} successfully!`);
+        setTimeout(() => setSuccessMessage(""), 3000);
       } catch (err) {
         console.error("Delete error:", err);
         const errorMsg = err.response?.data?.message || "Failed to delete section.";
-        alert(errorMsg);
+        setErrorMessage(errorMsg);
+        setTimeout(() => setErrorMessage(""), 4000);
       }
     }, [selectedSchoolYear]);
 
@@ -1102,10 +1122,12 @@ const handleOpenScheduleModal = useCallback(async (section) => {
         }));
 
         setOccupiedSchedules(prev => prev.filter(s => !idsToDelete.includes(s.id)));
-        alert("Schedule removed successfully!");
+        setSuccessMessage("Schedule removed successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
       } catch (err) {
         console.error("Delete error:", err);
-        alert("Failed to delete schedule: " + (err.response?.data?.message || "Server Error"));
+        setErrorMessage("Failed to delete schedule: " + (err.response?.data?.message || "Server Error"));
+        setTimeout(() => setErrorMessage(""), 4000);
       }
     }, []);
 
@@ -1217,6 +1239,8 @@ const handleOpenScheduleModal = useCallback(async (section) => {
                 </button>
               </div>
               </div>
+              {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
+              {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
               {loading ? (
                 <div style={{ 
@@ -1276,7 +1300,9 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               groupedSchedules={groupedSchedules}
               loading={studentModalLoading} 
               sections={sections}                      
-              schoolYear={selectedSchoolYear}         
+              schoolYear={selectedSchoolYear}  
+              setErrorMessage={setErrorMessage}
+              setSuccessMessage={setSuccessMessage}       
               onStudentTransferred={async () => {
                
               const updatedSectionRes = await API.get(`/sections/${selectedSection.id}`, {
@@ -1311,7 +1337,9 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               getScheduledTeacher={getScheduledTeacher}
               occupiedSchedules={occupiedSchedules}
               loading={scheduleModalLoading}
-               sections={sections}
+              sections={sections}
+              setErrorMessage={setErrorMessage}
+              setSuccessMessage={setSuccessMessage}
             />
           )}
 

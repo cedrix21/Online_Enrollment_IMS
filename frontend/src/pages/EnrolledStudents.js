@@ -1,4 +1,3 @@
-// pages/EnrolledStudents.js
 import React, { useState, useEffect, useMemo } from 'react';
 import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
@@ -8,7 +7,6 @@ import { FaSearch, FaFileExcel, FaPlus, FaTrash, FaEdit, FaPencilAlt } from 'rea
 import * as XLSX from 'xlsx';
 
 const EnrolledStudents = () => {
-  // Helper functions
   function getCurrentSchoolYear() {
     const month = new Date().getMonth() + 1;
     const year = new Date().getFullYear();
@@ -36,8 +34,6 @@ const EnrolledStudents = () => {
     return `${currentStart + 1}-${currentStart + 2}`;
   }
 
-
-  
   const pastSchoolYears = getPastSchoolYears();
   const nextSchoolYear = getNextSchoolYear();
   const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
@@ -45,25 +41,18 @@ const EnrolledStudents = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGrade, setFilterGrade] = useState('all');
-  const [filterSchoolYear, setFilterSchoolYear] = useState(currentSchoolYear); // default to current
+  const [filterSchoolYear, setFilterSchoolYear] = useState(currentSchoolYear);
   const [contactInput, setContactInput] = useState('');
-  // Modal state (for manual records only)
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [formData, setFormData] = useState({
-    studentId: '',     
-    firstName: '',
-    lastName: '',
-    gradeLevel: '',
-    lrn: '',
-    contactNumber: '',
-    schoolYear: pastSchoolYears[0],
+    studentId: '', firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
   });
-
-  // LRN modal state (for enrolled students)
   const [lrnModalOpen, setLrnModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [lrnInput, setLrnInput] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchStudents();
@@ -81,23 +70,24 @@ const EnrolledStudents = () => {
     }
   };
 
-  // Delete manual record
   const handleDeleteStudent = async (id, studentName) => {
     if (!window.confirm(`Are you sure you want to delete ${studentName}?`)) return;
     try {
       await API.delete(`/student-records/${id}`);
+      setSuccessMessage(`✅ ${studentName} deleted.`);
+      setTimeout(() => setSuccessMessage(''), 3000);
       fetchStudents();
     } catch (err) {
       console.error('Error deleting student record', err);
-      alert('Failed to delete. ' + (err.response?.data?.message || ''));
+      setErrorMessage('Failed to delete. ' + (err.response?.data?.message || ''));
+      setTimeout(() => setErrorMessage(''), 4000);
     }
   };
 
-  // Open edit modal for manual record
   const openEditModal = (record) => {
     setEditingRecord(record);
     setFormData({
-      student_id: record.student_id, 
+      studentId: record.studentId || record.student_id,
       firstName: record.firstName,
       lastName: record.lastName,
       gradeLevel: record.gradeLevel,
@@ -112,13 +102,7 @@ const EnrolledStudents = () => {
     setModalOpen(false);
     setEditingRecord(null);
     setFormData({
-      studentId: '',
-      firstName: '',
-      lastName: '',
-      gradeLevel: '',
-      lrn: '',
-      contactNumber: '',
-      schoolYear: pastSchoolYears[0],
+      studentId: '', firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
     });
   };
 
@@ -127,27 +111,25 @@ const EnrolledStudents = () => {
     try {
       if (editingRecord) {
         await API.put(`/student-records/${editingRecord.id}`, formData);
+        setSuccessMessage('✅ Record updated successfully!');
+        setTimeout(() => setSuccessMessage(''), 3000);
         closeModal();
       } else {
         await API.post('/student-records', formData);
-        alert('Record added successfully! You can add another one or close the form.');
+        setSuccessMessage('✅ Record added! You can add another.');
+        setTimeout(() => setSuccessMessage(''), 3000);
         setFormData({
-          firstName: '',
-          lastName: '',
-          gradeLevel: '',
-          lrn: '',
-          contactNumber: '',
-          schoolYear: pastSchoolYears[0],
+          firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
         });
       }
-      fetchStudents(); // refresh after add/update
+      fetchStudents();
     } catch (err) {
       console.error('Error saving record', err);
-      alert('Failed to save. ' + (err.response?.data?.message || ''));
+      setErrorMessage('Failed to save. ' + (err.response?.data?.message || ''));
+      setTimeout(() => setErrorMessage(''), 4000);
     }
   };
 
-  // LRN modal handlers
   const openLrnModal = (student) => {
     setSelectedStudent(student);
     setLrnInput(student.lrn || '');
@@ -163,87 +145,48 @@ const EnrolledStudents = () => {
   };
 
   const handleLrnUpdate = async (e) => {
-  e.preventDefault();
-  if (!selectedStudent) return;
-  try {
-    await API.post(`/students/${selectedStudent.id}/update-info`, {
-      lrn: lrnInput,
-      contactNumber: contactInput,
-    });
-    closeLrnModal();
-    fetchStudents();
-  } catch (err) {
-    console.error('Error updating student info', err);
-    const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
-    alert('Failed to update: ' + errorMsg);
-  }
-};
+    e.preventDefault();
+    if (!selectedStudent) return;
+    try {
+      await API.post(`/students/${selectedStudent.id}/update-info`, {
+        lrn: lrnInput,
+        contactNumber: contactInput,
+      });
+      setSuccessMessage('✅ LRN / Contact updated!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      closeLrnModal();
+      fetchStudents();
+    } catch (err) {
+      console.error('Error updating student info', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+      setErrorMessage('Failed to update: ' + errorMsg);
+      setTimeout(() => setErrorMessage(''), 4000);
+    }
+  };
 
-  // Unique grade levels from current dataset
   const gradeLevels = useMemo(() => {
     const levels = [...new Set(students.map(s => s.gradeLevel))].filter(Boolean);
-    const order = {
-      'Nursery': 0,
-      'Kindergarten 1': 1,
-      'Kindergarten 2': 2,
-      'Grade 1': 3,
-      'Grade 2': 4,
-      'Grade 3': 5,
-      'Grade 4': 6,
-      'Grade 5': 7,
-      'Grade 6': 8,
-    };
+    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
     return levels.sort((a, b) => (order[a] || 99) - (order[b] || 99));
   }, [students]);
 
- 
-    const schoolYears = useMemo(() => {
-  // Collect years from records (trim each)
-  const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
-  
-  // Trim static lists
-  const trimmedPastYears = pastSchoolYears.map(y => y.trim());
-  const trimmedCurrent = currentSchoolYear.trim();
-  const trimmedNext = nextSchoolYear.trim();
+  const schoolYears = useMemo(() => {
+    const yearsFromRecords = [...new Set(students.map(s => s.schoolYear?.trim()))].filter(Boolean);
+    const trimmedPastYears = pastSchoolYears.map(y => y.trim());
+    const trimmedCurrent = currentSchoolYear.trim();
+    const trimmedNext = nextSchoolYear.trim();
+    const allYears = new Set([...yearsFromRecords, ...trimmedPastYears, trimmedCurrent, trimmedNext]);
+    return Array.from(allYears).sort().reverse();
+  }, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
 
-  // Combine and deduplicate using a Set
-  const allYears = new Set([
-    ...yearsFromRecords,
-    ...trimmedPastYears,
-    trimmedCurrent,
-    trimmedNext,
-  ]);
-
-  // Convert to array, sort descending (most recent first)
-  return Array.from(allYears).sort().reverse();
-}, [students, pastSchoolYears, currentSchoolYear, nextSchoolYear]);
-
-
-
-  // Filtered and sorted students (already scoped to selected school year, but also by grade and search)
   const filteredStudents = useMemo(() => {
     let filtered = students;
-    if (filterGrade !== 'all') {
-      filtered = filtered.filter(s => s.gradeLevel === filterGrade);
-    }
+    if (filterGrade !== 'all') filtered = filtered.filter(s => s.gradeLevel === filterGrade);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(s =>
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) ||
-        (s.studentId && s.studentId.toLowerCase().includes(term))
-      );
+      filtered = filtered.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) || (s.studentId && s.studentId.toLowerCase().includes(term)));
     }
-    const order = {
-      'Nursery': 0,
-      'Kindergarten 1': 1,
-      'Kindergarten 2': 2,
-      'Grade 1': 3,
-      'Grade 2': 4,
-      'Grade 3': 5,
-      'Grade 4': 6,
-      'Grade 5': 7,
-      'Grade 6': 8,
-    };
+    const order = { 'Nursery': 0, 'Kindergarten 1': 1, 'Kindergarten 2': 2, 'Grade 1': 3, 'Grade 2': 4, 'Grade 3': 5, 'Grade 4': 6, 'Grade 5': 7, 'Grade 6': 8 };
     return filtered.sort((a, b) => {
       const gradeDiff = (order[a.gradeLevel] || 99) - (order[b.gradeLevel] || 99);
       if (gradeDiff !== 0) return gradeDiff;
@@ -280,40 +223,29 @@ const EnrolledStudents = () => {
             <div className="enrolled-header">
               <h2>Student Records</h2>
               <div>
-                <button className="btn-add" onClick={() => setModalOpen(true)}>
-                  <FaPlus /> Add Record
-                </button>
-                <button className="btn-excel" onClick={exportToExcel}>
-                  <FaFileExcel /> Export to Excel
-                </button>
+                <button className="btn-add" onClick={() => setModalOpen(true)}><FaPlus /> Add Record</button>
+                <button className="btn-excel" onClick={exportToExcel}><FaFileExcel /> Export to Excel</button>
               </div>
             </div>
+
+            {/* Error / Success messages */}
+            {errorMessage && <div className="error-message" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>❌ {errorMessage}</div>}
+            {successMessage && <div className="success-message" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>✅ {successMessage}</div>}
 
             <div className="filters-bar">
               <div className="search-box">
                 <FaSearch className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search by name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
                 <option value="all">All Grades</option>
-                {gradeLevels.map(g => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
+                {gradeLevels.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
               <select value={filterSchoolYear} onChange={(e) => setFilterSchoolYear(e.target.value)}>
                 <option value="all">All School Years</option>
-                {schoolYears.map(sy => (
-                  <option key={sy} value={sy}>{sy}</option>
-                ))}
+                {schoolYears.map(sy => <option key={sy} value={sy}>{sy}</option>)}
               </select>
-              <div className="student-count">
-                {filteredStudents.length} record(s)
-              </div>
+              <div className="student-count">{filteredStudents.length} record(s)</div>
             </div>
 
             {loading ? (
@@ -323,13 +255,7 @@ const EnrolledStudents = () => {
                 <table className="enrolled-table">
                   <thead>
                     <tr>
-                      <th>Student ID</th>
-                      <th>Name</th>
-                      <th>Grade Level</th>
-                      <th>School Year</th>
-                      <th>LRN</th>
-                      <th>Contact Number</th>
-                      <th>Actions</th>
+                      <th>Student ID</th><th>Name</th><th>Grade Level</th><th>School Year</th><th>LRN</th><th>Contact Number</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -345,41 +271,19 @@ const EnrolledStudents = () => {
                           <td className="action-cell">
                             {s.source === 'manual' ? (
                               <>
-                                <button
-                                  className="btn-edit"
-                                  onClick={() => openEditModal(s)}
-                                  title="Edit record"
-                                >
-                                  <FaEdit />
-                                </button>
-                                {/* Show delete button only if NOT current school year */}
+                                <button className="btn-edit" onClick={() => openEditModal(s)} title="Edit record"><FaEdit /></button>
                                 {s.schoolYear !== currentSchoolYear && (
-                                  <button
-                                    className="btn-delete"
-                                    onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)}
-                                    title="Delete record"
-                                  >
-                                    <FaTrash />
-                                  </button>
+                                  <button className="btn-delete" onClick={() => handleDeleteStudent(s.id, `${s.lastName}, ${s.firstName}`)} title="Delete record"><FaTrash /></button>
                                 )}
                               </>
                             ) : (
-                              // Enrolled students: only LRN edit
-                              <button
-                                className="btn-lrn-edit"
-                                onClick={() => openLrnModal(s)}
-                                title="Edit LRN / Contact"
-                              >
-                                <FaPencilAlt />
-                              </button>
+                              <button className="btn-lrn-edit" onClick={() => openLrnModal(s)} title="Edit LRN / Contact"><FaPencilAlt /></button>
                             )}
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan="7" className="no-data">No records found.</td>
-                      </tr>
+                      <tr><td colSpan="7" className="no-data">No records found.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -389,6 +293,8 @@ const EnrolledStudents = () => {
         </div>
       </div>
 
+
+      
       {/* Main Modal for Manual Records */}
       {modalOpen && (
         <div className="modal-overlay" onClick={closeModal}>

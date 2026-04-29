@@ -183,11 +183,14 @@ export default function Enrollment() {
     } catch (err) {
     console.error("Full error:", err);
     console.error("Response data:", err.response?.data);
-    // Show detailed validation errors
+
+    // Show detailed validation errors (user‑friendly)
     if (err.response?.data?.errors) {
-        setErrorMessage(JSON.stringify(err.response.data.errors, null, 2));
+        const errorMessages = Object.values(err.response.data.errors).flat().join('\n');
+        setErrorMessage(errorMessages);
     } else {
-        setErrorMessage(err.response?.data?.message || "Failed to initiate payment.");
+        // Generic message for any other error (network, server, PayMongo issues)
+        setErrorMessage("Payment failed. Please try again or contact the school registrar.");
     }
     setProcessingPayment(false);
 }
@@ -327,9 +330,14 @@ const verifyStudentId = async () => {
       setIsSubmitted(true);
       window.scrollTo(0, 0);
     } catch (err) {
-      console.error("Submission Error:", err.response?.data);
-      setErrorMessage(err.response?.data?.message || "Error submitting form.");
-    } finally {
+    console.error("Submission Error:", err.response?.data);
+    if (err.response?.data?.errors) {
+        const errorMessages = Object.values(err.response.data.errors).flat().join('\n');
+        setErrorMessage(errorMessages);
+    } else {
+        setErrorMessage("Error submitting form. Please try again or contact support.");
+    }
+}finally {
       setLoading(false);
     }
   };
@@ -429,19 +437,7 @@ const verifyStudentId = async () => {
               <p>S.Y. {schoolYear}</p>
             </div>
 
-            {errorMessage && (
-            <div className="error-message" style={{
-              backgroundColor: '#ffebee',
-              color: '#c62828',
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              borderLeft: '4px solid #c62828',
-              fontSize: '0.9rem'
-            }}>
-              ❌ {errorMessage}
-            </div>
-          )}
+            
 
             <form onSubmit={handleSubmit} className="enrollment-grid-form">
 
@@ -910,8 +906,9 @@ const verifyStudentId = async () => {
 
               
 
-              {/* ── Payment Section ── */}
-              <div className="payment-section">
+                    {/* ── Payment Section ── */}
+                    <div className="payment-section">
+                     
                 <h3 style={{ color: '#b8860b' }}>Initial Downpayment</h3>
                 <p style={{ fontSize: '0.8rem', marginBottom: '15px' }}>
                   This payment will be recorded in the student's billing ledger.
@@ -919,6 +916,19 @@ const verifyStudentId = async () => {
 
                 <div className="input-group" style={{ marginBottom: '15px' }}>
                   <label>Payment Method</label>
+                   {errorMessage && (
+                  <div className="error-message" style={{
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    borderLeft: '4px solid #c62828',
+                    fontSize: '0.9rem'
+                  }}>
+                    ❌ {errorMessage}
+                  </div>
+                )}
                   <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required>
                     <option value="">Select Method</option>
                     <option value="Cash">💵 Cash (Walk-in)</option>

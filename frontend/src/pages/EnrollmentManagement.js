@@ -15,6 +15,7 @@ import TopBar from "../components/TopBar";
   const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [localError, setLocalError] = useState('');
    
   // Map backend type to display label
   const getDisplayLabel = (type) => {
@@ -53,7 +54,8 @@ import TopBar from "../components/TopBar";
         onStatusUpdated(type, displayLabel, status);
       }
     } catch (err) {
-      alert('Failed to update status');
+      setLocalError('Failed to update status');
+      setTimeout(() => setLocalError(''), 3000);
     }
   };
 
@@ -73,6 +75,7 @@ import TopBar from "../components/TopBar";
 
   return (
     <div style={{ marginTop: '16px' }}>
+       {localError && <div style={{ color: 'red', padding: '8px', marginBottom: '10px' }}>❌ {localError}</div>}
       <h4 style={{ color: '#b8860b', marginBottom: '10px', fontSize: '0.95rem' }}>
         📎 Uploaded Requirements
       </h4>
@@ -362,6 +365,7 @@ export default function EnrollmentManagement() {
 
   const [enrollments, setEnrollments] = useState([]);
   const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
@@ -450,9 +454,11 @@ useEffect(() => {
           }
         });
         const sections = res.data;
+
         if (sections.length === 0) {
-          alert(`No sections with vacancy for ${enrollment.gradeLevel}.`);
-          return;
+        setErrorMessage(`No sections with vacancy for ${enrollment.gradeLevel}.`);
+        setTimeout(() => setErrorMessage(""), 4000);
+        return;
         }
         if (sections.length === 1) {
          performApproval(id, sections[0].id, enrollment); 
@@ -464,7 +470,8 @@ useEffect(() => {
           setShowSectionPicker(true);
         }
       } catch (err) {
-        alert('Failed to load sections.');
+        setErrorMessage('Failed to load sections.');
+        setTimeout(() => setErrorMessage(""), 4000);
       } finally {
         setSectionsLoading(false);
       }
@@ -833,6 +840,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
             <div className="management-header">
               <h2>Enrollment Management</h2>
               {message && <p className="message-toast">{message}</p>}
+              {errorMessage && <p className="message-toast" style={{ backgroundColor: '#f8d7da', color: '#721c24' }}>{errorMessage}</p>}
             </div>
 
             {/* ── Filters ── */}
@@ -1389,7 +1397,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
         <button
           onClick={() => {
             if (!selectedSectionId) {
-              alert('Please select a section.');
+              setErrorMessage('Please select a section.');
+              setTimeout(() => setErrorMessage(""), 3000);
               return;
             }
             performApproval(pendingApprovalId, selectedSectionId, pendingApprovalEnrollment);

@@ -4,6 +4,48 @@ import SideBar from '../components/SideBar';
 import TopBar from '../components/TopBar';
 import "./ActivityLogs.css";
 
+// Helper: return a human‑readable explanation for a log entry
+const getLogExplanation = (log) => {
+  const desc = log.description;
+  const props = log.properties || {};
+
+  // Map known description values to friendly messages
+  const explanations = {
+    'paymongo_connection_error': '❌ PayMongo connection error – the payment gateway could not be reached. Check network or API endpoint.',
+    'paymongo_api_error': '❌ PayMongo API error – the payment service returned an error response.',
+    'paymongo_unexpected_error': '⚠️ Unexpected payment error – something went wrong while processing the payment.',
+    'enrollment_submission_failed': '❌ Enrollment submission failed – the backend could not save the enrollment.',
+    'enrollment_approved': '✅ Enrollment approved – student was admitted and assigned to a section.',
+    'enrollment_rejected': '❌ Enrollment rejected – application was denied.',
+    'requirement_updated': '📎 Requirement updated – changed the status of a submitted document.',
+    'view_enrollment_profile': '👁️ Profile viewed – an admin/registrar viewed the student enrollment details.',
+    'api_error': '⚠️ API error – a frontend request failed. See properties for details.',
+    'api_request': '📡 API request – an authenticated API call was made.',
+    'enrollment_approved_with_section': '✅ Enrollment approved and section assigned.',
+  };
+
+  let base = explanations[desc] || `Action: ${desc}`;
+
+  // Add specific error details from properties when available
+  if (desc === 'paymongo_connection_error' && props.error) {
+    base += `\nReason: ${props.error}`;
+  } else if (desc === 'paymongo_api_error' && props.response) {
+    base += `\nResponse: ${props.response.substring(0, 200)}`; // truncate long responses
+  } else if (desc === 'enrollment_submission_failed' && props.error) {
+    base += `\nError: ${props.error} (line ${props.line})`;
+  } else if (desc === 'api_error' && props.message) {
+    base += `\nMessage: ${props.message}`;
+  } else if (desc === 'enrollment_rejected' && props.student_name) {
+    base += ` – Student: ${props.student_name}`;
+  } else if (desc === 'enrollment_approved' && props.student_name) {
+    base += ` – Student: ${props.student_name} → Section: ${props.assigned_section || 'N/A'}`;
+  } else if (desc === 'requirement_updated' && props.field) {
+    base += ` – ${props.field} set to ${props.new_value}`;
+  }
+
+  return base;
+};
+
 export default function ActivityLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +96,6 @@ export default function ActivityLogs() {
             <h2>Activity Logs</h2>
           </div>
 
-          {/* Filters Bar with proper structure */}
           <div className="filters-bar">
             <div className="filter-group">
               <label>Action</label>
@@ -100,7 +141,6 @@ export default function ActivityLogs() {
             </div>
           </div>
 
-          {/* Logs Table */}
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>Loading logs...</div>
           ) : (
@@ -112,13 +152,14 @@ export default function ActivityLogs() {
                       <th>Timestamp</th>
                       <th>User</th>
                       <th>Action</th>
-                      <th>Properties</th>
+                      <th style={{ minWidth: '250px' }}>Explanation</th>
+                      <th>Properties (raw)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.length === 0 ? (
                       <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
                           No logs found.
                         </td>
                       </tr>
@@ -129,7 +170,14 @@ export default function ActivityLogs() {
                           <td>{log.causer?.name || 'System'}</td>
                           <td>{log.description}</td>
                           <td>
-                            <pre>{JSON.stringify(log.properties, null, 2)}</pre>
+                            <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
+                              {getLogExplanation(log)}
+                            </div>
+                          </td>
+                          <td>
+                            <pre style={{ margin: 0, fontSize: '0.7rem', maxWidth: '300px', overflowX: 'auto' }}>
+                              {JSON.stringify(log.properties, null, 2)}
+                            </pre>
                           </td>
                         </tr>
                       ))
@@ -138,7 +186,6 @@ export default function ActivityLogs() {
                 </table>
               </div>
 
-              {/* Pagination */}
               <div className="pagination">
                 <button
                   disabled={pagination.current_page === 1}

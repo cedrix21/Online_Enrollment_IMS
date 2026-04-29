@@ -198,6 +198,8 @@ export default function TeacherDirectory() {
   const [teacherLoad, setTeacherLoad] = useState([]);
   const [expandedTeacher, setExpandedTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -349,10 +351,12 @@ const availableSubjectsForAssignment = useMemo(() => {
     invalidateCache();
     setNewTeacher(INITIAL_TEACHER_FORM);
     setShowModal(false);
-    alert("Teacher added successfully!");
+    setSuccessMessage("Teacher added successfully!");
+    setTimeout(() => setSuccessMessage(""), 3000);
   } catch (err) {
     console.error("Backend Error:", err.response?.data);
-    alert(err.response?.data?.message || "Failed to add teacher");
+    setErrorMessage(err.response?.data?.message || "Failed to add teacher");
+    setTimeout(() => setErrorMessage(""), 3000);
   } finally {
     setIsSubmitting(false);
   }
@@ -377,7 +381,8 @@ const availableSubjectsForAssignment = useMemo(() => {
     : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
 
   if (subjectsToAssign.length === 0) {
-    alert("Please select at least one subject");
+    setErrorMessage("Please select at least one subject");
+    setTimeout(() => setErrorMessage(""), 3000);
     return;
   }
 
@@ -421,10 +426,12 @@ const availableSubjectsForAssignment = useMemo(() => {
     invalidateCache();
     setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
     setSelectedSubjectsForBulk([]);
-    alert(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
+    setSuccessMessage(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
+    setTimeout(() => setSuccessMessage(""), 3000);
   } catch (err) {
     console.error("Assignment Error:", err.response?.data);
-    alert(err.response?.data?.message || "Failed to assign subjects");
+    setErrorMessage(err.response?.data?.message || "Failed to assign subjects");
+    setTimeout(() => setErrorMessage(""), 3000);
   } finally {
     setIsSubmitting(false);
   }
@@ -445,10 +452,12 @@ const availableSubjectsForAssignment = useMemo(() => {
       }));
       setTeacherLoad(prev => prev.filter(a => a.id !== assignmentId));
       invalidateCache();
-      alert("Assignment removed successfully!");
+      setSuccessMessage("✅ Assignment removed successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Remove Error:", err.response?.data);
-      alert("Failed to remove assignment");
+      setErrorMessage("Failed to remove assignment");
+      setTimeout(() => setErrorMessage(""), 3000);
     }
   }, [invalidateCache]);
 
@@ -492,10 +501,12 @@ const availableSubjectsForAssignment = useMemo(() => {
     await fetchData(true);  // force fresh data from server
     
     setShowEditModal(false);
-    alert("Teacher updated successfully!");
+    setSuccessMessage("✅ Teacher updated successfully!");
+    setTimeout(() => setSuccessMessage(""), 3000);
   } catch (err) {
     console.error("Edit Error:", err.response?.data);
-    alert(err.response?.data?.message || "Failed to update teacher");
+    setErrorMessage(err.response?.data?.message || "Failed to update teacher");
+    setTimeout(() => setErrorMessage(""), 3000);
   } finally {
     setIsSubmitting(false);
   }
@@ -529,10 +540,12 @@ const openScheduleModal = useCallback((teacher) => {
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
     }
-    alert("✅ Subject list refreshed!");
+    setSuccessMessage("✅ Subject list refreshed!");
+    setTimeout(() => setSuccessMessage(""), 3000);
   } catch (err) {
     console.error("Refresh failed", err);
-    alert("Failed to refresh subjects. Please try again.");
+    setErrorMessage("Failed to refresh subjects. Please try again.");
+    setTimeout(() => setErrorMessage(""), 3000);
   }
 }, [selectedSchoolYear]);
 
@@ -577,6 +590,9 @@ const openScheduleModal = useCallback((teacher) => {
                   </button>
                 </div>
               </div>
+
+              {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
+              {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
             {loading ? (
               <div style={{ 
@@ -1074,6 +1090,7 @@ const AssignSubjectModal = memo(({
 }) => {
   const [assignMode, setAssignMode] = useState("single");
   const [refreshing, setRefreshing] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   const handleCheckboxChange = (subjectId) => {
     setSelectedSubjectsForBulk(prev =>
@@ -1100,7 +1117,8 @@ const AssignSubjectModal = memo(({
   const handleBulkSubmit = (e) => {
     e.preventDefault();
     if (selectedSubjectsForBulk.length === 0) {
-      alert("Please select at least one subject");
+      setModalError("Please select at least one subject");
+  setTimeout(() => setModalError(''), 3000);
       return;
     }
     onSubmit(e);
@@ -1140,6 +1158,8 @@ const AssignSubjectModal = memo(({
             <FaTimes className="close-icon" onClick={onClose} />
           </div>
         </div>
+        
+         {modalError && <div className="alert alert-error">{modalError}</div>}
 
         {/* Mode Tabs */}
         <div style={{ display: "flex", borderBottom: "2px solid #e0d8b0", marginBottom: "20px" }}>

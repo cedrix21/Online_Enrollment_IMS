@@ -7,33 +7,13 @@ import "./Enrollment.css";
 export default function AdminEnrollment() {
   const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const [schoolYear, setSchoolYear] = useState(() => {
-  const month = new Date().getMonth() + 1;
-  const year = new Date().getFullYear();
-  return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-});
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+  });
 
-  // ── Tuition fees from API ─────────────────────────────────────
   const [tuitionFees, setTuitionFees] = useState({});
   const [feesLoading, setFeesLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchFees = async () => {
-      try {
-        const res = await API.get('/tuition-fees/public');
-        setTuitionFees(res.data);
-      } catch (err) {
-        console.error('Failed to load fees:', err);
-      } finally {
-        setFeesLoading(false);
-      }
-    };
-    fetchFees();
-  }, []);
-
-  const fmtPeso = (n) =>
-    '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
-
-  // ── Form state ────────────────────────────────────────────────
   const [formData, setFormData] = useState({
     registrationType: "New Student",
     gradeLevel: "",
@@ -70,11 +50,26 @@ export default function AdminEnrollment() {
   });
 
   const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");   // NEW
   const [loading, setLoading] = useState(false);
-
-  // 🆕 Continuing student fields
   const [continuingStudentId, setContinuingStudentId] = useState("");
   const [studentIdValid, setStudentIdValid] = useState(null);
+
+  useEffect(() => {
+    const fetchFees = async () => {
+      try {
+        const res = await API.get('/tuition-fees/public');
+        setTuitionFees(res.data);
+      } catch (err) {
+        console.error('Failed to load fees:', err);
+      } finally {
+        setFeesLoading(false);
+      }
+    };
+    fetchFees();
+  }, []);
+
+  const fmtPeso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -94,7 +89,6 @@ export default function AdminEnrollment() {
     });
   };
 
-  // 🆕 Grade progression helper
   const getNextGradeLevel = (currentGrade) => {
     const progression = {
       'Nursery': 'Kindergarten 1',
@@ -110,7 +104,6 @@ export default function AdminEnrollment() {
     return progression[currentGrade] || currentGrade;
   };
 
-  // 🆕 Verify continuing student ID and auto‑fill
   const verifyStudentId = async () => {
     if (!continuingStudentId) {
       setStudentIdValid(null);
@@ -156,16 +149,15 @@ export default function AdminEnrollment() {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+    setSuccessMessage("");
     const payload = { ...formData, school_year: schoolYear };
-    // 🆕 Include studentId for Continuing
     if (formData.registrationType === 'Continuing') {
       payload.studentId = continuingStudentId;
     }
     try {
       const response = await API.post("/admin/enroll-student", payload);
-      alert(
-        `Success! Student ID: ${response.data.studentId} has been created and approved for school year ${schoolYear}.`
-      );
+      setSuccessMessage(`✅ Success! Student ID: ${response.data.studentId} has been created and approved for school year ${schoolYear}.`);
+      setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Could not register student.";
       setMessage("Error: " + errorMsg);
@@ -183,10 +175,7 @@ export default function AdminEnrollment() {
           <div className="enrollment-container" style={{ backgroundImage: "none", padding: "20px" }}>
             <div className="enrollment-card" style={{ maxWidth: "100%", backgroundColor: "#fff" }}>
               <div className="form-header">
-                <span className="role-badge registrar" style={{
-                  background: "#b8860b", color: "#fff", padding: "5px 10px",
-                  borderRadius: "4px", fontSize: "12px",
-                }}>
+                <span className="role-badge registrar" style={{ background: "#b8860b", color: "#fff", padding: "5px 10px", borderRadius: "4px", fontSize: "12px" }}>
                   OFFICE USE ONLY
                 </span>
                 <h2>INTERNAL STUDENT REGISTRATION</h2>
@@ -196,6 +185,11 @@ export default function AdminEnrollment() {
               {message && (
                 <div className="message" style={{ backgroundColor: "#f8d7da", color: "#721c24" }}>
                   {message}
+                </div>
+              )}
+              {successMessage && (
+                <div className="message" style={{ backgroundColor: "#d4edda", color: "#155724" }}>
+                  {successMessage}
                 </div>
               )}
 
