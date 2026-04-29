@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/teacher/grades',                        [GradeController::class, 'submitGrade']);
         Route::get('/teacher/dashboard',                      [TeacherPortalController::class, 'getDashboardData']);
         Route::post('/teacher/grades/bulk',                   [TeacherPortalController::class, 'bulkSaveGrades']);
+        Route::get('/teachers/{id}/schedule',          [ScheduleController::class, 'getTeacherSchedule']);
     });
 
     /*
@@ -98,7 +99,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sections/{id}',                   [SectionController::class, 'show']);
         Route::get('/sections/{id}/subjects',          [SectionController::class, 'getSectionSubjects']);
         Route::get('/schedules',                       [ScheduleController::class, 'index']);
-        Route::get('/teachers/{id}/schedule',          [ScheduleController::class, 'getTeacherSchedule']);
         Route::get('/rooms',                           [SectionController::class, 'getRooms']);
         Route::get('/time-slots',                      [SectionController::class, 'getTimeSlots']);
 

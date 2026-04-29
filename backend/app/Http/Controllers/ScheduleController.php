@@ -221,6 +221,7 @@ public function index(Request $request)
     // In ScheduleController.php, add this method:
         public function getTeacherSchedule(Request $request, $teacherId)
         {
+        
             $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
             $schedules = Schedule::with(['subject', 'section', 'time_slot', 'room'])
