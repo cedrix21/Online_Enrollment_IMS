@@ -73,3 +73,53 @@
   background: #b8860b;
   border-radius: 3px;
 }
+/* Dropdown container */
+.sidebar-dropdown {
+  margin-bottom: 4px;
+}
+
+/* The toggle button */
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 15px;
+  background: none;
+  border: none;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.dropdown-toggle:hover,
+.dropdown-toggle.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dropdown-toggle .chevron {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+/* Dropdown menu (the list of links) */
+.dropdown-menu {
+  padding-left: 20px;
+}
+
+.dropdown-menu a {
+  display: block;
+  padding: 8px 15px;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: 0.2s;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu a.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
