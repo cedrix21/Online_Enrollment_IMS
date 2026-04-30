@@ -86,7 +86,7 @@ export default function Sidebar() {
         {isAdminOrRegistrar && (
           <div className="sidebar-dropdown">
             <button
-              className={`dropdown-toggle ${isActiveGroup(enrollmentPaths) ? "active" : ""}`}
+              className="dropdown-toggle"
               onClick={() => toggleMenu("enrollment")}
             >
               <FaUserPlus />
@@ -107,7 +107,7 @@ export default function Sidebar() {
         {isAdminOrRegistrar && (
           <div className="sidebar-dropdown">
             <button
-              className={`dropdown-toggle ${isActiveGroup(academicPaths) ? "active" : ""}`}
+              className="dropdown-toggle"
               onClick={() => toggleMenu("academics")}
             >
               <FaBookOpen />
@@ -130,7 +130,7 @@ export default function Sidebar() {
         {isAdminOrRegistrar && (
           <div className="sidebar-dropdown">
             <button
-              className={`dropdown-toggle ${isActiveGroup(billingPaths) ? "active" : ""}`}
+              className="dropdown-toggle"
               onClick={() => toggleMenu("billing")}
             >
               <FaFileInvoiceDollar />
@@ -153,7 +153,7 @@ export default function Sidebar() {
         {isAdmin && (
           <div className="sidebar-dropdown">
             <button
-              className={`dropdown-toggle ${isActiveGroup(["/teachers", "/section-management", "/subject-management"]) ? "active" : ""}`}
+              className="dropdown-toggle"
               onClick={() => toggleMenu("management")}
             >
               <FaLayerGroup />
@@ -174,7 +174,7 @@ export default function Sidebar() {
         {isAdmin && (
           <div className="sidebar-dropdown">
             <button
-              className={`dropdown-toggle ${isActiveGroup(["/admin/activity-logs", "/admin/locked-users"]) ? "active" : ""}`}
+              className="dropdown-toggle"
               onClick={() => toggleMenu("system")}
             >
               <FaHistory />

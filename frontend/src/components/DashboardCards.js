@@ -38,9 +38,9 @@ export default function DashboardCards({ role }) {
     // },
     {
       title: "System Settings",
-      desc: "Configure academic years and users",
+      desc: "Configure users and activity logs",
       icon: <FaCog />,
-      path: "/*",
+      path: "/admin/activity-logs",
       color: "orange-accent",
       show: role === "admin",
     },
