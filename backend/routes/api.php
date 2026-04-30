@@ -16,6 +16,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
+use App\Http\Controllers\Admin\UserManagementController;    
 
 /*
 |--------------------------------------------------------------------------
@@ -161,6 +162,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tuition-fees',                   [TuitionFeeController::class, 'store']);
         Route::put('/tuition-fees/{id}',               [TuitionFeeController::class, 'update']);
         Route::delete('/tuition-fees/{id}',            [TuitionFeeController::class, 'destroy']);
+
+        Route::get('/admin/locked-users',              [UserManagementController::class, 'lockedUsers']);
+        Route::post('/admin/unlock-user/{id}',         [UserManagementController::class, 'unlockUser']);
     });
 
 

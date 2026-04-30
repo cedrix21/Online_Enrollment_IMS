@@ -30,7 +30,7 @@ import Form137 from "./pages/Form137";
 import TuitionFeeManagement from "./pages/TuitionFeeManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ActivityLogs from "./pages/ActivityLogs";
-
+import LockedUsers from "./pages/Admin/LockedUsers";
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -190,6 +190,15 @@ function App() {
           element={
             <ProtectedRoute roles={["admin"]}>
               <TuitionFeeManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/locked-users"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <LockedUsers />
             </ProtectedRoute>
           }
         />

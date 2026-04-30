@@ -13,6 +13,7 @@ import {
   FaUserGraduate,
   FaMoneyBillWave,
   FaHistory,
+  FaUserLock,
 } from "react-icons/fa";
 import "./SideBar.css";
 
@@ -149,6 +150,14 @@ export default function Sidebar() {
               >
                 <FaHistory  />
                 <span>Activity Logs</span>
+              </Link>
+
+              <Link 
+                to="/admin/locked-users" 
+                className={location.pathname.includes("/admin/locked-users") ? "active" : ""}
+              >
+                <FaUserLock  />
+                <span>Locked Users</span>
               </Link>
         
           </>

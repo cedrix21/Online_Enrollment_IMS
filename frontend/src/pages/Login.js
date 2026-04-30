@@ -6,27 +6,24 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
-      // Send login request
       const response = await API.post("/login", {
         email,
         password
       });
 
-      // Save token and user to localStorage
       const { access_token, user } = response.data;
       localStorage.setItem("token", access_token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      // Set Authorization header for all future requests
       API.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
-
-      console.log("Login successful:", response.data);
 
       if (user.role === "teacher") {
         window.location.href = "/teacher-advisory";
@@ -34,18 +31,28 @@ export default function Login() {
         window.location.href = "/dashboard";
       }
     } catch (err) {
-
       if (err.response) {
+        const status = err.response.status;
+        const message = err.response.data?.message;
 
-        setError(err.response.data?.message || "Login failed");
+        switch (status) {
+          case 423:
+            setError(message || "Account locked. Please try again later.");
+            break;
+          case 429:
+            setError("Too many attempts. Please slow down.");
+            break;
+          default:
+            setError(message || "Login failed");
+        }
       } else if (err.request) {
-
         setError("Network error: Could not reach server");
       } else {
         setError("Login failed");
       }
-
       console.error("Login error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,6 +70,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
+              disabled={loading}
             />
           </div>
           <div className="input-group">
@@ -72,10 +80,11 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
-          <button type="submit" className="login-button">
-            Login
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>
