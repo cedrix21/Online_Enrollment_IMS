@@ -53,3 +53,21 @@
     text-align: center;
     padding: 2rem;
 }
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .locked-users-container {
+        padding: 1rem;
+    }
+
+    .locked-users-table th,
+    .locked-users-table td {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .unlock-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}

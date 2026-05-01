@@ -166,10 +166,7 @@ export default function TuitionFeeManagement() {
   const user = JSON.parse(localStorage.getItem('user'));
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+    <>
         <div className="content-scroll-area">
           {yearLoading || !selectedSchoolYear ? (
             <div className="loading-school-year">Loading school year...</div>
@@ -459,7 +456,6 @@ export default function TuitionFeeManagement() {
             </div>
           )}
         </div>  
-      </div>  
-    </div>   
+        </>
   );
 }

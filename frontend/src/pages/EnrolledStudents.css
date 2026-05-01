@@ -288,3 +288,37 @@
   margin-right: 5px;
 }
 
+/* ── Responsive Additions ── */
+@media (max-width: 768px) {
+  .enrolled-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-box {
+    min-width: 100%;
+  }
+  .enrolled-table th,
+  .enrolled-table td {
+    padding: 8px 6px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .enrolled-container {
+    padding: 10px;
+  }
+  .btn-excel,
+  .btn-add {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  .modal-content {
+    padding: 20px;
+  }
+}

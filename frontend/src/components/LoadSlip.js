@@ -202,10 +202,7 @@ export default function LoadSlip() {
   }, []);
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+    <>
 
         <div className="content-scroll-area" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
           {loading ? (
@@ -385,7 +382,6 @@ export default function LoadSlip() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </>
   );
 }

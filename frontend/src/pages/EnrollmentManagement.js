@@ -827,11 +827,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
   if (!user) return null;
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
-
+    <>
         <div
           className="content-scroll-area"
           style={{ padding: "20px", overflowY: "auto", flex: 1 }}
@@ -1021,7 +1017,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
             )}
           </div>
         </div>
-      </div>
+
 
       {/* ── View Details Modal ── */}
       {selectedEnrollment && (
@@ -1412,6 +1408,6 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
     </div>
   </div>
 )}
-    </div>
+</>
   );
 }

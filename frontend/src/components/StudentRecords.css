@@ -1,161 +1,236 @@
+/* ================================================================
+   StudentRecords.css — Responsive
+   ================================================================ */
+
 .records-container {
-    padding: 20px;
+  padding: 20px;
 }
 
+/* ── Header ── */
 .records-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .header-title {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .header-icon {
-    font-size: 2rem;
-    color: #b8860b;
+  font-size: 2rem;
+  color: #b8860b;
 }
 
 .header-title h2 {
-    color: #b8860b;
-    margin: 0;
+  color: #b8860b;
+  margin: 0;
 }
 
 .export-btn {
-    background: #333;
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-weight: 600;
+  background: #333;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
+/* ── Controls ── */
 .records-controls {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .search-box {
-    position: relative;
-    flex: 1;
+  position: relative;
+  flex: 1;
+  min-width: 200px;
 }
 
 .search-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #b8860b;
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b8860b;
 }
 
 .search-box input {
-    width: 90%;
-    padding: 12px 12px 12px 45px;
-    border: 2px solid #fff8dc;
-    border-radius: 10px;
-    outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 12px 12px 45px;
+  border: 2px solid #fff8dc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 0.95rem;
 }
 
 .search-box input:focus {
-    border-color: #b8860b;
+  border-color: #b8860b;
 }
 
+/* ── Table wrapper ── */
 .table-wrapper {
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    overflow: hidden;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  overflow-x: auto; /* horizontal scroll on small screens */
+  -webkit-overflow-scrolling: touch;
 }
 
 .records-table {
-    width: 100%;
-    border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* prevents collapse on mobile */
 }
 
 .records-table th {
-    background: #f7e14b;
-    color: #333;
-    padding: 15px;
-    text-align: left;
+  background: #f7e14b;
+  color: #333;
+  padding: 15px;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .records-table td {
-    padding: 15px;
-    border-bottom: 1px solid #fff8dc;
+  padding: 15px;
+  border-bottom: 1px solid #fff8dc;
 }
 
 .id-cell {
-    font-weight: bold;
-    color: #b8860b;
+  font-weight: bold;
+  color: #b8860b;
+  white-space: nowrap;
 }
 
 .name-cell {
-    font-weight: 600;
-    color: #333;
+  font-weight: 600;
+  color: #333;
 }
 
+/* ── Buttons ── */
 .edit-btn {
-    background: #fff8dc;
-    color: #b8860b;
-    border: none;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.2s;
+  background: #fff8dc;
+  color: #b8860b;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
 .edit-btn:hover {
-    background: #b8860b;
-    color: white;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 50px !important;
-    color: #999;
-}
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.status-badge.active {
-    background-color: #4caf50;
-    color: white;
-}
-
-.status-badge.inactive {
-    background-color: #9e9e9e;
-    color: white;
+  background: #b8860b;
+  color: white;
 }
 
 .action-buttons {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .billing-btn {
-    padding: 6px 10px;
-    background-color: #ff9800;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
+  padding: 6px 10px;
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .billing-btn:hover {
-    background-color: #f57c00;
-    transform: translateY(-2px);
+  background-color: #f57c00;
+  transform: translateY(-2px);
+}
+
+/* ── Status Badge ── */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.active   { background-color: #4caf50; color: white; }
+.status-badge.inactive { background-color: #9e9e9e; color: white; }
+
+/* ── Empty State ── */
+.empty-state {
+  text-align: center;
+  padding: 50px !important;
+  color: #999;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .records-container {
+    padding: 14px;
+  }
+
+  .records-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .records-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-box {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .records-table th,
+  .records-table td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-icon {
+    font-size: 1.5rem;
+  }
+
+  .header-title h2 {
+    font-size: 1.1rem;
+  }
+
+  .records-table {
+    min-width: 500px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
 }

@@ -1,6 +1,6 @@
 .directory-container {
   padding: 30px;
-  background-color: #f8f9fa; /* Standard light background */
+  background-color: #f8f9fa;
 }
 
 .directory-header {
@@ -10,13 +10,12 @@
   margin-bottom: 25px;
 }
 
-/* Matching the "Add" button to your system's primary action style */
 .add-teacher-btn {
   background-color: #b8860b;
   color: #fff;
   border: none;
   padding: 10px 20px;
-  border-radius: 8px; /* Standard dashboard radius */
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -29,7 +28,6 @@
   background-color: #966d08;
 }
 
-/* The Grid */
 .teacher-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -37,8 +35,6 @@
   align-items: start;
 }
 
-/* THE CARD: Standardized to match SummaryCards */
-/* Update the existing teacher-card class */
 .teacher-card {
   background: #ffffff;
   border-radius: 12px;
@@ -51,19 +47,12 @@
   cursor: default;
 }
 
-/* ADD THIS: This is the actual hover effect */
 .teacher-card:hover {
-  /* Lifts the card up slightly */
   transform: translateY(-5px); 
-  
-  /* Makes the shadow deeper to look like it's floating */
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); 
-  
-  /* Optional: slightly darken the border on hover */
   border-color: #b8860b; 
 }
 
-/* Top Section: Integrated with the card body for a flatter look */
 .card-top {
   padding: 20px;
   display: flex;
@@ -75,9 +64,9 @@
 .teacher-avatar {
   width: 50px;
   height: 50px;
-  background-color: #fdf5e6; /* Cream background */
-  color: #b8860b; /* Gold text */
-  border-radius: 8px; /* Matching the card's softness */
+  background-color: #fdf5e6;
+  color: #b8860b;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,7 +87,6 @@
   letter-spacing: 0.5px;
 }
 
-/* Card Body */
 .card-body {
   padding: 20px;
   flex-grow: 1;
@@ -118,7 +106,6 @@
   font-size: 1rem;
 }
 
-/* Tag Styles */
 .advisory-tag {
   color: #b8860b;
   font-weight: 700;
@@ -128,14 +115,13 @@
   background: #f1f3f5;
   color: #495057;
   padding: 4px 10px;
-  border-radius: 4px; /* Slightly sharper but consistent */
+  border-radius: 4px;
   font-size: 0.75rem;
   margin-right: 5px;
   margin-bottom: 5px;
   display: inline-block;
 }
 
-/* Actions matching standard dashboard button styles */
 .card-actions {
   padding: 15px 20px;
   border-top: 1px solid #f0f0f0;
@@ -143,32 +129,18 @@
   gap: 10px;
 }
 
-.edit-link, .assign-link {
+.edit-link, .assign-link, .schedule-link {
   background: none;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #b8860b;
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.8rem;
   cursor: pointer;
-  color: #555;
+  color: #b8860b;
   transition: all 0.2s;
 }
 
-.assign-link {
-  border-color: #b8860b;
-  color: #b8860b;
-}
-
-.assign-link:hover {
-  background-color: #b8860b;
-  color: #fff;
-}
-.edit-link {
-  border-color: #b8860b;
-  color: #b8860b;
-}
-
-.edit-link:hover {
+.edit-link:hover, .assign-link:hover, .schedule-link:hover {
   background-color: #b8860b;
   color: #fff;
 }
@@ -271,9 +243,6 @@
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-/* ========================================================================
-   ADD THESE STYLES TO TeacherDirectory.css
-   ======================================================================== */
 
 /* Assignment List Styles */
 .assignment-list {
@@ -382,10 +351,7 @@
   100% { transform: rotate(360deg); }
 }
 
-/* ========================================================================
-   TEACHER SCHEDULE MODAL STYLES
-   ======================================================================== */
-
+/* Schedule table wrapper */
 .schedule-table-wrapper {
   overflow-x: auto;
   margin-bottom: 20px;
@@ -464,18 +430,35 @@
 .no-schedule-list li strong {
   color: #b8860b;
 }
-.schedule-link {
-  background: none;
-  border: 1px solid #b8860b;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  color: #b8860b;
-  transition: all 0.2s;
+
+/* Responsive additions */
+@media (max-width: 768px) {
+  .teacher-grid {
+    grid-template-columns: 1fr;
+  }
+  .directory-container {
+    padding: 20px 15px;
+  }
+  .directory-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-content {
+    width: 95%;
+    padding: 20px;
+  }
 }
 
-.schedule-link:hover {
-  background-color: #b8860b;
-  color: #fff;
+@media (max-width: 480px) {
+  .card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card-actions {
+    flex-wrap: wrap;
+  }
 }

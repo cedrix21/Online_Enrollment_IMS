@@ -1192,10 +1192,7 @@ const handleOpenScheduleModal = useCallback(async (section) => {
     const conflictMessages = useMemo(() => getConflictMessages(), [getConflictMessages]);
 
     return (
-      <div className="dashboard-layout">
-        <SideBar user={user} />
-        <div className="main-content">
-          <TopBar user={user} />
+    <>
 
           <div
             className="content-scroll-area"
@@ -1333,7 +1330,6 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               teachers={teachers}
             />
           )}
-        </div>
-      </div>
+       </>
     );
   }

@@ -1,22 +1,71 @@
+/* ================================================================
+   TopBar.css — Responsive
+   ================================================================ */
+
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: 15px 25px;
+  padding: 0 25px;
   border-bottom: 2px solid #fff8dc;
-  height: 70px; 
-   flex-shrink: 0;
+  height: 70px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  transition: margin-left 0.3s ease;
 }
 
+/* When sidebar is collapsed to icon-only */
+@media (max-width: 1024px) {
+
+}
+
+/* When sidebar is off-canvas (mobile) */
+@media (max-width: 768px) {
+  .topbar {
+ 
+    padding: 0 15px 0 65px; /* leave room for hamburger */
+  }
+}
+
+/* ── Left section ── */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Right / user section ── */
 .topbar-user {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
+
 .topbar-user span:first-child {
   font-weight: bold;
-  color: #b8860b; 
+  color: #b8860b;
+  white-space: nowrap;
 }
 
 .role-badge {
@@ -25,22 +74,26 @@
   font-size: 12px;
   color: white;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
-.role-badge.admin { background: #b91c1c; } /* Crimson */
-.role-badge.registrar { background: #b8860b; } /* Gold */
-.role-badge.parent { background: #16a34a; }
-.role-badge.student { background: #7c3aed; }
+.role-badge.admin      { background: #b91c1c; }
+.role-badge.registrar  { background: #b8860b; }
+.role-badge.parent     { background: #16a34a; }
+.role-badge.student    { background: #7c3aed; }
 
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .topbar-logo {
+    width: 32px;
+    height: 32px;
+  }
 
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+  .topbar-user span:first-child {
+    display: none; /* hide username text, keep avatar/badge */
+  }
 
-.topbar-logo {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
+  .topbar-title {
+    font-size: 0.9rem;
+  }
 }

@@ -173,10 +173,7 @@ export default function AdminEnrollment() {
   };
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+   
         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
           <div className="enrollment-container" style={{ backgroundImage: "none", padding: "20px" }}>
             <div className="enrollment-card" style={{ maxWidth: "100%", backgroundColor: "#fff" }}>
@@ -634,7 +631,6 @@ export default function AdminEnrollment() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    
   );
 }

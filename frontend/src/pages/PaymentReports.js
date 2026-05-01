@@ -127,10 +127,7 @@ const PaymentReports = () => {
     const paymentTypes = [...new Set(payments.map(p => p.payment_type).filter(Boolean))];
 
     return (
-        <div className="dashboard-layout">
-            <SideBar />
-            <div className="main-content">
-                <TopBar />
+  <>
                 <div className="content-scroll-area" style={{ padding: '20px' }}>
                     <div className="reports-container">
                         <div className="reports-header">
@@ -260,8 +257,7 @@ const PaymentReports = () => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+         </>
     );
 };
 

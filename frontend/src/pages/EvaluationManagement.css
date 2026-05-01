@@ -913,7 +913,8 @@
     right: 1rem;
   }
   .quarter-buttons {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: wrap;
   }
   .modal-grades-table .grades-table {
     font-size: 0.85rem;
@@ -942,7 +943,7 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .quarter-buttons {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
   .grade-management-modal-content {
     max-height: 95vh;
@@ -963,5 +964,8 @@
   .modal-grades-table .grades-table th,
   .modal-grades-table .grades-table td {
     padding: 0.5rem;
+  }
+  .student-search {
+    width: 100%;
   }
 }

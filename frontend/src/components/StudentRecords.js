@@ -54,10 +54,7 @@ export default function StudentRecords() {
   });
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+    <>
 
         <div className="content-scroll-area" style={{ padding: "20px" }}>
           <div className="records-container">
@@ -186,7 +183,6 @@ export default function StudentRecords() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </>
   );
 }

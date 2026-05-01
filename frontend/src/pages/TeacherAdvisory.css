@@ -1056,3 +1056,30 @@
   cursor: not-allowed;
   transform: none;
 }
+/* Additional small screen refinements */
+@media (max-width: 480px) {
+  .advisory-header h1 {
+    font-size: 20px;
+  }
+  .settings-btn,
+  .logout-btn,
+  .schedule-btn,
+  .refresh-advisory-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .student-item {
+    padding: 10px;
+  }
+  .student-name {
+    font-size: 14px;
+  }
+  .subjects-table-header,
+  .subject-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .subject-col {
+    text-align: left;
+  }
+}

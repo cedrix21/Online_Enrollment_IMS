@@ -455,3 +455,25 @@
   .tfm-grid        { grid-template-columns: 1fr; }
   .tfm-totals-row  { flex-wrap: wrap; }
 }
+/* … keep entire existing CSS, then add at the end: */
+@media (max-width: 400px) {
+  .tfm-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tfm-header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .tfm-add-btn,
+  .tfm-sy-select {
+    width: 100%;
+  }
+  .tfm-modal {
+    max-width: 100%;
+    border-radius: 0;
+  }
+  .tfm-totals-row {
+    flex-direction: column;
+  }
+}

@@ -168,3 +168,45 @@
     color: #b8860b;
     font-weight: 600;
 }
+
+/* Responsive Additions */
+@media (max-width: 768px) {
+    .reports-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .reports-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    .reports-actions button {
+        flex: 1;
+        justify-content: center;
+    }
+    .filters-bar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .filter-group {
+        min-width: 100%;
+    }
+    .summary-stats {
+        flex-wrap: wrap;
+    }
+    .stat-card {
+        flex: 1 1 45%;
+    }
+}
+
+@media (max-width: 480px) {
+    .payments-table th,
+    .payments-table td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+    }
+    .btn-excel, .btn-pdf, .btn-refresh {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+}

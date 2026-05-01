@@ -312,3 +312,17 @@
   50% { opacity: 1; }
   100% { opacity: 0.6; }
 }
+
+/* Additional modal responsive */
+@media (max-width: 480px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    .modal-body {
+        padding: 15px;
+    }
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import SideBar from '../components/SideBar';
-import TopBar from '../components/TopBar';
 import API from '../api/api';
 import { logActivity } from '../utils/activityLogger'; 
 import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
@@ -32,8 +30,6 @@ const EnrolledStudents = () => {
 
   const pastSchoolYears = getPastSchoolYears();
   const nextSchoolYear = getNextSchoolYear();
-
-  const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -277,47 +273,44 @@ const EnrolledStudents = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
-        <div className="content-scroll-area" style={{ padding: '20px' }}>
-          <div className="enrolled-container">
-            <div className="enrolled-header">
-              <h2>Student Records</h2>
-              <div>
-                <button className="btn-add" onClick={() => setModalOpen(true)}><FaPlus /> Add Record</button>
-                <button className="btn-excel" onClick={exportToExcel}><FaFileExcel /> Export to Excel</button>
+ return (
+  <>
+    <div className="content-scroll-area" style={{ padding: '20px' }}>
+      <div className="enrolled-container">
+        <div className="enrolled-header">
+          <h2>Student Records</h2>
+          <div>
+            <button className="btn-add" onClick={() => setModalOpen(true)}><FaPlus /> Add Record</button>
+            <button className="btn-excel" onClick={exportToExcel}><FaFileExcel /> Export to Excel</button>
+          </div>
+        </div>
+
+        {errorMessage && <div className="error-message" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>❌ {errorMessage}</div>}
+        {successMessage && <div className="success-message" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>✅ {successMessage}</div>}
+
+        {yearLoading || !filterSchoolYear ? (
+          <div className="loading-school-year">Loading school year...</div>
+        ) : (
+          <>
+            <div className="filters-bar">
+              <div className="search-box">
+                <FaSearch className="search-icon" />
+                <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
+              <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
+                <option value="all">All Grades</option>
+                {gradeLevels.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <select value={filterSchoolYear} onChange={(e) => setFilterSchoolYear(e.target.value)}>
+                <option value="all">All School Years</option>
+                {schoolYears.map(sy => <option key={sy} value={sy}>{sy}</option>)}
+              </select>
+              <div className="student-count">{filteredStudents.length} record(s)</div>
             </div>
 
-            {errorMessage && <div className="error-message" style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>❌ {errorMessage}</div>}
-            {successMessage && <div className="success-message" style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>✅ {successMessage}</div>}
-
-            {yearLoading || !filterSchoolYear ? (
-              <div className="loading-school-year">Loading school year...</div>
+            {loading ? (
+              <div className="loading-spinner">Loading records...</div>
             ) : (
-              <>
-                <div className="filters-bar">
-                  <div className="search-box">
-                    <FaSearch className="search-icon" />
-                    <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                  </div>
-                  <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
-                    <option value="all">All Grades</option>
-                    {gradeLevels.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                  <select value={filterSchoolYear} onChange={(e) => setFilterSchoolYear(e.target.value)}>
-                    <option value="all">All School Years</option>
-                    {schoolYears.map(sy => <option key={sy} value={sy}>{sy}</option>)}
-                  </select>
-                  <div className="student-count">{filteredStudents.length} record(s)</div>
-                </div>
-
-                {loading ? (
-                  <div className="loading-spinner">Loading records...</div>
-                ) : (
                   <div className="table-responsive">
                     <table className="enrolled-table">
                       <thead>
@@ -360,7 +353,7 @@ const EnrolledStudents = () => {
             )}
           </div>
         </div>
-      </div>
+     
 
 
       
@@ -502,7 +495,7 @@ const EnrolledStudents = () => {
         </div>
       </div>
     )}
-    </div>
+  </>
   );
 };
 

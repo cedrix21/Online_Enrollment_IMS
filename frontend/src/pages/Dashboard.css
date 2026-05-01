@@ -345,3 +345,33 @@
   gap: 20px;
   margin-top: 20px;
 }
+
+/* ── Responsive additions ── */
+@media (max-width: 768px) {
+  .bottom-section {
+    grid-template-columns: 1fr;
+  }
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .teacher-stat-card {
+    min-height: auto;
+    padding: 15px;
+  }
+  .stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-card {
+    padding: 20px;
+  }
+  .dashboard-card button {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+  }
+}

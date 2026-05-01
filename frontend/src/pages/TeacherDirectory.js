@@ -566,11 +566,7 @@ const openScheduleModal = useCallback((teacher) => {
 
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
-
+    <>
         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
           {yearLoading || !selectedSchoolYear ? (
             <div className="loading-school-year">Loading school year...</div>
@@ -694,8 +690,7 @@ const openScheduleModal = useCallback((teacher) => {
              schoolYear={selectedSchoolYear}  
           />
         )}
-      </div>
-    </div>
+</>
   );
 }
 

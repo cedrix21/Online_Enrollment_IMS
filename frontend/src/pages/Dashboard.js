@@ -149,10 +149,7 @@ export default function Dashboard() {
   if (!user) return <LoadingScreen />;
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+   
 
         <div className="content-scroll-area">
           {isAdminOrRegistrar && (
@@ -187,7 +184,6 @@ export default function Dashboard() {
             Logout
           </button>
         </div>
-      </div>
-    </div>
+     
   );
 }

@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'; // Changed to Canvas for reliable d
 import sicsLogo from '../assets/sics-logo.png';
 
 export default function EnrollmentQR() {
-    const enrollUrl = "https://online-enrollment-system.up.railway.app/enroll";
+    const enrollUrl = "https://online-enrollment-ims.vercel.app/enroll";
     const qrContainerRef = useRef();
 
     const downloadQR = () => {

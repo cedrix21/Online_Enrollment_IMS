@@ -111,3 +111,28 @@
   font-size: 0.8rem;
 }
 
+.content-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  height: calc(100vh - 70px); /* 70px = TopBar height */
+}
+
+.content-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-scroll-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb {
+  background: #b8860b;
+  border-radius: 4px;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #9a7209;
+}

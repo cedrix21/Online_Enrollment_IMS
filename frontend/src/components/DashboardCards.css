@@ -1,3 +1,7 @@
+/* ================================================================
+   DashboardCards.css — Responsive
+   ================================================================ */
+
 .dashboard-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -33,12 +37,20 @@
   width: 60px;
   height: 60px;
   border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.db-card-info {
+  min-width: 0;
 }
 
 .db-card-info h3 {
   margin: 0;
   font-size: 1.2rem;
   color: #2d3748;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .db-card-info p {
@@ -60,15 +72,50 @@
   color: inherit;
 }
 
-/* Color Accents */
-.blue-accent .db-card-icon { background: #ebf8ff; color: #3182ce; }
-.blue-accent:hover { border-left: 5px solid #3182ce; }
+/* ── Color Accents ── */
+.blue-accent .db-card-icon   { background: #ebf8ff; color: #3182ce; }
+.blue-accent:hover           { border-left: 5px solid #3182ce; }
 
-.green-accent .db-card-icon { background: #f0fff4; color: #38a169; }
-.green-accent:hover { border-left: 5px solid #38a169; }
+.green-accent .db-card-icon  { background: #f0fff4; color: #38a169; }
+.green-accent:hover          { border-left: 5px solid #38a169; }
 
 .purple-accent .db-card-icon { background: #faf5ff; color: #805ad5; }
-.purple-accent:hover { border-left: 5px solid #805ad5; }
+.purple-accent:hover         { border-left: 5px solid #805ad5; }
 
 .orange-accent .db-card-icon { background: #fffaf0; color: #dd6b20; }
-.orange-accent:hover { border-left: 5px solid #dd6b20; }
+.orange-accent:hover         { border-left: 5px solid #dd6b20; }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .dashboard-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .db-card {
+    padding: 18px 16px;
+  }
+
+  .db-card-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    margin-right: 14px;
+  }
+
+  .db-card-info h3 {
+    font-size: 1rem;
+  }
+
+  .db-card-arrow {
+    right: 12px;
+    font-size: 1.2rem;
+  }
+}

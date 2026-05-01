@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import API from "../api/api";
 import "./EvaluationManagement.css";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import { useNavigate } from "react-router-dom";
 import { FaSyncAlt, FaSearch, FaPrint } from "react-icons/fa";
 import printReportCard from "../components/printReportCard";
@@ -664,28 +662,19 @@ const EvaluationManagement = () => {
   // Render
   // ────────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="dashboard-layout">
-        <SideBar user={user} />
-        <div className="main-content">
-          <TopBar user={user} />
-          <div className="content-scroll-area" style={{ padding: "20px" }}>
-            <div className="evaluation-container">
-              <div className="loading-spinner">Loading grades...</div>
-            </div>
-          </div>
-        </div>
+  return (
+    <div className="content-scroll-area" style={{ padding: "20px" }}>
+      <div className="evaluation-container">
+        <div className="loading-spinner">Loading grades...</div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (!user) return null;
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+<>
         <div className="content-scroll-area" style={{ padding: "20px" }}>
         {yearLoading || !selectedSchoolYear ? (
           <div className="loading-school-year">Loading school year...</div>
@@ -811,8 +800,8 @@ const EvaluationManagement = () => {
           />
         )}
       </div>
-    </div>      
-  </div>       
+     
+      </>
 );
 }
       

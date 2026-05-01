@@ -697,10 +697,7 @@ ${buildObsTable(['I','II','III'])}
   ];
 
   return (
-    <div className="dashboard-layout">
-      <SideBar  />
-      <div className="main-content">
-        <TopBar />
+ <>
         <div className="content-scroll-area">
           <div style={styles.page}>
             <div style={styles.pageHeader}>
@@ -1047,9 +1044,9 @@ ${buildObsTable(['I','II','III'])}
       </div>
     </div>
     </div>
-  </div>
-  </div>
+ </>
   );
+  
 }
 
 // ─── styles ───────────────────────────────────────────────────────────────────

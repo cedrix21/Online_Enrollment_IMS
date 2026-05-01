@@ -125,7 +125,6 @@
   z-index: 10;
 }
 
-
 .logs-table th {
   background: #f8fafc;
   color: #1e293b;
@@ -160,7 +159,7 @@
   color: #0f172a;
 }
 
-/* Badge styles for log level (optional) */
+/* Badge styles for log level */
 .badge-info {
   background: #e0f2fe;
   color: #0369a1;
@@ -256,5 +255,21 @@
   
   .logs-table pre {
     max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .activity-logs-header h2 {
+    font-size: 1.3rem;
+  }
+  .logs-table-wrapper {
+    max-height: 250px;
+  }
+  .pagination {
+    gap: 8px;
+  }
+  .pagination button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
   }
 }

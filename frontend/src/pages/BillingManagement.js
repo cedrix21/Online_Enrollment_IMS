@@ -147,11 +147,7 @@ const BillingManagement = ({ user }) => {
 
     // ✅ No early return – the layout will always render
     return (
-        <div className="dashboard-layout">
-            <SideBar user={user} />
-            <div className="main-content">
-                <TopBar user={user} />
-                
+       
                 <div className="billing-content-body">
                     {/* ✅ Show loading message inside the content area while school year is loading */}
                     {yearLoading || !selectedSchoolYear ? (
@@ -262,8 +258,7 @@ const BillingManagement = ({ user }) => {
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+          
     );
 };
 

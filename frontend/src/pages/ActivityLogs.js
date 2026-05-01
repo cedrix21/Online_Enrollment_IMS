@@ -87,10 +87,7 @@ export default function ActivityLogs() {
   };
 
   return (
-    <div className="dashboard-layout">
-      <SideBar user={user} />
-      <div className="main-content">
-        <TopBar user={user} />
+  
         <div className="activity-logs-container">
           <div className="activity-logs-header">
             <h2>Activity Logs</h2>
@@ -204,7 +201,6 @@ export default function ActivityLogs() {
             </>
           )}
         </div>
-      </div>
-    </div>
+     
   );
 }

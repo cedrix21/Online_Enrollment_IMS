@@ -153,6 +153,19 @@
     }
 }
 
+@media (max-width: 480px) {
+    .billing-content-body {
+        padding: 10px;
+    }
+    .student-list-card {
+        max-height: 300px;
+        padding: 10px;
+    }
+    .student-item {
+        padding: 10px;
+    }
+}
+
 /* Skeleton Loading */
 .student-item.skeleton {
     pointer-events: none;

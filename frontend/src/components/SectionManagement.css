@@ -1,4 +1,8 @@
-/* --- LAYOUT & CONTAINERS --- */
+/* ================================================================
+   SectionManagement.css — Responsive
+   ================================================================ */
+
+/* ── Layout & Containers ── */
 .management-container {
   padding: 2rem;
 }
@@ -8,6 +12,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .title-group {
@@ -21,7 +27,7 @@
   color: #b8860b;
 }
 
-/* --- BUTTONS --- */
+/* ── Add Button ── */
 .add-btn {
   background: #b8860b;
   color: white;
@@ -34,13 +40,12 @@
   gap: 0.5rem;
   font-weight: bold;
   transition: opacity 0.2s;
+  white-space: nowrap;
 }
 
-.add-btn:hover {
-  opacity: 0.9;
-}
+.add-btn:hover { opacity: 0.9; }
 
-/* --- SECTION CARDS --- */
+/* ── Section Cards ── */
 .section-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -82,7 +87,7 @@
   font-size: 0.95rem;
 }
 
-/* --- PROGRESS BAR --- */
+/* ── Progress Bar ── */
 .capacity-bar {
   height: 8px;
   background: #eee;
@@ -103,10 +108,12 @@
   border-top: 1px solid #eee;
   padding-top: 1rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
 }
 
 .section-card-actions button {
   flex: 1;
+  min-width: 80px;
   padding: 0.5rem;
   border: 1px solid #b8860b;
   background: transparent;
@@ -123,19 +130,18 @@
   color: white;
 }
 
-/* --- MODAL BASE STYLES (Crucial for Functionality) --- */
+/* ── Modal Base ── */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  padding: 16px;
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -143,53 +149,70 @@
   padding: 2rem;
   border-radius: 12px;
   width: 100%;
-  max-width: 500px; /* Default for forms */
+  max-width: 500px;
   position: relative;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .student-list-modal {
-  max-width: 800px; /* Wider for tables */
+  max-width: 800px;
   width: 95%;
   max-height: 80vh;
   overflow-y: auto;
 }
 
-/* --- TABLES (Students & Schedule) --- */
-.student-list-table, .schedule-table {
+.schedule-modal-wide {
+  max-width: 700px !important;
+  width: 90%;
+}
+
+/* ── Tables ── */
+.student-list-table,
+.schedule-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   margin-top: 1rem;
+  min-width: 480px;
 }
 
-.student-list-table th, .schedule-table th {
-  background: #f8f9fa;
+.student-list-table th,
+.schedule-table th {
   padding: 12px;
   font-size: 0.85rem;
   color: #666;
   border-bottom: 2px solid #eee;
+  background: #f8f9fa;
 }
 
-/* Unified Golden Header for Schedule */
 .schedule-table th {
   background: #b8860b;
   color: white;
 }
 
-.student-list-table td, .schedule-table td {
+.student-list-table td,
+.schedule-table td {
   padding: 12px;
   border-bottom: 1px solid #eee;
   font-size: 0.9rem;
 }
 
-/* --- STATUS & BADGES --- */
+/* ── Table Scroll Wrapper (add this in your JSX) ── */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Status & Badges ── */
 .status-pill {
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: bold;
 }
+
 .status-pill.active { background: #e6f4ea; color: #1e7e34; }
 
 .day-badge {
@@ -199,20 +222,12 @@
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: bold;
+  white-space: nowrap;
 }
 
-/* --- DETAILS & ICONS --- */
-.time-cell {
-  font-weight: 600;
-  color: #b8860b;
-}
-
-.sub-code {
-  font-size: 0.75rem;
-  color: #b8860b;
-  font-weight: bold;
-  display: block;
-}
+/* ── Detail & Icon Cells ── */
+.time-cell   { font-weight: 600; color: #b8860b; white-space: nowrap; }
+.sub-code    { font-size: 0.75rem; color: #b8860b; font-weight: bold; display: block; }
 
 .sched-teacher {
   font-size: 0.75rem;
@@ -231,9 +246,7 @@
   transition: transform 0.2s;
 }
 
-.delete-icon-btn:hover {
-  transform: scale(1.3);
-}
+.delete-icon-btn:hover { transform: scale(1.3); }
 
 .divider {
   border: 0;
@@ -246,9 +259,6 @@
   padding: 40px;
   color: #888;
 }
-/* ========================================================================
-   ADD THESE STYLES TO SectionManagement.css
-   ======================================================================== */
 
 /* ── Tab Navigation ── */
 .tab-navigation {
@@ -257,6 +267,8 @@
   margin-bottom: 20px;
   border-bottom: 2px solid #e0e0e0;
   padding-bottom: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
@@ -271,18 +283,12 @@
   transition: all 0.2s;
   position: relative;
   bottom: -2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.tab-btn:hover {
-  color: #b8860b;
-  background: #fafafa;
-}
-
-.tab-btn.active {
-  color: #b8860b;
-  border-bottom-color: #b8860b;
-  background: #fff;
-}
+.tab-btn:hover      { color: #b8860b; background: #fafafa; }
+.tab-btn.active     { color: #b8860b; border-bottom-color: #b8860b; background: #fff; }
 
 /* ── Tab Content ── */
 .tab-content {
@@ -290,14 +296,8 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Students Section ── */
@@ -312,12 +312,14 @@
 
 .students-grid {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .students-table {
   width: 100%;
   border-collapse: collapse;
   background: white;
+  min-width: 500px;
 }
 
 .students-table thead {
@@ -338,9 +340,7 @@
   transition: background 0.2s;
 }
 
-.students-table tbody tr:hover {
-  background: #fafafa;
-}
+.students-table tbody tr:hover { background: #fafafa; }
 
 .students-table td {
   padding: 12px;
@@ -357,12 +357,10 @@
   font-size: 0.8rem;
   font-weight: 600;
   font-family: monospace;
+  white-space: nowrap;
 }
 
-.middle-name {
-  color: #888;
-  font-weight: normal;
-}
+.middle-name { color: #888; font-weight: normal; }
 
 .status-badge {
   display: inline-block;
@@ -371,22 +369,12 @@
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
-.status-badge.active {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-badge.inactive {
-  background: #fbe9e7;
-  color: #d84315;
-}
-
-.status-badge.pending {
-  background: #fff3e0;
-  color: #e65100;
-}
+.status-badge.active   { background: #e8f5e9; color: #2e7d32; }
+.status-badge.inactive { background: #fbe9e7; color: #d84315; }
+.status-badge.pending  { background: #fff3e0; color: #e65100; }
 
 .no-students-enrolled {
   text-align: center;
@@ -394,64 +382,9 @@
   color: #999;
 }
 
-.no-students-enrolled p {
-  margin: 0;
-  font-size: 1rem;
-}
+.no-students-enrolled p { margin: 0; font-size: 1rem; }
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .tab-navigation {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-
-  .tab-btn {
-    white-space: nowrap;
-    padding: 10px 16px;
-    font-size: 0.85rem;
-  }
-
-  .students-table {
-    font-size: 0.85rem;
-  }
-
-  .students-table th,
-  .students-table td {
-    padding: 8px;
-  }
-  .schedule-modal-wide {
-    max-width: 95% !important;
-  }
-
-  .day-selector-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .modal-actions {
-    flex-direction: column;
-  }
-
-  .modal-actions button {
-    width: 100%;
-  }
-
-  .section-card-actions {
-    flex-direction: column;
-  }
-
-  .section-card-actions button {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .day-selector-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Delete Section Button */
+/* ── Delete Section Button ── */
 .delete-section-btn {
   background: #e74c3c;
   color: white;
@@ -472,17 +405,9 @@
   box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
 }
 
-.delete-section-btn:active {
-  transform: translateY(0);
-}
+.delete-section-btn:active { transform: translateY(0); }
 
-/* Wider modal for schedule */
-.schedule-modal-wide {
-  max-width: 700px !important;
-  width: 90%;
-}
-
-/* Day Selector Grid */
+/* ── Day Selector Grid ── */
 .day-selector-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -490,7 +415,7 @@
   margin: 10px 0;
 }
 
-/* Day Button */
+/* ── Day Button ── */
 .day-btn {
   position: relative;
   padding: 6px 8px;
@@ -514,7 +439,6 @@
   box-shadow: 0 4px 12px rgba(234, 192, 102, 0.2);
 }
 
-/* Selected Day */
 .day-btn.selected {
   background: linear-gradient(135deg, #eaac66 0%, #ffa550 100%);
   color: white;
@@ -527,29 +451,21 @@
   box-shadow: 0 6px 16px rgba(234, 199, 102, 0.5);
 }
 
-/* Check Icon */
 .check-icon {
   font-size: 0.9rem;
   animation: checkPop 0.3s ease-out;
 }
 
 @keyframes checkPop {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0%   { transform: scale(0); }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
-/* Conflict Warning */
 .day-btn.conflict {
   background: rgb(255, 0, 0);
   border-color: rgb(255, 0, 0);
-   cursor: pointer; 
+  cursor: pointer;
   opacity: 0.7;
 }
 
@@ -570,22 +486,24 @@
   white-space: nowrap;
 }
 
-/* Help Text */
 .help-text {
   font-size: 0.85rem;
   color: #666;
   margin-top: 8px;
   font-style: italic;
 }
-/* Modal Actions */
+
+/* ── Modal Actions ── */
 .modal-actions {
   display: flex;
   gap: 12px;
   margin-top: 20px;
+  flex-wrap: wrap;
 }
 
 .modal-actions button {
   flex: 1;
+  min-width: 120px;
   padding: 12px 24px;
   border: none;
   border-radius: 6px;
@@ -594,6 +512,7 @@
   transition: all 0.3s ease;
   font-size: 1rem;
 }
+
 .submit-btn {
   background: linear-gradient(135deg, #eac066 0%, #a2924b 100%);
   color: white;
@@ -610,17 +529,33 @@
   transform: none;
 }
 
-.done-btn {
-  background: #95a5a6;
-  color: white;
-}
-
+.done-btn { background: #95a5a6; color: white; }
 .done-btn:hover {
   background: #7f8c8d;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(141, 139, 127, 0.3);
 }
-/* Skeleton Loading */
+
+/* ── Transfer Button ── */
+.transfer-student-btn,
+.transfer-btn {
+  background-color: #2c7da0;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.transfer-student-btn:hover,
+.transfer-btn:hover { background-color: #1f5068; }
+
+/* ── Skeleton Loading ── */
 .skeleton-option {
   height: 38px;
   margin-bottom: 2px;
@@ -638,26 +573,114 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1; }
   100% { opacity: 0.6; }
 }
-.transfer-student-btn,
-.transfer-btn {
-  background-color: #2c7da0;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.2s;
+
+/* ================================================================
+   RESPONSIVE BREAKPOINTS
+   ================================================================ */
+
+@media (max-width: 1024px) {
+  .section-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.transfer-student-btn:hover,
-.transfer-btn:hover {
-  background-color: #1f5068;
+@media (max-width: 768px) {
+  .management-container {
+    padding: 1rem;
+  }
+
+  .management-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .section-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .title-icon {
+    font-size: 2rem;
+  }
+
+  .schedule-modal-wide {
+    max-width: 95% !important;
+    width: 95%;
+  }
+
+  .student-list-modal {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .day-selector-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .section-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .students-table th,
+  .students-table td {
+    padding: 8px;
+  }
+
+  .students-table {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .management-container {
+    padding: 0.75rem;
+  }
+
+  .day-selector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    padding: 1rem;
+  }
+
+  .section-card {
+    padding: 1rem;
+  }
+
+  .section-card-actions button {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.3rem;
+  }
+
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
 }
