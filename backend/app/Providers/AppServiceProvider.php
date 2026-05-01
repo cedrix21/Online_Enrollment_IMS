@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Mail::extend('sendgrid', function (array $config) {
             $factory = new SendgridTransportFactory();
             return $factory->create(
-                new Dsn('sendgrid', 'default', $config['api_key'])
+                Dsn::fromString('sendgrid+api://api:' . $config['api_key'] . '@default')
             );
         });
     }
