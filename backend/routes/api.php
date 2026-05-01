@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\StudentController;
@@ -16,7 +17,29 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
-use App\Http\Controllers\Admin\UserManagementController;    
+use App\Http\Controllers\Admin\UserManagementController;   
+
+
+Route::get('/test-sendgrid-key', function (Request $request) {
+    $apiKey = env('SENDGRID_API_KEY');
+    $to = $request->get('to', 'ravelocedrix@gmail.com'); // change if needed
+
+    $response = Http::withToken($apiKey)->post('https://api.sendgrid.com/v3/mail/send', [
+        'personalizations' => [[
+            'to' => [['email' => $to]]
+        ]],
+        'from' => ['email' => env('MAIL_FROM_ADDRESS'), 'name' => env('MAIL_FROM_NAME')],
+        'subject' => 'Direct API Test ' . now(),
+        'content' => [
+            ['type' => 'text/plain', 'value' => 'If you see this, your SendGrid key works!']
+        ]
+    ]);
+
+    return response()->json([
+        'status' => $response->status(),
+        'body'   => $response->json() ?: $response->body(),
+    ]);
+}); 
 
 /*
 |--------------------------------------------------------------------------
