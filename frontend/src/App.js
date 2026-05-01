@@ -58,6 +58,21 @@ function App() {
 
   return (
     <Router>
+
+      {/* ── Public ── */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/enroll" element={<Enrollment />} />
+              <Route path="/enrollment-qr" element={<EnrollmentQR />} />
+              <Route
+                path="/enrollment/payment-success"
+                element={<PaymentSuccess />}
+              />
+              {/* ── Catch-all ── */}
+              <Route path="*" element={<NotFound />} />
+
+
+
       {/* ── New layout wrapper ── */}
       <div className="main-layout">
         <Sidebar />
@@ -67,15 +82,7 @@ function App() {
 
           <div className="content-scroll-area">
             <Routes>
-              {/* ── Public ── */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/enroll" element={<Enrollment />} />
-              <Route path="/enrollment-qr" element={<EnrollmentQR />} />
-              <Route
-                path="/enrollment/payment-success"
-                element={<PaymentSuccess />}
-              />
+              
 
               {/* ── All authenticated users ── */}
               <Route
@@ -223,8 +230,7 @@ function App() {
                 }
               />
 
-              {/* ── Catch-all ── */}
-              <Route path="*" element={<NotFound />} />
+              
             </Routes>
           </div>
         </div>
