@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  Outlet,   // ← add Outlet import
 } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -31,8 +32,23 @@ import TuitionFeeManagement from "./pages/TuitionFeeManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ActivityLogs from "./pages/ActivityLogs";
 import LockedUsers from "./pages/Admin/LockedUsers";
-import Sidebar from "./components/SideBar";
-import TopBar from "./components/TopBar";   // ← add this
+import Sidebar from "./components/SideBar";      // ← import Sidebar
+import TopBar from "./components/TopBar";       // ← import TopBar
+
+// ── Inline Layout Component ────────────────────────────────
+function DashboardLayout() {
+  return (
+    <div className="main-layout">
+      <Sidebar />
+      <div className="page-wrapper">
+        <TopBar />
+        <div className="content-scroll-area">
+          <Outlet />   {/* 👈 renders the matching child route */}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -58,183 +74,161 @@ function App() {
 
   return (
     <Router>
+      <Routes>
+        {/* ── PUBLIC ── */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/enroll" element={<Enrollment />} />
+        <Route path="/enrollment-qr" element={<EnrollmentQR />} />
+        <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
 
-      {/* ── Public ── */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/enroll" element={<Enrollment />} />
-              <Route path="/enrollment-qr" element={<EnrollmentQR />} />
-              <Route
-                path="/enrollment/payment-success"
-                element={<PaymentSuccess />}
-              />
-              {/* ── Catch-all ── */}
-              <Route path="*" element={<NotFound />} />
+        {/* ── AUTHENTICATED (with sidebar + topbar) ── */}
+        <Route element={<DashboardLayout />}>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher-advisory"
+            element={
+              <ProtectedRoute roles={["teacher"]}>
+                <TeacherAdvisory />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* ── Admin + Registrar ── */}
+          <Route
+            path="/enrollment-management"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <EnrollmentManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/enroll"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <AdminEnrollment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/enrolled-students"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <EnrolledStudents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/load-slips"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <LoadSlip />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form137"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <Form137 />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/billing"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <BillingManagement user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment-reports"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <PaymentReports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/students"
+            element={
+              <ProtectedRoute roles={["admin", "registrar"]}>
+                <StudentRecords />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* ── Admin only ── */}
+          <Route
+            path="/teachers"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <TeacherDirectory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/section-management"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <SectionManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subject-management"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <SubjectManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/evaluation"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <EvaluationManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tuition-fees"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <TuitionFeeManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/locked-users"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <LockedUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/activity-logs"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <ActivityLogs />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
 
-      {/* ── New layout wrapper ── */}
-      <div className="main-layout">
-        <Sidebar />
-
-        <div className="page-wrapper">
-          <TopBar />   {/* ← TopBar now inside, so it stays inside the offset */}
-
-          <div className="content-scroll-area">
-            <Routes>
-              
-
-              {/* ── All authenticated users ── */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* ── Teacher only ── */}
-              <Route
-                path="/teacher-advisory"
-                element={
-                  <ProtectedRoute roles={["teacher"]}>
-                    <TeacherAdvisory />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* ── Admin + Registrar ── */}
-              <Route
-                path="/enrollment-management"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <EnrollmentManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/enroll"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <AdminEnrollment />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/enrolled-students"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <EnrolledStudents />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/load-slips"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <LoadSlip />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/form137"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <Form137 />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/billing"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <BillingManagement user={user} />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/payment-reports"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <PaymentReports />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/students"
-                element={
-                  <ProtectedRoute roles={["admin", "registrar"]}>
-                    <StudentRecords />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* ── Admin only ── */}
-              <Route
-                path="/teachers"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <TeacherDirectory />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/section-management"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <SectionManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/subject-management"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <SubjectManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/evaluation"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <EvaluationManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tuition-fees"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <TuitionFeeManagement />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/admin/locked-users"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <LockedUsers />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/admin/activity-logs"
-                element={
-                  <ProtectedRoute roles={["admin"]}>
-                    <ActivityLogs />
-                  </ProtectedRoute>
-                }
-              />
-
-              
-            </Routes>
-          </div>
-        </div>
-      </div>
+        {/* ── 404 ── */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </Router>
   );
 }
