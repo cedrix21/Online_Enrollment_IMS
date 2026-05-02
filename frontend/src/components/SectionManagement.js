@@ -9,7 +9,6 @@
     FaTimes,
     FaTrash,
     FaCheck,
-    FaExchangeAlt 
   } from "react-icons/fa";
   import "./SectionManagement.css";
   import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
@@ -488,22 +487,15 @@ const StudentRow = memo(({ student, index, showTransferButton, onTransfer }) => 
   
   const filteredTeacherLoad = useMemo(() => {
 
-console.log('=== ScheduleModal Filter ===');
-  console.log('section gradeLevel:', section?.gradeLevel);
-  console.log('sections count:', sections.filter(s => s.gradeLevel === section?.gradeLevel).length);
-
   const assignmentsForGrade = teacherLoad.filter(
     a => a.gradeLevel === section?.gradeLevel
   );
-  console.log('teacherLoad for this grade:', assignmentsForGrade);
 
   const occupiedForGrade = occupiedSchedules.filter(
     sched => sched.section?.gradeLevel === section?.gradeLevel
   );
-  console.log('occupiedSchedules for this grade:', occupiedForGrade);
 
   const scheduledSubjectIds = new Set(occupiedForGrade.map(s => s.subject_id));
-  console.log('scheduledSubjectIds:', scheduledSubjectIds);
 
 
   // Get the set of subject_assignment_ids already scheduled in ANY section for this grade
@@ -599,7 +591,6 @@ console.log('=== ScheduleModal Filter ===');
                 const hasConflict = conflictMessages.some(msg => 
                   msg.days.includes(day)
                 );
-                 console.log(`Day ${day}: hasConflict=${hasConflict}`);
 
                 return (
                   <DayButton
@@ -878,7 +869,6 @@ useEffect(() => {
         // ⚡ Use Map iteration for efficient checking (still O(n) per day but optimized with early returns)
         for (const sched of occupiedSchedulesMap.values()) {
 
-          console.log(`Checking ${day} against existing: day=${sched.day}, time=${sched.time_slot_id}, teacher=${sched.teacher_id}, room=${sched.room_id}`);
 
           // Check section conflict
           if (
