@@ -43,7 +43,7 @@ import { logActivity } from '../utils/activityLogger';
     const type = req.type;
     const displayLabel = getDisplayLabel(type);
     
-    console.log('Changing status:', { type, displayLabel, status });
+   
 
     try {
       await API.put(`/requirements/${req.id}/status`, { status });
@@ -517,20 +517,17 @@ useEffect(() => {
   [enrollments] // dependency array remains correct
 );
 
-const getSchoolYearOptions = () => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1; // 1‑12
-  const currentSchoolYearStart = currentMonth >= 6 ? currentYear : currentYear - 1;
-
-  const years = [];
-  // Generate 2 years before and 2 years after the current school year
-  for (let i = -2; i <= 2; i++) {
-    const start = currentSchoolYearStart + i;
-    years.push(`${start}-${start + 1}`);
-  }
-  return years;
-};
-
+    const schoolYearOptions = useMemo(() => {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      const currentSchoolYearStart = currentMonth >= 6 ? currentYear : currentYear - 1;
+      const years = [];
+      for (let i = -2; i <= 2; i++) {
+        const start = currentSchoolYearStart + i;
+        years.push(`${start}-${start + 1}`);
+      }
+      return years;
+    }, []);
 
   const performApproval = async (enrollmentId, sectionId, enrollment) => {
    
@@ -602,12 +599,8 @@ const getSchoolYearOptions = () => {
  const handleRequirementStatusChange = useCallback(
   (enrollmentId, type, displayLabel, status) => {
     if (!type) {
-      console.warn('handleRequirementStatusChange: type is undefined');
       return;
     }
-
-    console.log('🔔 Requirement status changed:', { enrollmentId, type, status });
-
     setEnrollments(prev =>
       prev.map(e => {
         if (e.id !== enrollmentId) return e;
@@ -657,9 +650,7 @@ const getSchoolYearOptions = () => {
         ) {
           updated.report_card_received = isVerified;
         }
-        else {
-          console.warn('Unknown requirement type:', type);
-        }
+        
 
         return updated;
       })
@@ -820,7 +811,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
   }, []);
 
   const exportToExcel = useCallback(() => {
-    setTimeout(() => {
+
       const excelData = filteredData.map((e) => ({
         "First Name": e.firstName,
         "Last Name": e.lastName,
@@ -840,7 +831,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
         workbook,
         `Enrollment_List_${filterStatus}_${new Date().toLocaleDateString()}.xlsx`,
       );
-    }, 0);
+
   }, [filteredData, filterStatus]);
 
   if (!user) return null;
@@ -968,7 +959,7 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                     }}
                   >
                     <option value="all">All School Years</option>
-                    {getSchoolYearOptions().map(y => (
+                    {schoolYearOptions.map(y => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                               

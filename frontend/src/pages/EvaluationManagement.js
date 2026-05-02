@@ -368,57 +368,52 @@ const EvaluationManagement = () => {
   // ────────────────────────────────────────────────────────────
   // Data fetching
   // ────────────────────────────────────────────────────────────
-   useEffect(() => {
+  useEffect(() => {
   let cancelled = false;
-
-  if (!user) {
-    navigate("/login");
-    return;
-  }
-  if (user.role !== "admin" && user.role !== "registrar") {
-    navigate("/dashboard");
-    return;
-  }
+  if (!user) { navigate("/login"); return; }
+  if (user.role !== "admin" && user.role !== "registrar") { navigate("/dashboard"); return; }
 
   const loadInitialData = async () => {
-    if (selectedSchoolYear) {
-      await fetchAllGrades();            // existing function
-    }
-    try {
-      const res = await API.get("/admin/subjects");
-      if (!cancelled) setAllSubjects(res.data || []);
-    } catch (err) {
-      if (!cancelled) console.error("Error fetching subjects:", err);
-    }
-  };
-
-  loadInitialData();
-
-  return () => { cancelled = true; };
-}, [user, navigate]);   // only run once (mimicking previous behaviour)
-
-  const fetchAllGrades = async (showRefreshing = false) => {
-    if (!selectedSchoolYear) return; // Don't fetch until we have a year
-    try {
-      if (showRefreshing) {
-        setRefreshing(true);
-        setSuccess("Refreshing data...");
-      } else {
-        setLoading(true);
+      if (selectedSchoolYear) {
+        await fetchAllGrades(false, { cancelled });   // pass the cancellation flag
       }
+      try {
+        const res = await API.get("/admin/subjects");
+        if (!cancelled) setAllSubjects(res.data || []);
+      } catch (err) {
+        if (!cancelled) console.error("Error fetching subjects:", err);
+      }
+    };
 
-      const res = await API.get("/admin/grades", {
-        params: { school_year: selectedSchoolYear }
-      });
-      const gradesData = res.data.data || [];
+    loadInitialData();
+    return () => { cancelled = true; };
+  }, [user, navigate]);
+
+  const fetchAllGrades = async (showRefreshing = false, signal = { cancelled: false }) => {
+  if (!selectedSchoolYear) return;
+  try {
+    if (showRefreshing) {
+      if (!signal.cancelled) setRefreshing(true);
+      if (!signal.cancelled) setSuccess("Refreshing data...");
+    } else {
+      if (!signal.cancelled) setLoading(true);
+    }
+
+    const res = await API.get("/admin/grades", {
+      params: { school_year: selectedSchoolYear }
+    });
+    const gradesData = res.data.data || [];
+
+    if (!signal.cancelled) {
       setAllGrades(gradesData);
-
       setError("");
       if (showRefreshing) {
         setSuccess("Data refreshed successfully!");
         setTimeout(() => setSuccess(""), 2000);
       }
-    } catch (err) {
+    }
+  } catch (err) {
+    if (!signal.cancelled) {
       console.error("Error fetching grades:", err);
       if (err.response?.status === 404 || err.response?.data?.message?.includes("No grades found")) {
         setAllGrades([]);
@@ -429,52 +424,44 @@ const EvaluationManagement = () => {
       } else if (err.response?.status !== 401) {
         setError("Failed to fetch grades: " + (err.response?.data?.message || err.message));
       }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  };
+  } finally {
+    if (!signal.cancelled) {
+      if (showRefreshing) setRefreshing(false);
+      else setLoading(false);
+    }
+  }
+};
 
   // ✅ Only fetch grades when selectedSchoolYear is available
   useEffect(() => {
   let cancelled = false;
   const load = async () => {
     if (!selectedSchoolYear) return;
-
-    setLoading(true);               // show spinner
+    setLoading(true);
     try {
       const res = await API.get("/admin/grades", {
         params: { school_year: selectedSchoolYear }
       });
-      if (!cancelled) setAllGrades(res.data.data || []);
+      if (!cancelled) {
+        setAllGrades(res.data.data || []);
+        setFilterSection("all");      // move inside guarded block
+      }
     } catch (err) {
       if (!cancelled) {
         console.error("Error fetching grades:", err);
         setError("Failed to fetch grades");
       }
     } finally {
-        if (!cancelled) setLoading(false);
-      }
-      setFilterSection("all");        // reset section filter
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, [selectedSchoolYear, selectedGradeLevel]);
+      if (!cancelled) setLoading(false);
+    }
+  };
+  load();
+  return () => { cancelled = true; };
+}, [selectedSchoolYear, selectedGradeLevel]);
 
   const handleRefresh = () => fetchAllGrades(true);
 
-  const fetchAllSubjects = async () => {
-    try {
-      const res = await API.get("/admin/subjects");
-      const subjectsData = res.data || [];
-      setAllSubjects(subjectsData);
-      console.log('✅ Subjects fetched:', subjectsData);
-    } catch (err) {
-      console.error("Error fetching subjects:", err);
-      setAllSubjects([]);
-    }
-  };
 
 
   // ────────────────────────────────────────────────────────────
