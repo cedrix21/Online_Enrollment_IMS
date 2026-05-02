@@ -156,11 +156,21 @@
   overflow-y: auto;
 }
 
+.modal-body-tabs {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
 .student-list-modal {
-  max-width: 800px;
+  max-width: 1000px;
   width: 95%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  padding: 24px 28px;
 }
 
 .schedule-modal-wide {
@@ -285,6 +295,7 @@
   bottom: -2px;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .tab-btn:hover      { color: #b8860b; background: #fafafa; }
@@ -328,11 +339,11 @@
 }
 
 .students-table th {
-  padding: 12px;
+  padding: 10px 12px;
   text-align: left;
   font-weight: 600;
   color: #333;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .students-table tbody tr {
