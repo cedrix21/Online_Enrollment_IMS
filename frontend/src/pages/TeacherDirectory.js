@@ -211,7 +211,6 @@ export default function TeacherDirectory() {
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [sectionsLoading, setSectionsLoading] = useState(true);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedTeacherForSchedule, setSelectedTeacherForSchedule] = useState(null);
   
@@ -345,11 +344,6 @@ const gradeAdvisers = useMemo(() => {
     );
   }, [availableSubjects, assignedSubjectIdsForTeacher]);
 
-
-  const isGradeTakenByOthers = useCallback((grade, currentTeacherId) => {
-    const entries = gradeAdvisers.get(grade) || [];
-    return entries.some(entry => entry.teacher.id !== currentTeacherId);
-  }, [gradeAdvisers]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Event Handlers
