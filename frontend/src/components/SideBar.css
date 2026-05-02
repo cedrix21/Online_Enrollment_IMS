@@ -112,6 +112,7 @@
   transition: background 0.2s;
   border-radius: 10px;
   white-space: nowrap;
+  gap: 12px;
 }
 
 .dropdown-toggle:hover,

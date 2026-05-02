@@ -28,6 +28,9 @@
  
     padding: 0 15px 0 65px; /* leave room for hamburger */
   }
+  .topbar-left h1 {
+  font-size: 1.5rem;
+}
 }
 
 /* ── Left section ── */
@@ -93,7 +96,7 @@
     display: none; /* hide username text, keep avatar/badge */
   }
 
-  .topbar-title {
-    font-size: 0.9rem;
-  }
+  .topbar-left h1 {
+  font-size: 1.1rem;
+}
 }
