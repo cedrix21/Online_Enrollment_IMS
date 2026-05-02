@@ -2,7 +2,20 @@ import logo from "../assets/sics-logo.png";
 import "./TopBar.css";
 
 export default function TopBar() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  // ── Safely get user ───────────────────────────────────
+  let user = null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      user = JSON.parse(raw);
+    }
+  } catch {
+    user = null;
+  }
+
+  // Fallback values for rendering
+  const userName = user?.name || "Guest";
+  const userRole = user?.role || "guest";
 
   return (
     <header className="topbar">

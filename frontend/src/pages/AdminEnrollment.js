@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import API from "../api/api";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import "./Enrollment.css";
 import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
@@ -9,13 +7,17 @@ export default function AdminEnrollment() {
   const { schoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
 
-  useEffect(() => {
-    if (schoolYear && !selectedSchoolYear) {
-      setSelectedSchoolYear(schoolYear);
+  // Safe user retrieval
+  let user = null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      user = JSON.parse(raw);
     }
-  }, [schoolYear, selectedSchoolYear]);
+  } catch {
+    user = null;
+  }
 
-  const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
   const [tuitionFees, setTuitionFees] = useState({});
   const [feesLoading, setFeesLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -54,25 +56,35 @@ export default function AdminEnrollment() {
   });
 
   const [message, setMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");   // NEW
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [continuingStudentId, setContinuingStudentId] = useState("");
   const [studentIdValid, setStudentIdValid] = useState(null);
 
-
-
+  // ── School year sync with cleanup ──
   useEffect(() => {
+    if (schoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(schoolYear);
+    }
+  }, [schoolYear, selectedSchoolYear]);
+
+  // ── Fetch fees with cleanup ──
+  useEffect(() => {
+    let cancelled = false;
+
     const fetchFees = async () => {
       try {
         const res = await API.get('/tuition-fees/public');
-        setTuitionFees(res.data);
+        if (!cancelled) setTuitionFees(res.data);
       } catch (err) {
-        console.error('Failed to load fees:', err);
+        if (!cancelled) console.error('Failed to load fees:', err);
       } finally {
-        setFeesLoading(false);
+        if (!cancelled) setFeesLoading(false);
       }
     };
     fetchFees();
+
+    return () => { cancelled = true; };
   }, []);
 
   const fmtPeso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
@@ -156,13 +168,13 @@ export default function AdminEnrollment() {
     setLoading(true);
     setMessage("");
     setSuccessMessage("");
-    const payload = { ...formData, school_year: selectedSchoolYear  };
+    const payload = { ...formData, school_year: selectedSchoolYear };
     if (formData.registrationType === 'Continuing') {
       payload.studentId = continuingStudentId;
     }
     try {
       const response = await API.post("/admin/enroll-student", payload);
-      setSuccessMessage(`✅ Success! Student ID: ${response.data.studentId} has been created and approved for school year ${selectedSchoolYear }.`);
+      setSuccessMessage(`✅ Success! Student ID: ${response.data.studentId} has been created and approved for school year ${selectedSchoolYear}.`);
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Could not register student.";

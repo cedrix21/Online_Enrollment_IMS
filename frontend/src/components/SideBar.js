@@ -18,12 +18,28 @@ import "./SideBar.css";
 
 export default function Sidebar() {
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem("user"));
+
+  // ── 1. Safely get user FIRST ──────────────────────────
+  let user = null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      user = JSON.parse(raw);
+    }
+  } catch {
+    user = null;
+  }
+
+  // ── 2. Derive everything from the safe user ──────────
   const isAdmin = user?.role === "admin";
   const isRegistrar = user?.role === "registrar";
   const isAdminOrRegistrar = isAdmin || isRegistrar;
 
-  // ── Mobile toggle ──
+  // These are optional, you can keep them for future use
+  const userName = user?.name || "Guest";
+  const userRole = user?.role || "guest";
+
+  // ── Mobile toggle … ──
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {

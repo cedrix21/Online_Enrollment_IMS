@@ -1,7 +1,5 @@
   import { useEffect, useState, useCallback, useMemo, memo } from "react";
   import API from "../api/api";
-  import SideBar from "../components/SideBar";
-  import TopBar from "../components/TopBar";
   import {
     FaCalendarAlt,
     FaLayerGroup,
@@ -828,10 +826,14 @@ console.log('=== ScheduleModal Filter ===');
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // DATA FETCHING
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const fetchData = useCallback(async () => {
-    if (!selectedSchoolYear) return; // Don't fetch until we have a year
+  // Cleanup‑aware data fetch
+useEffect(() => {
+  if (!selectedSchoolYear) return;
+  let cancelled = false;
+
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
         API.get("/sections", { params: { school_year: selectedSchoolYear } }),
         API.get("/teachers"),
@@ -840,24 +842,25 @@ console.log('=== ScheduleModal Filter ===');
         API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
       ]);
 
-      const sortedSections = sortSectionsByGrade(secRes.data);
-      setSections(sortedSections);
-      setTeachers(teachRes.data);
-      setRooms(roomRes.data);
-      setTimeSlots(slotRes.data);
-      setOccupiedSchedules(schedRes.data);
+      if (!cancelled) {
+        const sortedSections = sortSectionsByGrade(secRes.data);
+        setSections(sortedSections);
+        setTeachers(teachRes.data);
+        setRooms(roomRes.data);
+        setTimeSlots(slotRes.data);
+        setOccupiedSchedules(schedRes.data);
+      }
     } catch (err) {
-      console.error("Error fetching data", err);
+      if (!cancelled) console.error("Error fetching data", err);
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
-  }, [selectedSchoolYear]);
+  };
 
-  useEffect(() => {
-    if (selectedSchoolYear) {
-      fetchData();
-    }
-  }, [fetchData, selectedSchoolYear]);
+  loadData();
+  return () => { cancelled = true; };
+}, [selectedSchoolYear]);
+
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // HANDLERS

@@ -3,7 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
-  Outlet,   // ← add Outlet import
+  Outlet,   
 } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -32,8 +32,8 @@ import TuitionFeeManagement from "./pages/TuitionFeeManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ActivityLogs from "./pages/ActivityLogs";
 import LockedUsers from "./pages/Admin/LockedUsers";
-import Sidebar from "./components/SideBar";      // ← import Sidebar
-import TopBar from "./components/TopBar";       // ← import TopBar
+import Sidebar from "./components/SideBar";      
+import TopBar from "./components/TopBar";        
 
 // ── Inline Layout Component ────────────────────────────────
 function DashboardLayout() {
@@ -43,7 +43,7 @@ function DashboardLayout() {
       <div className="page-wrapper">
         <TopBar />
         <div className="content-scroll-area">
-          <Outlet />   {/* 👈 renders the matching child route */}
+          <Outlet />   
         </div>
       </div>
     </div>
@@ -82,6 +82,15 @@ function App() {
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
         <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
 
+         <Route
+            path="/teacher-advisory"
+            element={
+              <ProtectedRoute roles={["teacher"]}>
+                <TeacherAdvisory />
+              </ProtectedRoute>
+            }
+          />
+
         {/* ── AUTHENTICATED (with sidebar + topbar) ── */}
         <Route element={<DashboardLayout />}>
           <Route
@@ -92,14 +101,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/teacher-advisory"
-            element={
-              <ProtectedRoute roles={["teacher"]}>
-                <TeacherAdvisory />
-              </ProtectedRoute>
-            }
-          />
+         
 
           {/* ── Admin + Registrar ── */}
           <Route

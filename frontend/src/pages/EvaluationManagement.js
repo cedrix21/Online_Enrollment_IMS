@@ -319,7 +319,15 @@ const GradeModal = memo(({
 // Main Component
 // ──────────────────────────────────────────────────────────────
 const EvaluationManagement = () => {
-  const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
+  const [user] = useState(() => {
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      return JSON.parse(raw);
+    }
+    } catch {}
+    return null;
+  });
   const navigate = useNavigate();
   const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
@@ -361,17 +369,33 @@ const EvaluationManagement = () => {
   // Data fetching
   // ────────────────────────────────────────────────────────────
    useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      return;
+  let cancelled = false;
+
+  if (!user) {
+    navigate("/login");
+    return;
+  }
+  if (user.role !== "admin" && user.role !== "registrar") {
+    navigate("/dashboard");
+    return;
+  }
+
+  const loadInitialData = async () => {
+    if (selectedSchoolYear) {
+      await fetchAllGrades();            // existing function
     }
-    if (user.role !== "admin" && user.role !== "registrar") {
-      navigate("/dashboard");
-      return;
+    try {
+      const res = await API.get("/admin/subjects");
+      if (!cancelled) setAllSubjects(res.data || []);
+    } catch (err) {
+      if (!cancelled) console.error("Error fetching subjects:", err);
     }
-    fetchAllGrades();
-    fetchAllSubjects();
-  }, []);
+  };
+
+  loadInitialData();
+
+  return () => { cancelled = true; };
+}, [user, navigate]);   // only run once (mimicking previous behaviour)
 
   const fetchAllGrades = async (showRefreshing = false) => {
     if (!selectedSchoolYear) return; // Don't fetch until we have a year
@@ -413,10 +437,29 @@ const EvaluationManagement = () => {
 
   // ✅ Only fetch grades when selectedSchoolYear is available
   useEffect(() => {
-    if (selectedSchoolYear) {
-      fetchAllGrades();
-    }
-    setFilterSection("all");
+  let cancelled = false;
+  const load = async () => {
+    if (!selectedSchoolYear) return;
+
+    setLoading(true);               // show spinner
+    try {
+      const res = await API.get("/admin/grades", {
+        params: { school_year: selectedSchoolYear }
+      });
+      if (!cancelled) setAllGrades(res.data.data || []);
+    } catch (err) {
+      if (!cancelled) {
+        console.error("Error fetching grades:", err);
+        setError("Failed to fetch grades");
+      }
+    } finally {
+        if (!cancelled) setLoading(false);
+      }
+      setFilterSection("all");        // reset section filter
+    };
+
+    load();
+    return () => { cancelled = true; };
   }, [selectedSchoolYear, selectedGradeLevel]);
 
   const handleRefresh = () => fetchAllGrades(true);
@@ -491,7 +534,7 @@ const EvaluationManagement = () => {
   // ────────────────────────────────────────────────────────────
   // Handlers
   // ────────────────────────────────────────────────────────────
-  const openStudentModal = useCallback(async (student) => {
+ const openStudentModal = useCallback(async (student) => {
   setSelectedStudent(student);
   setSelectedQuarter("Q1");
 
@@ -500,24 +543,20 @@ const EvaluationManagement = () => {
   const completeGradesByQuarter = {};
 
   try {
-    // 1. Fetch subjects assigned to this student's section
     const res = await API.get(`/sections/${student.section_id}/subjects`, {
       params: { school_year: selectedSchoolYear }
     });
     const sectionSubjects = res.data;
 
-    // 2. Build a Map of subjects by ID for easy lookup and merging
     const subjectsMap = new Map();
     sectionSubjects.forEach(sub => subjectsMap.set(sub.id, sub));
 
-    // 3. Add any subjects that have existing grades (even if no longer scheduled)
     existingGrades.forEach(grade => {
       if (grade.subject && !subjectsMap.has(grade.subject.id)) {
         subjectsMap.set(grade.subject.id, grade.subject);
       }
     });
 
-    // Convert map values back to array
     const allRelevantSubjects = Array.from(subjectsMap.values());
 
     quarters.forEach(quarter => {
@@ -541,7 +580,6 @@ const EvaluationManagement = () => {
     });
   } catch (err) {
     console.error('Failed to load section subjects, falling back to all grade subjects', err);
-    // Fallback to all grade level subjects
     const gradeLevelSubjects = allSubjects.filter(
       sub => sub.gradeLevel === student.gradeLevel && sub.school_year === selectedSchoolYear
     );
@@ -568,7 +606,6 @@ const EvaluationManagement = () => {
 
   setStudentGrades(completeGradesByQuarter);
 
-  // Extract adviser name
   if (student.section?.advisor) {
     const advisor = student.section.advisor;
     setTeacherName(`${advisor.firstName} ${advisor.lastName}`);

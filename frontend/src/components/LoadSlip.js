@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import API from "../api/api";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import { FaUserGraduate, FaSearch, FaPrint, FaFileInvoice, FaDownload } from 'react-icons/fa';
 import './LoadSlip.css';
 import html2pdf from 'html2pdf.js';
@@ -107,20 +105,22 @@ export default function LoadSlip() {
   const printRef = useRef();
   const DAYS_ORDER = useMemo(() => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], []);
 
-  // Fetch data
+  // Fetch data with cleanup
   useEffect(() => {
+    let cancelled = false;
     const fetchData = async () => {
       try {
         setLoading(true);
         const res = await API.get('/sections');
-        setSections(res.data);
+        if (!cancelled) setSections(res.data);
       } catch (err) {
-        console.error("Error fetching sections", err);
+        if (!cancelled) console.error("Error fetching sections", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchData();
+    return () => { cancelled = true; };
   }, []);
 
   // Memoized filtered sections

@@ -2,8 +2,6 @@ import { useEffect, useState, useMemo, useCallback, lazy, Suspense, memo } from 
 import { useNavigate } from "react-router-dom";
 import API from "../api/api";
 import "./Dashboard.css";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import SummaryCards from "../components/SummaryCards";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import LoadingScreen from "../components/LoadingScreen";
@@ -81,109 +79,116 @@ export default function Dashboard() {
       return;
     }
 
+    let cancelled = false;
+
     const fetchData = async () => {
-  try {
-    setLoading(true);
-
-    // Check cache
-    const cachedSummary  = localStorage.getItem(CACHE_KEYS.SUMMARY);
-    const cachedTeachers = localStorage.getItem(CACHE_KEYS.TEACHERS);
-    const cacheTime      = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
-
-    if (cachedSummary && cachedTeachers && cacheTime) {
-      const age = Date.now() - parseInt(cacheTime);
-      if (age < 5 * 60 * 1000) {
-        setSummary(JSON.parse(cachedSummary));
-        setTeacherCount(JSON.parse(cachedTeachers));
-        setLoading(false);
-        return;
-      }
-    }
-
-    // 1. Fetch the summary from backend – it already contains correct unpaid_students
-    const summaryRes = await API.get("/enrollments/summary");
-    const newSummary = summaryRes.data;   // { pending, approved, rejected, cash_enrollments, unpaid_students }
-
-    // 2. Fetch teachers ONLY if admin
-    let newTeacherCount = 0;
-    if (isAdmin) {
       try {
-        const teachersRes = await API.get("/teachers");
-        newTeacherCount = teachersRes.data.length;
-      } catch (teacherErr) {
-        console.warn("Could not load teachers", teacherErr);
+        setLoading(true);
+
+        // Check cache
+        const cachedSummary  = localStorage.getItem(CACHE_KEYS.SUMMARY);
+        const cachedTeachers = localStorage.getItem(CACHE_KEYS.TEACHERS);
+        const cacheTime      = localStorage.getItem(`${CACHE_KEYS.SUMMARY}_time`);
+
+        if (cachedSummary && cachedTeachers && cacheTime) {
+          const age = Date.now() - parseInt(cacheTime);
+          if (age < 5 * 60 * 1000) {
+            if (!cancelled) {
+              setSummary(JSON.parse(cachedSummary));
+              setTeacherCount(JSON.parse(cachedTeachers));
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        // 1. Fetch the summary from backend
+        const summaryRes = await API.get("/enrollments/summary");
+        const newSummary = summaryRes.data;
+
+        // 2. Fetch teachers ONLY if admin
+        let newTeacherCount = 0;
+        if (isAdmin) {
+          try {
+            const teachersRes = await API.get("/teachers");
+            newTeacherCount = teachersRes.data.length;
+          } catch (teacherErr) {
+            console.warn("Could not load teachers", teacherErr);
+          }
+        }
+
+        if (!cancelled) {
+          setSummary(newSummary);
+          setTeacherCount(newTeacherCount);
+
+          // Cache
+          localStorage.setItem(CACHE_KEYS.SUMMARY, JSON.stringify(newSummary));
+          localStorage.setItem(CACHE_KEYS.TEACHERS, JSON.stringify(newTeacherCount));
+          localStorage.setItem(`${CACHE_KEYS.SUMMARY}_time`, Date.now().toString());
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Error fetching dashboard data:", err);
+          setError("Failed to load dashboard data");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
-
-    setSummary(newSummary);
-    setTeacherCount(newTeacherCount);
-
-    // Cache
-    localStorage.setItem(CACHE_KEYS.SUMMARY, JSON.stringify(newSummary));
-    localStorage.setItem(CACHE_KEYS.TEACHERS, JSON.stringify(newTeacherCount));
-    localStorage.setItem(`${CACHE_KEYS.SUMMARY}_time`, Date.now().toString());
-  } catch (err) {
-    console.error("Error fetching dashboard data:", err);
-    setError("Failed to load dashboard data");
-  } finally {
-    setLoading(false);
-  }
-};
+    };
 
     fetchData();
+
+    return () => { cancelled = true; };
   }, [user, navigate, isAdminOrRegistrar, isAdmin]);
 
   const handleLogout = useCallback(async () => {
-  try {
-    await API.post("/logout");
-  } catch {}
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  // Clear dashboard cache
-  localStorage.removeItem(CACHE_KEYS.SUMMARY);
-  localStorage.removeItem(CACHE_KEYS.TEACHERS);
-  localStorage.removeItem(`${CACHE_KEYS.SUMMARY}_time`);
-  navigate("/login");
-}, [navigate]);
+    try {
+      await API.post("/logout");
+    } catch {}
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    // Clear dashboard cache
+    localStorage.removeItem(CACHE_KEYS.SUMMARY);
+    localStorage.removeItem(CACHE_KEYS.TEACHERS);
+    localStorage.removeItem(`${CACHE_KEYS.SUMMARY}_time`);
+    navigate("/login");
+  }, [navigate]);
 
   if (!user) return <LoadingScreen />;
 
   return (
-   
-
-        <div className="content-scroll-area">
-          {isAdminOrRegistrar && (
+    <div className="content-scroll-area">
+      {isAdminOrRegistrar && (
+        <>
+          {loading ? (
+            <SummarySkeleton />
+          ) : error ? (
+            <div className="error-text">{error}</div>
+          ) : (
             <>
-              {loading ? (
-                <SummarySkeleton />
-              ) : error ? (
-                <div className="error-text">{error}</div>
-              ) : (
-                <>
-                  <SummaryCards summary={summary} />
+              <SummaryCards summary={summary} />
 
-                  {/* Teacher stat card — admin only */}
-                  {isAdmin && (
-                    <div className="summary-grid" style={{ marginTop: "20px" }}>
-                      <TeacherStatCard
-                        teacherCount={teacherCount}
-                        onClick={() => navigate("/teachers")}
-                      />
-                    </div>
-                  )}
-                </>
+              {/* Teacher stat card — admin only */}
+              {isAdmin && (
+                <div className="summary-grid" style={{ marginTop: "20px" }}>
+                  <TeacherStatCard
+                    teacherCount={teacherCount}
+                    onClick={() => navigate("/teachers")}
+                  />
+                </div>
               )}
             </>
           )}
+        </>
+      )}
 
-          <Suspense fallback={<div className="loading-placeholder">Loading...</div>}>
-            <DashboardCards role={user.role} />
-          </Suspense>
+      <Suspense fallback={<div className="loading-placeholder">Loading...</div>}>
+        <DashboardCards role={user.role} />
+      </Suspense>
 
-          <button className="logout-button" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-     
+      <button className="logout-button" onClick={handleLogout}>
+        Logout
+      </button>
+    </div>
   );
 }

@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import API from "../api/api";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import {
   FaChalkboardTeacher,
   FaUserPlus,
@@ -244,64 +242,69 @@ export default function TeacherDirectory() {
     localStorage.removeItem(`${CACHE_KEY}_time`);
   }, []);
 
-  const fetchData = useCallback(async (force = false) => {
-    if (!selectedSchoolYear) return; // Don't fetch until year is known
-    try {
-      setLoading(true);
-      setTeacherLoad([]);
+  const fetchData = useCallback(async (force = false, signal = { cancelled: false }) => {
+  if (!selectedSchoolYear) return;
+  try {
+    if (!signal.cancelled) setLoading(true);
+    // reset load array
+    if (!signal.cancelled) setTeacherLoad([]);
 
-      if (!force) {
-        const cached = localStorage.getItem(CACHE_KEY);
-        const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
-        if (cached && cacheTime) {
-          const age = Date.now() - parseInt(cacheTime);
-          if (age < CACHE_DURATION) {
+    if (!force) {
+      const cached = localStorage.getItem(CACHE_KEY);
+      const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
+      if (cached && cacheTime) {
+        const age = Date.now() - parseInt(cacheTime);
+        if (age < CACHE_DURATION) {
+          if (!signal.cancelled) {
             const data = JSON.parse(cached);
             setTeachers(sortTeachersByAdvisory(data.teachers));
             setAvailableSubjects(data.subjects);
             setTeacherLoad(data.load);
             setLoading(false);
-            return;
           }
+          return;
         }
       }
-
-      const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
-        API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
-        API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
-        API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-        API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-      ]);
-
-      const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
-      const data = {
-        teachers: sortedTeachers,
-        subjects: subjectRes.data,
-        load: loadRes.data,
-        sections: sectionRes.data,
-      };
-
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
-
-      setTeachers(sortedTeachers);
-      setAvailableSubjects(data.subjects);
-      setTeacherLoad(data.load);
-      setSections(sectionRes.data);
-      
-    } catch (err) {
-      console.error("Error fetching data", err);
-    } finally {
-      setLoading(false);
     }
-  }, [selectedSchoolYear, invalidateCache]);
+
+    const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
+      API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
+      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+    ]);
+
+    if (signal.cancelled) return;
+
+    const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
+    const data = {
+      teachers: sortedTeachers,
+      subjects: subjectRes.data,
+      load: loadRes.data,
+      sections: sectionRes.data,
+    };
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
+
+    setTeachers(sortedTeachers);
+    setAvailableSubjects(data.subjects);
+    setTeacherLoad(data.load);
+    setSections(sectionRes.data);
+  } catch (err) {
+    if (!signal.cancelled) console.error("Error fetching data", err);
+  } finally {
+    if (!signal.cancelled) setLoading(false);
+  }
+}, [selectedSchoolYear, invalidateCache]);
 
   useEffect(() => {
-    if (selectedSchoolYear) {
-      invalidateCache();
-      fetchData(true);
-    }
-  }, [selectedSchoolYear, invalidateCache, fetchData]);
+  if (!selectedSchoolYear) return;
+  const signal = { cancelled: false };
+  invalidateCache();
+  fetchData(true, signal);
+  return () => { signal.cancelled = true; };
+}, [selectedSchoolYear, invalidateCache, fetchData]);
 
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -961,23 +964,30 @@ const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
   };
 
   useEffect(() => {
-    if (!teacher) return;
-    const fetchSchedules = async () => {
-      try {
-        setLoading(true);
-        const res = await API.get(`/teachers/${teacher.id}/schedule`, {
-          params: { school_year: schoolYear },
-        });
-        setSchedules(res.data);
-      } catch (err) {
+  if (!teacher) return;
+  let cancelled = false;
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get(`/teachers/${teacher.id}/schedule`, {
+        params: { school_year: schoolYear },
+      });
+      if (!cancelled) setSchedules(res.data);
+    } catch (err) {
+      if (!cancelled) {
         console.error("Failed to fetch schedules", err);
         setError("Could not load schedule data.");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchSchedules();
-  }, [teacher, schoolYear]);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  };
+
+  fetchSchedules();
+
+  return () => { cancelled = true; };
+}, [teacher, schoolYear]);
 
   if (!teacher) return null;
 

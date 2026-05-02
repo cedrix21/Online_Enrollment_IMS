@@ -62,38 +62,60 @@ export default function TeacherAdvisory() {
   const [mandatoryLoading, setMandatoryLoading] = useState(false);
   const [mandatoryError, setMandatoryError] = useState("");
 
-  // ===== OPTIMIZED: Single API call with caching =====
-  const fetchData = useCallback(async (forceRefresh = false) => {
+  
+  // Safe user retrieval helper
+  const getUser = () => {
     try {
-      if (!forceRefresh) setLoading(true);
+      const raw = localStorage.getItem("user");
+      if (raw && raw !== "undefined" && raw !== "null") {
+        return JSON.parse(raw);
+      }
+    } catch {}
+    return null;
+  };
 
-      if (!forceRefresh) {
-        const cached = localStorage.getItem(CACHE_KEY);
-        const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
-        if (cached && cacheTime) {
-          const age = Date.now() - parseInt(cacheTime);
-          if (age < CACHE_DURATION) {
-            const data = JSON.parse(cached);
-            processData(data);
-            setLoading(false);
-            return;
+  // ===== OPTIMIZED: Single API call with caching and cleanup =====
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchData = async (forceRefresh = false) => {
+      try {
+        if (!forceRefresh) setLoading(true);
+
+        if (!forceRefresh) {
+          const cached = localStorage.getItem(CACHE_KEY);
+          const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
+          if (cached && cacheTime) {
+            const age = Date.now() - parseInt(cacheTime);
+            if (age < CACHE_DURATION) {
+              if (!cancelled) processData(JSON.parse(cached));
+              setLoading(false);
+              return;
+            }
           }
         }
-      }
 
-      const response = await API.get("/teacher/dashboard");
-      const data = response.data;
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-      processData(data);
-      setError("");
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError(err.response?.data?.message || "Failed to load dashboard");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        const response = await API.get("/teacher/dashboard");
+        const data = response.data;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        if (!cancelled) {
+          processData(data);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Error fetching data:", err);
+          setError(err.response?.data?.message || "Failed to load dashboard");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, []); // run once on mount
 
   const processData = useCallback((data) => {
      setDashboardData(data);
@@ -114,16 +136,14 @@ export default function TeacherAdvisory() {
     setGrades(gradesObj);
   }, []);
 
-  useEffect(() => {
-    setFilterSection("all");
-    fetchData();
-  }, [fetchData,filterGradeLevel]);
+  
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = getUser();
     if (user?.email) setSettingsEmail(user.email);
     if (user && !user.password_changed) setShowMandatoryPasswordChange(true);
   }, []);
+
 
   const filteredStudents = useMemo(() => {
   let result = students;
@@ -218,7 +238,7 @@ export default function TeacherAdvisory() {
       if (newPassword) payload.new_password = newPassword;
       const res = await API.put("/user/update-credentials", payload);
       setSettingsSuccess(res.data.message || "Credentials updated successfully!");
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = getUser();
       user.email = settingsEmail;
       localStorage.setItem("user", JSON.stringify(user));
       setTimeout(() => handleCloseSettings(), 2000);
@@ -253,7 +273,11 @@ export default function TeacherAdvisory() {
 
     try {
       setMandatoryLoading(true);
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = getUser();
+      if (!user) {
+        setMandatoryError("User session not found. Please log in again.");
+        return;
+      }
       const payload = {
         current_password: mandatoryCurrentPassword,
         email: user.email,
@@ -275,7 +299,12 @@ export default function TeacherAdvisory() {
     try {
       setRefreshing(true);
       setSuccess("Refreshing data...");
-      await fetchData(true);
+      // Force refresh with a new API call (we'll just call the fetch function again)
+      const response = await API.get("/teacher/dashboard");
+      const data = response.data;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      processData(data);
       setSuccess("Data refreshed successfully!");
       setTimeout(() => setSuccess(""), 2000);
     } catch (err) {
@@ -609,23 +638,27 @@ const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
   };
 
   useEffect(() => {
-    if (!teacher) return;
-    const fetchSchedules = async () => {
-      try {
-        setLoading(true);
-        const res = await API.get(`/teachers/${teacher.id}/schedule`, {
-          params: { school_year: schoolYear },
-        });
-        setSchedules(res.data);
-      } catch (err) {
+  if (!teacher) return;
+  let cancelled = false;
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get(`/teachers/${teacher.id}/schedule`, {
+        params: { school_year: schoolYear },
+      });
+      if (!cancelled) setSchedules(res.data);
+    } catch (err) {
+      if (!cancelled) {
         console.error("Failed to fetch schedules", err);
         setError("Could not load schedule data.");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchSchedules();
-  }, [teacher, schoolYear]);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  };
+  fetchSchedules();
+  return () => { cancelled = true; };
+}, [teacher, schoolYear]);
 
   if (!teacher) return null;
 

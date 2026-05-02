@@ -51,8 +51,19 @@ export default function ActivityLogs() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ action: '', user_id: '', from_date: '', to_date: '' });
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
-  const user = JSON.parse(localStorage.getItem('user'));
 
+  // Safe user parse
+  let user = null;
+  try {
+    const raw = localStorage.getItem('user');
+    if (raw && raw !== 'undefined' && raw !== 'null') {
+      user = JSON.parse(raw);
+    }
+  } catch {
+    user = null;
+  }
+
+  // Fetch logs with cancellation support
   const fetchLogs = useCallback(async (page = 1) => {
     setLoading(true);
     try {
@@ -72,15 +83,35 @@ export default function ActivityLogs() {
   }, [filters]);
 
   useEffect(() => {
-    fetchLogs(1);
-  }, [fetchLogs]);
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const params = { page: 1, ...filters };
+        const res = await API.get('/admin/activity-logs', { params });
+        if (!cancelled) {
+          setLogs(res.data.data);
+          setPagination({
+            current_page: res.data.current_page,
+            last_page: res.data.last_page,
+            total: res.data.total,
+          });
+        }
+      } catch (err) {
+        if (!cancelled) console.error('Failed to fetch logs', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [fetchLogs]); // fetchLogs changes when filters change
 
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
   const applyFilters = () => fetchLogs(1);
-
   const clearFilters = () => {
     setFilters({ action: '', user_id: '', from_date: '', to_date: '' });
     fetchLogs(1);

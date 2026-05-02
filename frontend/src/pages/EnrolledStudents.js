@@ -28,8 +28,9 @@ const EnrolledStudents = () => {
     return `${currentStart + 1}-${currentStart + 2}`;
   };
 
-  const pastSchoolYears = getPastSchoolYears();
-  const nextSchoolYear = getNextSchoolYear();
+  const pastSchoolYears = useMemo(() => getPastSchoolYears(), [currentSchoolYear]);
+  const nextSchoolYear = useMemo(() => getNextSchoolYear(), [currentSchoolYear]);
+
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,18 +47,43 @@ const EnrolledStudents = () => {
   const [lrnInput, setLrnInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     if (currentSchoolYear && !filterSchoolYear) {
-      setFilterSchoolYear(currentSchoolYear);
+      if (!cancelled) setFilterSchoolYear(currentSchoolYear);
     }
+    return () => { cancelled = true; };
   }, [currentSchoolYear, filterSchoolYear]);
 
+  // ── Fetch students when filter year changes (cleanup added) ──
   useEffect(() => {
-    if (filterSchoolYear) {
-      fetchStudents();
+  if (!filterSchoolYear) return;
+  let cancelled = false;
+
+  const loadStudents = async () => {
+    setLoading(true);
+    try {
+      const res = await API.get(`/students/current-year?school_year=${filterSchoolYear}`);
+      if (!cancelled) setStudents(res.data);
+    } catch (err) {
+      if (!cancelled) {
+        console.error('Error fetching student records', err);
+        await logActivity('fetch_students_error', {
+          school_year: filterSchoolYear,
+          error: err.message,
+        });
+      }
+    } finally {
+      if (!cancelled) setLoading(false);
     }
-  }, [filterSchoolYear]);
+  };
+
+  loadStudents();
+
+  return () => { cancelled = true; };
+}, [filterSchoolYear, refreshTrigger]);
 
   const gradeLevels = useMemo(() => {
     const levels = [...new Set(students.map(s => s.gradeLevel))].filter(Boolean);
@@ -96,21 +122,6 @@ const EnrolledStudents = () => {
     }
   }, [pastSchoolYears]);
 
-  const fetchStudents = async () => {
-    setLoading(true);
-    try {
-      const res = await API.get(`/students/current-year?school_year=${filterSchoolYear}`);
-      setStudents(res.data);
-    } catch (err) {
-      console.error('Error fetching student records', err);
-      await logActivity('fetch_students_error', {
-        school_year: filterSchoolYear,
-        error: err.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteStudent = async (id, studentName) => {
     if (!window.confirm(`Are you sure you want to delete ${studentName}?`)) return;
@@ -123,7 +134,7 @@ const EnrolledStudents = () => {
         student_name: studentName,
         school_year: filterSchoolYear,
       });
-      fetchStudents();
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Error deleting student record', err);
       const errorMsg = err.response?.data?.message || '';
@@ -195,7 +206,7 @@ const EnrolledStudents = () => {
           firstName: '', lastName: '', gradeLevel: '', lrn: '', contactNumber: '', schoolYear: pastSchoolYears[0],
         });
       }
-      fetchStudents();
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Error saving record', err);
       const errorMsg = err.response?.data?.message || '';
@@ -240,7 +251,7 @@ const EnrolledStudents = () => {
         new_contact: contactInput,
       });
       closeLrnModal();
-      fetchStudents();
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Error updating student info', err);
       const errorMsg = err.response?.data?.message || err.message || 'Unknown error';

@@ -9,19 +9,27 @@ export default function LockedUsers() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchLockedUsers();
-  }, []);
+    let cancelled = false;                // ← flag
 
-  const fetchLockedUsers = async () => {
-    try {
-      const response = await API.get("/admin/locked-users");
-      setLockedUsers(response.data.locked_users);
-    } catch (err) {
-      setError("Failed to load locked users");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchLockedUsers = async () => {
+      try {
+        const response = await API.get("/admin/locked-users");
+        if (!cancelled) {                // ← only update if still mounted
+          setLockedUsers(response.data.locked_users);
+        }
+      } catch (err) {
+        if (!cancelled) setError("Failed to load locked users");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchLockedUsers();
+
+    return () => {
+      cancelled = true;                  // ← cleanup on unmount
+    };
+  }, []);
 
   const handleUnlock = async (userId) => {
     try {

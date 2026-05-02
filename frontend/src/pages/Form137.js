@@ -1,10 +1,9 @@
 // src/pages/Form137.js
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import API from '../api/api';
 import { SICS_LOGO_BASE64 } from '../constants/reportImages';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
-import SideBar from '../components/SideBar';
-import TopBar from '../components/TopBar';
+ 
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -97,6 +96,7 @@ const GradeRatingInput = ({ value, onChange, isObserved = false }) => {
   );
 };
 
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function Form137() {
@@ -112,22 +112,29 @@ export default function Form137() {
   const [gradesLoading, setGradesLoading] = useState(false);
   const [studentSchoolYear, setStudentSchoolYear] = useState('');
 
- useEffect(() => {
-  const fetchSubjects = async () => {
-    try {
-      const params = {};
-      if (studentSchoolYear) {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSubjects = async () => {
+      try {
+        const params = {};
+        if (studentSchoolYear) {
         params.school_year = studentSchoolYear;
       }
       const res = await API.get('/subjects', { params });
-      setSubjects(res.data);
+      if (!cancelled) setSubjects(res.data);
     } catch (err) {
-      console.error('Failed to fetch subjects', err);
+      if (!cancelled) console.error('Failed to fetch subjects', err);
     } finally {
-      setSubjectsLoading(false);
+      if (!cancelled) setSubjectsLoading(false);
     }
   };
   fetchSubjects();
+  return () => { cancelled = true; };
 }, [studentSchoolYear]);
 
   // Group subjects by grade level with MAPEH separated
@@ -179,6 +186,7 @@ export default function Form137() {
   const parentAddress = currentEnrollment.fatherAddress || currentEnrollment.motherAddress || '';
   const parentOccupation = currentEnrollment.fatherOccupation || currentEnrollment.motherOccupation || '';
 
+  // Set initial data immediately (safe because user interaction just happened)
   setStudent({
     lastName:         s.lastName                              || '',
     firstName:        s.firstName                             || '',
@@ -211,15 +219,15 @@ export default function Form137() {
 
   setGradesLoading(true);
   try {
-    // 1. Fetch all enrollments for this student
+    // 1. Fetch all enrollments
     const enrollRes = await API.get(`/students/${s.id}/enrollments`);
     const enrollments = enrollRes.data;
 
-    // 2. Fetch all grades for this student
+    // 2. Fetch all grades
     const gradesRes = await API.get(`/admin/grades?student_id=${s.id}`);
     const allGrades = gradesRes.data.data || [];
 
-    // 3. Deduplicate grades: keep the most recent per subject + quarter
+    // 3. Deduplicate
     const latestGradesMap = new Map();
     allGrades.forEach(grade => {
       const key = `${grade.subject_id}-${grade.quarter}`;
@@ -230,7 +238,7 @@ export default function Form137() {
     });
     const uniqueGrades = Array.from(latestGradesMap.values());
 
-    // 4. Fetch subjects for each enrollment's school year
+    // 4. Fetch subjects per enrollment
     const subjectPromises = enrollments.map(enrollment =>
       API.get('/subjects', { params: { school_year: enrollment.school_year } })
     );
@@ -246,7 +254,7 @@ export default function Form137() {
       });
     });
 
-    // 5. Build gradeData for each enrollment
+    // 5. Build gradeData
     const newGradeData = Object.fromEntries(
       GRADES.map(g => [g, {
         school: 'Siloam International Christian School',
@@ -267,7 +275,6 @@ export default function Form137() {
         subjectsObj[sub.subjectName] = { q1: '', q2: '', q3: '', q4: '', remarks: '' };
       });
 
-      // Use uniqueGrades and filter by subject.school_year
       const gradesForThisEnrollment = uniqueGrades.filter(grade => {
         return grade.subject?.school_year === enrollment.school_year;
       });
@@ -290,23 +297,24 @@ export default function Form137() {
       };
     });
 
-    console.log('✅ Final gradeData:', newGradeData);
+    if (!mountedRef.current) return;
+
     setGradeData(newGradeData);
+
+    const romanCurrent = gradeToRoman[studentGradeLevel];
+    if (romanCurrent) {
+      setActiveGrade(romanCurrent);
+    }
+
+    setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
+    setShowDropdown(false);
+
   } catch (err) {
     console.error('❌ Error loading Form 137 data:', err);
   } finally {
-    setGradesLoading(false);
+    if (mountedRef.current) setGradesLoading(false);
   }
-
-  const romanCurrent = gradeToRoman[studentGradeLevel];
-if (romanCurrent) {
-  setActiveGrade(romanCurrent);
-} 
-
-  setSearchQuery(`${s.lastName}, ${s.firstName}`.trim());
-  setShowDropdown(false);
 };
-
 
 
 
@@ -1290,4 +1298,5 @@ const styles = {
     gap: '12px',
     alignItems: 'flex-start',
   },
+  
 };

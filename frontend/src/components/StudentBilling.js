@@ -3,7 +3,7 @@ import API from '../api/api';
 import './StudentBilling.css';
 import { logActivity } from '../utils/activityLogger';
 
-// --- Skeleton Components (same as before) ---
+// --- Skeleton Components (unchanged) ---
 const SummaryCardSkeleton = () => (
     <div className="billing-summary-card skeleton">
         <div className="skeleton-line" style={{ width: '60%', height: '16px', marginBottom: '8px' }}></div>
@@ -27,6 +27,7 @@ const TableSkeleton = () => (
         {[1, 2, 3, 4, 5].map(i => <TableRowSkeleton key={i} />)}
     </>
 );
+
 // Returns true if today is past the 5 business-day grace period from the 1st
 const isPastGracePeriod = () => {
   const today = new Date();
@@ -60,8 +61,7 @@ const isPastGracePeriod = () => {
   return today >= penaltyStartDate;
 };
 
-
-// --- Modal Component (unchanged) ---
+// --- Modal Component ---
 const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, schoolYear }) => {
     const [loading, setLoading] = useState(false);
     const [baseAmount, setBaseAmount] = useState('');
@@ -77,10 +77,13 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
     const penalty = applyPenalty ? monthly * 0.10 : 0;
     const monthlyTotal = monthly + penalty;
 
+    // Cleanup flag for safety
     useEffect(() => {
-    if (isPastGracePeriod()) {
-        setApplyPenalty(true);
-    }
+        let cancelled = false;
+        if (isPastGracePeriod() && !cancelled) {
+            setApplyPenalty(true);
+        }
+        return () => { cancelled = true; };
     }, []);
 
     const handleSubmit = async (e) => {
@@ -99,7 +102,7 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
                 ...paymentData,
                 amount_paid: monthlyTotal.toFixed(2),
                 payment_type: applyPenalty ? 'Monthly w/ penalty' : 'Monthly Installment',
-                 school_year: schoolYear
+                school_year: schoolYear
             };
             promises.push(API.post(`/admin/billing/student/${studentId}/pay`, monthlyPayload));
         }
@@ -109,7 +112,7 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
                 ...paymentData,
                 amount_paid: books.toFixed(2),
                 payment_type: 'Books',
-                 school_year: schoolYear
+                school_year: schoolYear
             };
             promises.push(API.post(`/admin/billing/student/${studentId}/pay`, booksPayload));
         }
@@ -118,7 +121,6 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
             const results = await Promise.all(promises);
             const newPayments = results.map(r => r.data.payment);
 
-            // Log the payment(s) – use a single log entry describing the batch
             await logActivity('payment_added', {
                 student_id: studentId,
                 student_name: studentName,
@@ -147,7 +149,7 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
                     <button className="billing-modal-close" onClick={onClose}>×</button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    {/* Base monthly amount - optional now */}
+                    {/* Base monthly amount */}
                     <div className="billing-form-group">
                         <label className="billing-form-label">Base Monthly Amount (₱)</label>
                         <input
@@ -173,31 +175,31 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
                         />
                     </div>
 
-                    {/* Penalty checkbox - disabled if no monthly amount */}
+                    {/* Penalty checkbox */}
                     <div className="billing-form-group">
-                    <label className="billing-form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                        type="checkbox"
-                        checked={applyPenalty}
-                        onChange={(e) => setApplyPenalty(e.target.checked)}
-                        disabled={!baseAmount || parseFloat(baseAmount) <= 0}
-                        />
-                        <span style={{ opacity: (!baseAmount || parseFloat(baseAmount) <= 0) ? 0.6 : 1 }}>
-                        Apply 10% late penalty
-                        </span>
-                        {isPastGracePeriod() && (
-                        <span style={{
-                            fontSize: '0.75rem', backgroundColor: '#fff3e0',
-                            color: '#e65100', padding: '2px 8px', borderRadius: '12px',
-                            fontWeight: 600, border: '1px solid #ffcc80'
-                        }}>
-                            ⚠️ Past due — auto-applied
-                        </span>
-                        )}
-                    </label>
+                        <label className="billing-form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                                type="checkbox"
+                                checked={applyPenalty}
+                                onChange={(e) => setApplyPenalty(e.target.checked)}
+                                disabled={!baseAmount || parseFloat(baseAmount) <= 0}
+                            />
+                            <span style={{ opacity: (!baseAmount || parseFloat(baseAmount) <= 0) ? 0.6 : 1 }}>
+                                Apply 10% late penalty
+                            </span>
+                            {isPastGracePeriod() && (
+                                <span style={{
+                                    fontSize: '0.75rem', backgroundColor: '#fff3e0',
+                                    color: '#e65100', padding: '2px 8px', borderRadius: '12px',
+                                    fontWeight: 600, border: '1px solid #ffcc80'
+                                }}>
+                                    ⚠️ Past due — auto-applied
+                                </span>
+                            )}
+                        </label>
                     </div>
 
-                    {/* Show totals breakdown only if there's something to show */}
+                    {/* Totals breakdown */}
                     {(monthly > 0 || books > 0) && (
                         <div className="billing-form-group">
                             <label className="billing-form-label">Payment Breakdown</label>
@@ -251,7 +253,6 @@ const AddPaymentModal = ({ studentId, studentName, onPaymentSuccess, onClose, sc
     );
 };
 
-
 // --- MAIN COMPONENT ---
 const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000, books, onPaymentAdded, loading = false, selectedSchoolYear }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -291,7 +292,7 @@ const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000
                 </div>
             ) : (
                 <div className="billing-summary six-col">
-                    {/* Tuition cards - default style */}
+                    {/* Tuition cards */}
                     <div className="billing-summary-card tuition">
                         <small>Tuition</small>
                         <h3>₱{totalTuition.toLocaleString()}</h3>
@@ -307,7 +308,7 @@ const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000
                         </h3>
                     </div>
 
-                    {/* Books cards - with additional class "book-card" */}
+                    {/* Books cards */}
                     <div className="billing-summary-card tuition book-card">
                         <small>Books</small>
                         <h3>₱{bookSummary.total.toLocaleString()}</h3>

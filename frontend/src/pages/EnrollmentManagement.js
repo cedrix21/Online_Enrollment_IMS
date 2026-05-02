@@ -6,10 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import logo from "../assets/sics-logo.png";
-import { API_BASE_URL } from "../config";
 import { logActivity } from '../utils/activityLogger';
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 
 // ── Requirements Checklist Component ─────────────────────────────────────────
   const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
@@ -31,12 +28,16 @@ import TopBar from "../components/TopBar";
     return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
 
-  useEffect(() => {
+ useEffect(() => {
+  let cancelled = false;
+    setLoading(true);
     API.get(`/enrollments/${enrollmentId}/requirements`)
-      .then(res => setRequirements(res.data))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+      .then(res => { if (!cancelled) setRequirements(res.data); })
+      .catch(err => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [enrollmentId]);
+
 
   const handleStatusChange = async (req, status) => {
     const type = req.type;
@@ -359,8 +360,13 @@ const EnrollmentRow = memo(
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function EnrollmentManagement() {
   const [user] = useState(() => {
-    const userData = localStorage.getItem("user");
-    return userData ? JSON.parse(userData) : null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      return JSON.parse(raw);
+      }
+    } catch {}
+    return null;
   });
 
   const [enrollments, setEnrollments] = useState([]);
@@ -400,22 +406,8 @@ export default function EnrollmentManagement() {
     setSelectedEnrollment(null);
   }, []);
 
-  // Auth guard + initial fetch
-  useEffect(() => {
-    if (!user || (user.role !== "admin" && user.role !== "registrar")) {
-      navigate("/dashboard");
-    } else {
-      fetchEnrollments();
-    }
-  }, [user, navigate]);
-
-  // Sync location state filters
-  useEffect(() => {
-    if (location.state?.filter) setFilterStatus(location.state.filter);
-    if (location.state?.paymentFilter)
-      setFilterPaymentMethod(location.state.paymentFilter);
-  }, [location.state?.filter, location.state?.paymentFilter]);
-
+ 
+  // ── Non‑cancellable fetch (for manual calls after actions) ──
 const fetchEnrollments = useCallback(async () => {
   setIsLoading(true);
   try {
@@ -430,12 +422,39 @@ const fetchEnrollments = useCallback(async () => {
   }
 }, [filterSchoolYear]);
 
-
+// ── Effect: fetch when school year changes (cancellable) ──
 useEffect(() => {
-  fetchEnrollments();
-}, [fetchEnrollments]);
+  let cancelled = false;
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await API.get("/enrollments", {
+        params: { school_year: filterSchoolYear }
+      });
+      if (!cancelled) setEnrollments(res.data);
+    } catch {
+      if (!cancelled) setMessage("Failed to load enrollments");
+    } finally {
+      if (!cancelled) setIsLoading(false);
+    }
+  };
+  load();
+  return () => { cancelled = true; };
+}, [filterSchoolYear]);
 
+// ── Effect: Auth guard ──
+useEffect(() => {
+  if (!user || (user.role !== "admin" && user.role !== "registrar")) {
+    navigate("/dashboard");
+  }
+}, [user, navigate]);
 
+// ── Location filters sync ──
+useEffect(() => {
+  if (location.state?.filter) setFilterStatus(location.state.filter);
+  if (location.state?.paymentFilter) setFilterPaymentMethod(location.state.paymentFilter);
+}, [location.state?.filter, location.state?.paymentFilter]);
+ 
  const updateStatus = useCallback(
   async (id, status) => {
     // ✅ Define enrollment once at the top

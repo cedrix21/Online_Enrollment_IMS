@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import API from "../api/api";
-import SideBar from "../components/SideBar";
-import TopBar from "../components/TopBar";
 import { 
   FaBookOpen, 
   FaPlus, 
@@ -49,11 +47,20 @@ const getGradePrefix = (gradeLevel) => {
 };
 
 export default function SubjectManagement() {
-  // ✅ Use the hook to get the authoritative current school year
   const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
 
-  const [user] = useState(() => JSON.parse(localStorage.getItem("user")));
+  // Safe user retrieval
+  const [user] = useState(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw && raw !== "undefined" && raw !== "null") {
+        return JSON.parse(raw);
+      }
+    } catch {}
+    return null;
+  });
+
   const [subjects, setSubjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
@@ -85,21 +92,43 @@ export default function SubjectManagement() {
     "Grade 6"
   ];
 
-  // ✅ Initialise selectedSchoolYear when currentSchoolYear becomes available
+  // Initialise selectedSchoolYear when currentSchoolYear becomes available
   useEffect(() => {
     if (currentSchoolYear && !selectedSchoolYear) {
       setSelectedSchoolYear(currentSchoolYear);
     }
   }, [currentSchoolYear, selectedSchoolYear]);
 
-  // Fetch subjects when selectedSchoolYear changes (only after it is set)
+  // Fetch subjects when selectedSchoolYear changes, with cleanup
   useEffect(() => {
-    if (selectedSchoolYear) {
-      fetchSubjects();
-    }
+    if (!selectedSchoolYear) return;
+    let cancelled = false;
+
+    const fetchSubjects = async () => {
+      try {
+        setLoading(true);
+        const res = await API.get("/subjects", { params: { school_year: selectedSchoolYear } });
+        if (!cancelled) {
+          setSubjects(res.data);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Error:", err.response?.data);
+          const errorMsg = err.response?.data?.message || "Failed to load subjects";
+          setError(errorMsg);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchSubjects();
+
+    return () => { cancelled = true; };
   }, [selectedSchoolYear]);
 
   const fetchSubjects = async () => {
+    // This is now only called manually (after create/edit/delete). Keep it simple.
     if (!selectedSchoolYear) return;
     try {
       setLoading(true);
@@ -246,252 +275,247 @@ export default function SubjectManagement() {
     return acc;
   }, {});
 
-
-
   return (
- <>
-
-         <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
-        {yearLoading || !selectedSchoolYear ? (
-          <div className="loading-school-year">Loading school year...</div>
-        ) : (
-          <div className="subject-management-container">
-            <div className="page-header">
-              <div className="title-group">
-                <FaBookOpen className="title-icon" />
-                <div>
-                  <h2>Subject Management</h2>
-                  <p>Create and manage subjects for all grade levels</p>
-                </div>
-              </div>
-              <div className="header-actions">
-                <select
-                  className="school-year-select"
-                  value={selectedSchoolYear}
-                  onChange={(e) => setSelectedSchoolYear(e.target.value)}
-                >
-                  {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-                <button className="create-btn" onClick={openCreateModal}>
-                  <FaPlus /> Create Subject
-                </button>
+    <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+      {yearLoading || !selectedSchoolYear ? (
+        <div className="loading-school-year">Loading school year...</div>
+      ) : (
+        <div className="subject-management-container">
+          <div className="page-header">
+            <div className="title-group">
+              <FaBookOpen className="title-icon" />
+              <div>
+                <h2>Subject Management</h2>
+                <p>Create and manage subjects for all grade levels</p>
               </div>
             </div>
+            <div className="header-actions">
+              <select
+                className="school-year-select"
+                value={selectedSchoolYear}
+                onChange={(e) => setSelectedSchoolYear(e.target.value)}
+              >
+                {['2024-2025','2025-2026','2026-2027','2027-2028'].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <button className="create-btn" onClick={openCreateModal}>
+                <FaPlus /> Create Subject
+              </button>
+            </div>
+          </div>
 
-            <div className="filters-bar">
-              <div className="subject-management-search-box">
-                <FaSearch className="search-icon" />
+          <div className="filters-bar">
+            <div className="subject-management-search-box">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search subjects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <select
+              className="grade-filter"
+              value={filterGrade}
+              onChange={(e) => setFilterGrade(e.target.value)}
+            >
+              <option value="all">All Grade Levels</option>
+              {gradeLevels.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
+
+            <div className="subject-count">
+              Total: {filteredSubjects.length} subjects
+            </div>
+          </div>
+
+          {error && <div className="alert alert-error">{error}</div>}
+          {success && <div className="alert alert-success">{success}</div>}
+
+          <div className="subjects-container">
+            {gradeLevels.map((grade) => {
+              const gradeSubjects = subjectsByGrade[grade];
+              if (gradeSubjects.length === 0 && filterGrade !== "all" && filterGrade !== grade) {
+                return null;
+              }
+              return (
+                <div key={grade} className="grade-section">
+                  <div className="grade-header">
+                    <h3>{grade}</h3>
+                    <span className="subject-badge">{gradeSubjects.length} subjects</span>
+                  </div>
+
+                  {gradeSubjects.length > 0 ? (
+                    <div className="subjects-grid">
+                      {gradeSubjects.map((subject) => (
+                        <div 
+                          key={subject.id} 
+                          className={`subject-card ${['MUSIC','ARTS','PE','HEALTH'].includes(subject.subjectCode?.replace(/^[A-Z0-9]+-/, '')) ? 'mapeh-card' : ''}`}
+                        >
+                          <div className="subject-code-badge">
+                            {subject.subjectCode}
+                            {['MUSIC','ARTS','PE','HEALTH'].includes(subject.subjectCode?.replace(/^[A-Z0-9]+-/, '')) && (
+                              <span className="mapeh-indicator">
+                                {subject.subjectCode?.includes('MUSIC') && '🎵'}
+                                {subject.subjectCode?.includes('ARTS') && '🎨'}
+                                {subject.subjectCode?.includes('PE') && '🏃'}
+                                {subject.subjectCode?.includes('HEALTH') && '❤️'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="subject-info">
+                            <h4>{subject.subjectName}</h4>
+                            {subject.description && (
+                              <p className="subject-description">{subject.description}</p>
+                            )}
+                          </div>
+                          <div className="subject-actions">
+                            <button
+                              className="edit-btn"
+                              onClick={() => openEditModal(subject)}
+                              title="Edit subject"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDelete(subject.id, subject.subjectName)}
+                              title="Delete subject"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="no-subjects">
+                      <p>No subjects created for this grade level yet</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>{isEditing ? "Edit Subject" : "Create New Subject"}</h3>
+              <FaTimes className="close-icon" onClick={() => setShowModal(false)} />
+            </div>
+
+            {error && <div className="alert alert-error" style={{ margin: "15px 20px 0" }}>{error}</div>}
+            {success && <div className="alert alert-success" style={{ margin: "15px 20px 0" }}>{success}</div>}
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Grade Level <span className="required">*</span></label>
+                <select
+                  value={formData.gradeLevel}
+                  onChange={(e) => {
+                    const newGrade = e.target.value;
+                    setFormData(prev => ({
+                      ...prev,
+                      gradeLevel: newGrade,
+                      subjectCode: "",
+                      subjectName: "",
+                      description: "",
+                    }));
+                  }}
+                  required
+                >
+                  <option value="">-- Select Grade --</option>
+                  {gradeLevels.map((grade) => (
+                    <option key={grade} value={grade}>
+                      {grade}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Subject Code <span className="required">*</span></label>
+                <select
+                  value={formData.subjectCode}
+                  onChange={handleSubjectCodeChange}
+                  required
+                  disabled={!formData.gradeLevel}
+                  style={{ backgroundColor: formData.gradeLevel ? "#fff" : "#f0f0f0" }}
+                >
+                  <option value="">-- Select Subject Code --</option>
+                  {getAvailableSubjectCodeOptions().map(opt => (
+                    <option key={opt.fullCode} value={opt.fullCode}>
+                      {opt.fullCode} – {opt.name}
+                    </option>
+                  ))}
+                </select>
+                {!formData.gradeLevel && (
+                  <small style={{ color: "#d32f2f" }}>Please select a grade level first</small>
+                )}
+                {formData.gradeLevel && getAvailableSubjectCodeOptions().length === 0 && (
+                  <small style={{ color: "#d32f2f" }}>
+                    All subjects have been created for this grade level.
+                  </small>
+                )}
+                <small style={{ color: "#666", display: "block", marginTop: "4px" }}>
+                  Selecting a code will automatically fill the Subject Name and Description.
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label>Subject Name <span className="required">*</span></label>
                 <input
                   type="text"
-                  placeholder="Search subjects..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="e.g., Mathematics, English, Science"
+                  value={formData.subjectName}
+                  onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
+                  required
                 />
               </div>
 
-              <select
-                className="grade-filter"
-                value={filterGrade}
-                onChange={(e) => setFilterGrade(e.target.value)}
-              >
-                <option value="all">All Grade Levels</option>
-                {gradeLevels.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
-
-              <div className="subject-count">
-                Total: {filteredSubjects.length} subjects
-              </div>
-            </div>
-
-            {error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
-
-            <div className="subjects-container">
-              {gradeLevels.map((grade) => {
-                const gradeSubjects = subjectsByGrade[grade];
-                if (gradeSubjects.length === 0 && filterGrade !== "all" && filterGrade !== grade) {
-                  return null;
-                }
-                return (
-                  <div key={grade} className="grade-section">
-                    <div className="grade-header">
-                      <h3>{grade}</h3>
-                      <span className="subject-badge">{gradeSubjects.length} subjects</span>
-                    </div>
-
-                    {gradeSubjects.length > 0 ? (
-                      <div className="subjects-grid">
-                        {gradeSubjects.map((subject) => (
-                          <div 
-                            key={subject.id} 
-                            className={`subject-card ${['MUSIC','ARTS','PE','HEALTH'].includes(subject.subjectCode?.replace(/^[A-Z0-9]+-/, '')) ? 'mapeh-card' : ''}`}
-                          >
-                            <div className="subject-code-badge">
-                              {subject.subjectCode}
-                              {['MUSIC','ARTS','PE','HEALTH'].includes(subject.subjectCode?.replace(/^[A-Z0-9]+-/, '')) && (
-                                <span className="mapeh-indicator">
-                                  {subject.subjectCode?.includes('MUSIC') && '🎵'}
-                                  {subject.subjectCode?.includes('ARTS') && '🎨'}
-                                  {subject.subjectCode?.includes('PE') && '🏃'}
-                                  {subject.subjectCode?.includes('HEALTH') && '❤️'}
-                                </span>
-                              )}
-                            </div>
-                            <div className="subject-info">
-                              <h4>{subject.subjectName}</h4>
-                              {subject.description && (
-                                <p className="subject-description">{subject.description}</p>
-                              )}
-                            </div>
-                            <div className="subject-actions">
-                              <button
-                                className="edit-btn"
-                                onClick={() => openEditModal(subject)}
-                                title="Edit subject"
-                              >
-                                <FaEdit />
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={() => handleDelete(subject.id, subject.subjectName)}
-                                title="Delete subject"
-                              >
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="no-subjects">
-                        <p>No subjects created for this grade level yet</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-        {showModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>{isEditing ? "Edit Subject" : "Create New Subject"}</h3>
-                <FaTimes className="close-icon" onClick={() => setShowModal(false)} />
+              <div className="form-group">
+                <label>School Year <span className="required">*</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g., 2025-2026"
+                  value={formData.school_year}
+                  onChange={(e) => setFormData({ ...formData, school_year: e.target.value })}
+                  required
+                />
               </div>
 
-              {error && <div className="alert alert-error" style={{ margin: "15px 20px 0" }}>{error}</div>}
-              {success && <div className="alert alert-success" style={{ margin: "15px 20px 0" }}>{success}</div>}
+              <div className="form-group">
+                <label>Description (Optional)</label>
+                <textarea
+                  placeholder="Add a description for this subject..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows="3"
+                  style={{ resize: "vertical" }}
+                />
+              </div>
 
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Grade Level <span className="required">*</span></label>
-                  <select
-                    value={formData.gradeLevel}
-                    onChange={(e) => {
-                      const newGrade = e.target.value;
-                      setFormData(prev => ({
-                        ...prev,
-                        gradeLevel: newGrade,
-                        subjectCode: "",
-                        subjectName: "",
-                        description: "",
-                      }));
-                    }}
-                    required
-                  >
-                    <option value="">-- Select Grade --</option>
-                    {gradeLevels.map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Subject Code <span className="required">*</span></label>
-                  <select
-                    value={formData.subjectCode}
-                    onChange={handleSubjectCodeChange}
-                    required
-                    disabled={!formData.gradeLevel}
-                    style={{ backgroundColor: formData.gradeLevel ? "#fff" : "#f0f0f0" }}
-                  >
-                    <option value="">-- Select Subject Code --</option>
-                    {getAvailableSubjectCodeOptions().map(opt => (
-                      <option key={opt.fullCode} value={opt.fullCode}>
-                        {opt.fullCode} – {opt.name}
-                      </option>
-                    ))}
-                  </select>
-                  {!formData.gradeLevel && (
-                    <small style={{ color: "#d32f2f" }}>Please select a grade level first</small>
-                  )}
-                  {formData.gradeLevel && getAvailableSubjectCodeOptions().length === 0 && (
-                    <small style={{ color: "#d32f2f" }}>
-                      All subjects have been created for this grade level.
-                    </small>
-                  )}
-                  <small style={{ color: "#666", display: "block", marginTop: "4px" }}>
-                    Selecting a code will automatically fill the Subject Name and Description.
-                  </small>
-                </div>
-
-                <div className="form-group">
-                  <label>Subject Name <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Mathematics, English, Science"
-                    value={formData.subjectName}
-                    onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>School Year <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 2025-2026"
-                    value={formData.school_year}
-                    onChange={(e) => setFormData({ ...formData, school_year: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Description (Optional)</label>
-                  <textarea
-                    placeholder="Add a description for this subject..."
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="3"
-                    style={{ resize: "vertical" }}
-                  />
-                </div>
-
-                <div className="modal-actions">
-                  <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="submit-btn">
-                    {isEditing ? "Update Subject" : "Create Subject"}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn">
+                  {isEditing ? "Update Subject" : "Create Subject"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-     </>
+        </div>
+      )}
+    </div>
   );
 }
