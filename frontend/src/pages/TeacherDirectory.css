@@ -45,6 +45,7 @@
   height: fit-content;
   transition: all 0.3s ease-in-out; 
   cursor: default;
+  scroll-margin-top: 80px;
 }
 
 .teacher-card:hover {
