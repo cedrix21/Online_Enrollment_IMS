@@ -164,9 +164,9 @@
 }
 
 .student-list-modal {
-  max-width: 1000px;
+  max-width: 1100px;
   width: 95%;
-  max-height: 85vh;
+  max-height: 90vh;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
@@ -196,7 +196,10 @@
   border-bottom: 2px solid #eee;
   background: #f8f9fa;
 }
-
+.schedule-table th,
+.schedule-table td {
+  font-size: 0.85rem;
+}
 .schedule-table th {
   background: #b8860b;
   color: white;
@@ -660,7 +663,8 @@
 
   .students-table th,
   .students-table td {
-    padding: 8px;
+    font-size: 0.85rem;
+    padding: 8px 10px;
   }
 
   .students-table {

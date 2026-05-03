@@ -1262,7 +1262,8 @@ const handleOpenScheduleModal = useCallback(async (section) => {
 
           {/* Modals */}
           {showStudentModal && (
-            <StudentModal
+            <div className="table-scroll-wrapper">
+              <StudentModal
               section={selectedSection}
               students={sectionStudents}
               schedules={selectedSection?.schedules}
@@ -1289,10 +1290,13 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               setSections(sortSectionsByGrade(allSectionsRes.data));
             }}
           />
+            </div>
+            
           )}
 
           {showScheduleModal && (
-            <ScheduleModal
+            <div className="table-scroll-wrapper">
+              <ScheduleModal
               section={selectedSection}
               teacherLoad={teacherLoad}
               timeSlots={timeSlots}
@@ -1312,6 +1316,8 @@ const handleOpenScheduleModal = useCallback(async (section) => {
               setErrorMessage={setErrorMessage}
               setSuccessMessage={setSuccessMessage}
             />
+            </div>
+            
           )}
 
           {showModal && (
