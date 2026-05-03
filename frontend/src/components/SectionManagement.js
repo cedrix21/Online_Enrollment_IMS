@@ -1,96 +1,91 @@
-  import { useEffect, useState, useCallback, useMemo, memo } from "react";
-  import API from "../api/api";
-  import {
-    FaCalendarAlt,
-    FaLayerGroup,
-    FaPlus,
-    FaUserTie,
-    FaUsers,
-    FaTimes,
-    FaTrash,
-    FaCheck,
-  } from "react-icons/fa";
-  import "./SectionManagement.css";
-  import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
+import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import API from "../api/api";
+import {
+  FaCalendarAlt,
+  FaLayerGroup,
+  FaPlus,
+  FaUserTie,
+  FaUsers,
+  FaTimes,
+  FaTrash,
+  FaCheck,
+  FaExchangeAlt,
+} from "react-icons/fa";
+import "./SectionManagement.css";
+import { useCurrentSchoolYear } from "../hooks/useCurrentSchoolYear";
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // CONSTANTS - Outside component (prevents recreation on every render)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const GRADE_LEVELS = [
-    "Nursery",
-    "Kindergarten 1",
-    "Kindergarten 2",
-    "Grade 1",
-    "Grade 2",
-    "Grade 3",
-    "Grade 4",
-    "Grade 5",
-    "Grade 6",
-  ];
+// ─────────────── CONSTANTS ───────────────
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const GRADE_LEVELS = [
+  "Nursery",
+  "Kindergarten 1",
+  "Kindergarten 2",
+  "Grade 1",
+  "Grade 2",
+  "Grade 3",
+  "Grade 4",
+  "Grade 5",
+  "Grade 6",
+];
 
-  const INITIAL_SCHEDULE_FORM = {
-    subject_id: "",
-    teacher_id: "",
-    subject_assignment_id: "",
-    time_slot_id: "",
-    room_id: "",
-  };
+const INITIAL_SCHEDULE_FORM = {
+  subject_id: "",
+  teacher_id: "",
+  subject_assignment_id: "",
+  time_slot_id: "",
+  room_id: "",
+};
+const INITIAL_SECTION_FORM = {
+  name: "",
+  gradeLevel: "",
+  teacher_id: "",
+  capacity: 40,
+};
 
-  const INITIAL_SECTION_FORM = {
-    name: "",
-    gradeLevel: "",
-    teacher_id: "",
-    capacity: 40,
-  };
+// ─── helpers ───
+const sortSectionsByGrade = (sections) => {
+  const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
+    acc[grade] = index;
+    return acc;
+  }, {});
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // HELPER: Sort sections by grade level (K1 → G6)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const sortSectionsByGrade = (sections) => {
-    const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
-      acc[grade] = index;
-      return acc;
-    }, {});
+  return [...sections].sort((a, b) => {
+    const aGrade = a.gradeLevel;
+    const bGrade = b.gradeLevel;
 
-    return [...sections].sort((a, b) => {
-      const aGrade = a.gradeLevel;
-      const bGrade = b.gradeLevel;
-      
-      // Both have valid grades
-      if (aGrade && bGrade) {
-        const aOrder = gradeOrder[aGrade] ?? Infinity;
-        const bOrder = gradeOrder[bGrade] ?? Infinity;
-        if (aOrder !== bOrder) return aOrder - bOrder;
-        // If same grade, sort by name
-        return (a.name || '').localeCompare(b.name || '');
-      }
-      // One missing grade
-      if (aGrade && !bGrade) return -1;
-      if (!aGrade && bGrade) return 1;
-      // Both missing grade, sort by name
-      return (a.name || '').localeCompare(b.name || '');
-    });
-  };
+    if (aGrade && bGrade) {
+      const aOrder = gradeOrder[aGrade] ?? Infinity;
+      const bOrder = gradeOrder[bGrade] ?? Infinity;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return (a.name || "").localeCompare(b.name || "");
+    }
+    if (aGrade && !bGrade) return -1;
+    if (!aGrade && bGrade) return 1;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+};
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // MEMOIZED COMPONENTS - Prevent unnecessary re-renders
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const SectionCard = memo(({ section, onSchedule, onViewStudents, onDelete }) => (
-    <div className="section-card">
+// ───────────────────────────────────────────────
+// MEMOIZED SUB‑COMPONENTS
+// ───────────────────────────────────────────────
+
+const SectionCard = memo(
+  ({ section, isSelected, onSchedule, onViewStudents, onDelete, onClick }) => (
+    <div
+      id={`section-card-${section.id}`}
+      className={`section-card ${isSelected ? "selected" : ""}`}
+      onClick={onClick}
+    >
       <div className="section-badge">{section.gradeLevel}</div>
       <div className="section-card-header">
         <h3>Section {section.name}</h3>
       </div>
-
       <div className="section-card-body">
         <div className="info-item">
           <FaUserTie className="icon" />
           <span>
             Adviser:{" "}
-            <strong>
-              {section.advisor?.lastName || "Unassigned"}
-            </strong>
+            <strong>{section.advisor?.lastName || "Unassigned"}</strong>
           </span>
         </div>
         <div className="info-item">
@@ -111,12 +106,28 @@
           />
         </div>
       </div>
-
       <div className="section-card-actions">
-        <button onClick={() => onSchedule(section)}>Schedule</button>
-        <button onClick={() => onViewStudents(section)}>Students</button>
         <button
-          onClick={() => onDelete(section)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSchedule(section);
+          }}
+        >
+          Schedule
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewStudents(section);
+          }}
+        >
+          Students
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(section);
+          }}
           className="delete-section-btn"
           title="Delete Section"
         >
@@ -124,36 +135,612 @@
         </button>
       </div>
     </div>
-  ));
+  )
+);
 
-  const StudentModal = memo(({ 
-  section, 
-  students, 
-  schedules, 
-  onClose, 
-  onDeleteSchedule,
-  groupedSchedules,
-  loading,
-  sections,           
-  schoolYear,        
-  onStudentTransferred,
-  setErrorMessage,    
-  setSuccessMessage   
-}) => {
-  const [activeTab, setActiveTab] = useState("schedule");
+const ScheduleTable = memo(({ schedules, onDeleteSchedule }) => (
+  <table className="schedule-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Subject</th>
+        <th>Day</th>
+        <th>Room</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {schedules.map((group) => (
+        <ScheduleRow
+          key={`${group.subject_id}-${group.time_slot_id}`}
+          group={group}
+          onDelete={onDeleteSchedule}
+        />
+      ))}
+    </tbody>
+  </table>
+));
+
+const ScheduleRow = memo(({ group, onDelete }) => {
+  const sortedDays = useMemo(
+    () => [...group.days].sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b)),
+    [group.days]
+  );
+
+  return (
+    <tr>
+      <td>{group.time_slot?.display_label || "N/A"}</td>
+      <td>
+        <strong>{group.subject?.subjectName}</strong>
+        <div className="sched-teacher">
+          {group.teacher
+            ? `${group.teacher.firstName} ${group.teacher.lastName}`
+            : "No Teacher"}
+        </div>
+      </td>
+      <td>
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+          {sortedDays.map((day) => (
+            <span key={day} className="day-badge" style={{ fontSize: "0.75rem" }}>
+              {day.substring(0, 3)}
+            </span>
+          ))}
+        </div>
+      </td>
+      <td>{group.room?.room_name || "TBA"}</td>
+      <td>
+        <button
+          className="delete-icon-btn"
+          title="Delete all days for this subject"
+          onClick={() => onDelete(group.ids)}
+        >
+          <FaTimes style={{ color: "#e74c3c" }} />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+const StudentTable = memo(({ students, onTransfer, showTransferButton }) => (
+  <div className="students-grid">
+    <table className="students-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student ID</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          {showTransferButton && <th>Action</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {students.map((student, index) => (
+          <StudentRow
+            key={student.id}
+            student={student}
+            index={index}
+            showTransferButton={showTransferButton}
+            onTransfer={onTransfer}
+          />
+        ))}
+      </tbody>
+    </table>
+  </div>
+));
+
+const StudentRow = memo(({ student, index, showTransferButton, onTransfer }) => (
+  <tr>
+    <td>{index + 1}</td>
+    <td>
+      <span className="student-id-badge">{student.studentId || "N/A"}</span>
+    </td>
+    <td>
+      <strong>
+        {student.lastName}, {student.firstName}
+      </strong>
+      {student.middleName && (
+        <span className="middle-name"> {student.middleName[0]}.</span>
+      )}
+    </td>
+    <td>{student.email || "N/A"}</td>
+    <td>
+      <span className={`status-badge ${student.status}`}>{student.status}</span>
+    </td>
+    {showTransferButton && (
+      <td>
+        <button className="transfer-btn" onClick={() => onTransfer(student)}>
+          Transfer
+        </button>
+      </td>
+    )}
+  </tr>
+));
+
+const NoStudentsPlaceholder = memo(() => (
+  <div className="no-students-enrolled">
+    <FaUsers style={{ fontSize: "3rem", color: "#ddd", marginBottom: "10px" }} />
+    <p>No students enrolled in this section yet</p>
+  </div>
+));
+
+const DayButton = memo(({ day, isSelected, hasConflict, onToggle }) => (
+  <button
+    type="button"
+    className={`day-btn ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
+    onClick={() => onToggle(day)}
+  >
+    {isSelected && <FaCheck className="check-icon" />}
+    <span>{day}</span>
+  </button>
+));
+
+const ConflictMessages = memo(({ messages }) => (
+  <div className="conflict-details-container" style={{ marginTop: "10px" }}>
+    {messages.map(({ reason, days }) => (
+      <p
+        key={reason}
+        style={{ color: "#e74c3c", fontSize: "0.85rem", margin: "4px 0" }}
+      >
+        <strong>⚠ {days.join(", ")}:</strong> {reason}
+      </p>
+    ))}
+  </div>
+));
+
+// ───────────────────────────────────────────────
+// MAIN COMPONENT
+// ───────────────────────────────────────────────
+
+export default function SectionManagement() {
+  const { schoolYear: currentSchoolYear, loading: yearLoading } =
+    useCurrentSchoolYear();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
+
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user")) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  // ── Data ──
+  const [sections, setSections] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [occupiedSchedules, setOccupiedSchedules] = useState([]);
+  const [teacherLoad, setTeacherLoad] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Master‑detail ──
+  const [selectedSectionId, setSelectedSectionId] = useState(null);
+  const [detailMode, setDetailMode] = useState(null); // 'schedule' | 'students' | 'addSchedule'
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // ── Forms / UI ──
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDays, setSelectedDays] = useState([]);
+  const [newSchedule, setNewSchedule] = useState(INITIAL_SCHEDULE_FORM);
+  const [newSection, setNewSection] = useState(INITIAL_SECTION_FORM);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // ── Transfer sub‑modal ──
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [targetSectionId, setTargetSectionId] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
 
+  // ── Derived ──
+  const selectedSection = useMemo(
+    () => sections.find((s) => s.id === selectedSectionId) || null,
+    [sections, selectedSectionId]
+  );
 
-  // Get other sections with the same grade level (excluding current)
-  const sameGradeSections = useMemo(() => {
-    return (sections || []).filter(
-      s => s.gradeLevel === section?.gradeLevel && s.id !== section?.id
-    );
-  }, [sections, section]);
+  const sameGradeSections = useMemo(
+    () =>
+      (sections || []).filter(
+        (s) =>
+          s.gradeLevel === selectedSection?.gradeLevel &&
+          s.id !== selectedSection?.id
+      ),
+    [sections, selectedSection]
+  );
 
+  const groupedSchedules = useMemo(() => {
+    if (!selectedSection?.schedules) return [];
+    const grouped = selectedSection.schedules.reduce((acc, cur) => {
+      const key = `${cur.subject_id}-${cur.time_slot_id}-${cur.room_id}`;
+      if (!acc[key])
+        acc[key] = { ...cur, days: [cur.day], ids: [cur.id] };
+      else {
+        acc[key].days.push(cur.day);
+        acc[key].ids.push(cur.id);
+      }
+      return acc;
+    }, {});
+    return Object.values(grouped);
+  }, [selectedSection?.schedules]);
+
+  const occupiedSchedulesMap = useMemo(() => {
+    const map = new Map();
+    occupiedSchedules.forEach((sched) => {
+      const key = `${sched.day}-${sched.time_slot_id}-${sched.section_id}-${sched.teacher_id}-${sched.room_id}`;
+      map.set(key, sched);
+    });
+    return map;
+  }, [occupiedSchedules]);
+
+  // ── School year initialisation ──
+  useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear)
+      setSelectedSchoolYear(currentSchoolYear);
+  }, [currentSchoolYear, selectedSchoolYear]);
+
+  // ── Main data fetch (cancellable) ──
+  useEffect(() => {
+    if (!selectedSchoolYear) return;
+    let cancelled = false;
+
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [secRes, teachRes, roomRes, slotRes, schedRes] =
+          await Promise.all([
+            API.get("/sections", {
+              params: { school_year: selectedSchoolYear },
+            }),
+            API.get("/teachers"),
+            API.get("/rooms"),
+            API.get("/time-slots"),
+            API.get("/schedules", {
+              params: { school_year: selectedSchoolYear },
+            }),
+          ]);
+
+        if (!cancelled) {
+          setSections(sortSectionsByGrade(secRes.data));
+          setTeachers(teachRes.data);
+          setRooms(roomRes.data);
+          setTimeSlots(slotRes.data);
+          setOccupiedSchedules(schedRes.data);
+        }
+      } catch (err) {
+        if (!cancelled) console.error("Error fetching data", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSchoolYear]);
+
+  // ── Lazy detail fetch when detailMode activates ──
+  useEffect(() => {
+    if (!selectedSection || !detailMode) return;
+    let cancelled = false;
+
+    const fetchDetail = async () => {
+      setDetailLoading(true);
+      try {
+        const [sectionRes, loadRes, schedRes] = await Promise.all([
+          API.get(`/sections/${selectedSection.id}`, {
+            params: { school_year: selectedSchoolYear },
+          }),
+          API.get("/teacher-load", {
+            params: { school_year: selectedSchoolYear },
+          }),
+          API.get("/schedules", {
+            params: { school_year: selectedSchoolYear },
+          }),
+        ]);
+
+        if (!cancelled) {
+          // update selected section with fresh data
+          setSections((prev) =>
+            prev.map((s) =>
+              s.id === sectionRes.data.id ? sectionRes.data : s
+            )
+          );
+          setTeacherLoad(loadRes.data);
+          setOccupiedSchedules(schedRes.data);
+        }
+      } catch (err) {
+        if (!cancelled)
+          setErrorMessage("Failed to load section details.");
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    };
+
+    fetchDetail();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSection?.id, detailMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Conflict calculator ──
+  const getConflictMessages = useCallback(() => {
+    if (
+      !newSchedule.time_slot_id ||
+      !newSchedule.teacher_id ||
+      !newSchedule.room_id
+    )
+      return [];
+
+    const dayConflicts = DAYS.map((day) => {
+      const reasons = [];
+      for (const sched of occupiedSchedulesMap.values()) {
+        // section conflict
+        if (
+          !reasons.includes("Section is busy") &&
+          sched.day === day &&
+          Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+          Number(sched.section_id) === Number(selectedSection?.id)
+        ) {
+          reasons.push("Section is busy");
+        }
+        // teacher conflict
+        if (
+          !reasons.includes("Teacher is busy") &&
+          sched.day === day &&
+          Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+          Number(sched.teacher_id) === Number(newSchedule.teacher_id)
+        ) {
+          reasons.push("Teacher is busy");
+        }
+        // room conflict
+        if (
+          !reasons.includes("Room is occupied") &&
+          sched.day === day &&
+          Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
+          Number(sched.room_id) === Number(newSchedule.room_id)
+        ) {
+          reasons.push("Room is occupied");
+        }
+        if (reasons.length === 3) break;
+      }
+      return { day, reasons };
+    });
+
+    const groups = dayConflicts.reduce((acc, item) => {
+      if (item.reasons.length === 0) return acc;
+      const key = item.reasons.join(" & ");
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item.day);
+      return acc;
+    }, {});
+
+    return Object.entries(groups).map(([reason, days]) => ({
+      reason,
+      days,
+    }));
+  }, [newSchedule, occupiedSchedulesMap, selectedSection?.id]);
+
+  const conflictMessages = useMemo(
+    () => getConflictMessages(),
+    [getConflictMessages]
+  );
+
+  const closeDetail = useCallback(() => {
+    setSelectedSectionId(null);
+    setDetailMode(null);
+  }, []);
+
+  // ── Handlers ──
+  const openDetail = useCallback(
+  (sectionId, mode) => {
+     if (sectionId === selectedSectionId) {
+      closeDetail();
+      return;
+    }
+
+    setSelectedSectionId(sectionId);
+    setDetailMode(mode);
+
+    if (mode === "addSchedule") {
+      setNewSchedule(INITIAL_SCHEDULE_FORM);
+      setSelectedDays([]);
+    }
+  },
+  [selectedSectionId, closeDetail]    
+);
+
+  
+
+  const switchMode = (mode) => setDetailMode(mode);
+
+  // ── Add Schedule ──
+  const handleAddSchedule = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (selectedDays.length === 0) {
+        setErrorMessage("Please select at least one day.");
+        setTimeout(() => setErrorMessage(""), 3000);
+        return;
+      }
+
+      const currentConflicts = getConflictMessages();
+      const conflictedDays = selectedDays.filter((day) =>
+        currentConflicts.some((msg) => msg.days.includes(day))
+      );
+      if (conflictedDays.length > 0) {
+        setErrorMessage(
+          `Conflicts on ${conflictedDays.join(
+            ", "
+          )}. Please choose different days or adjust time/room.`
+        );
+        setTimeout(() => setErrorMessage(""), 4000);
+        return;
+      }
+
+      // single‑section guard
+      const sectionsInThisGrade = sections.filter(
+        (s) => s.gradeLevel === selectedSection.gradeLevel
+      ).length;
+      if (sectionsInThisGrade === 1) {
+        const subjectAlreadyScheduled = occupiedSchedules.some(
+          (s) =>
+            s.section?.gradeLevel === selectedSection.gradeLevel &&
+            Number(s.subject_id) === Number(newSchedule.subject_id)
+        );
+        if (subjectAlreadyScheduled) {
+          setErrorMessage(
+            "This subject is already scheduled in this grade level (only one section exists)."
+          );
+          setTimeout(() => setErrorMessage(""), 4000);
+          return;
+        }
+      }
+
+      setIsSubmitting(true);
+      try {
+        await API.post("/schedules", {
+          section_id: selectedSection.id,
+          subject_id: newSchedule.subject_id,
+          teacher_id: newSchedule.teacher_id,
+          subject_assignment_id: newSchedule.subject_assignment_id,
+          days: selectedDays,
+          time_slot_id: newSchedule.time_slot_id,
+          room_id: newSchedule.room_id,
+        });
+
+        // refresh detail
+        const [sectionRes, loadRes, schedRes] = await Promise.all([
+          API.get(`/sections/${selectedSection.id}`, {
+            params: { school_year: selectedSchoolYear },
+          }),
+          API.get("/teacher-load", {
+            params: { school_year: selectedSchoolYear },
+          }),
+          API.get("/schedules", {
+            params: { school_year: selectedSchoolYear },
+          }),
+        ]);
+
+        setSections((prev) =>
+          prev.map((s) =>
+            s.id === sectionRes.data.id ? sectionRes.data : s
+          )
+        );
+        setTeacherLoad(loadRes.data);
+        setOccupiedSchedules(schedRes.data);
+
+        setSuccessMessage("Schedule added successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+        // switch back to schedule view
+        setDetailMode("schedule");
+      } catch (err) {
+        const msg = err.response?.data?.message || "Conflict or Error occurred.";
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(""), 4000);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      selectedDays,
+      selectedSection,
+      newSchedule,
+      selectedSchoolYear,
+      getConflictMessages,
+      sections,
+      occupiedSchedules,
+    ]
+  );
+
+  // ── Delete Schedule ──
+  const handleDeleteSchedule = useCallback(async (scheduleIds) => {
+    const idsToDelete = Array.isArray(scheduleIds) ? scheduleIds : [scheduleIds];
+    if (!window.confirm("Remove this subject for all selected days?")) return;
+
+    try {
+      await API.delete(`/schedules/${idsToDelete[0]}`, {
+        data: { ids: idsToDelete },
+      });
+      // refresh schedules
+      if (selectedSection) {
+        const res = await API.get(`/sections/${selectedSection.id}`, {
+          params: { school_year: selectedSchoolYear },
+        });
+        setSections((prev) =>
+          prev.map((s) => (s.id === res.data.id ? res.data : s))
+        );
+      }
+      setSuccessMessage("Schedule removed successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) {
+      setErrorMessage(
+        "Failed to delete schedule: " +
+          (err.response?.data?.message || "Server Error")
+      );
+      setTimeout(() => setErrorMessage(""), 4000);
+    }
+  }, [selectedSection, selectedSchoolYear]);
+
+  // ── Delete Section ──
+  const handleDeleteSection = useCallback(
+    async (section) => {
+      if (
+        !window.confirm(
+          `Delete section "${section.name}" for ${selectedSchoolYear}?`
+        )
+      )
+        return;
+
+      try {
+        await API.delete(`/sections/${section.id}`, {
+          params: { school_year: selectedSchoolYear },
+        });
+        setSections((prev) => prev.filter((s) => s.id !== section.id));
+        if (section.id === selectedSectionId) closeDetail();
+        setSuccessMessage(
+          `Section "${section.name}" deleted for ${selectedSchoolYear} successfully!`
+        );
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message || "Failed to delete section.";
+        setErrorMessage(errorMsg);
+        setTimeout(() => setErrorMessage(""), 4000);
+      }
+    },
+    [selectedSchoolYear, selectedSectionId, closeDetail]
+  );
+
+  // ── Create Section ──
+  const handleCreateSection = useCallback(
+    async (e) => {
+      e.preventDefault();
+      try {
+        const res = await API.post("/sections", {
+          ...newSection,
+          school_year: selectedSchoolYear,
+        });
+        setSections((prev) =>
+          sortSectionsByGrade([...prev, res.data.section])
+        );
+        setShowCreateModal(false);
+        setNewSection(INITIAL_SECTION_FORM);
+        setSuccessMessage("Section created successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message || "Failed to create section.";
+        setErrorMessage(errorMsg);
+        setTimeout(() => setErrorMessage(""), 4000);
+      }
+    },
+    [newSection, selectedSchoolYear]
+  );
+
+  // ── Transfer student handlers ──
   const handleTransferClick = (student) => {
     setSelectedStudent(student);
     setTargetSectionId("");
@@ -171,15 +758,23 @@
     try {
       await API.put(`/students/${selectedStudent.id}/transfer`, {
         target_section_id: targetSectionId,
-        school_year: schoolYear,
+        school_year: selectedSchoolYear,
       });
-      setSuccessMessage(`${selectedStudent.firstName} ${selectedStudent.lastName} transferred successfully!`);
+      setSuccessMessage(
+        `${selectedStudent.firstName} ${selectedStudent.lastName} transferred successfully!`
+      );
       setTimeout(() => setSuccessMessage(""), 3000);
       setShowTransferModal(false);
-      // Refresh student list
-      if (onStudentTransferred) onStudentTransferred();
+      // refresh current section
+      if (selectedSection) {
+        const res = await API.get(`/sections/${selectedSection.id}`, {
+          params: { school_year: selectedSchoolYear },
+        });
+        setSections((prev) =>
+          prev.map((s) => (s.id === res.data.id ? res.data : s))
+        );
+      }
     } catch (err) {
-      console.error(err);
       setErrorMessage(err.response?.data?.message || "Transfer failed.");
       setTimeout(() => setErrorMessage(""), 4000);
     } finally {
@@ -187,949 +782,17 @@
     }
   };
 
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content student-list-modal">
-        <div className="modal-header">
-          <div>
-            <h3>{section?.name} - Dashboard</h3>
-            <p>
-              {section?.gradeLevel} | {loading ? '...' : `${students.length} Students`}
-            </p>
-          </div>
-          <FaTimes onClick={onClose} className="close-icon" />
-        </div>
-
-        <div className="modal-body-tabs">
-          <div className="tab-navigation">
-            <button
-              className={`tab-btn ${activeTab === "schedule" ? "active" : ""}`}
-              onClick={() => setActiveTab("schedule")}
-            >
-              📅 Schedule
-            </button>
-            <button
-              className={`tab-btn ${activeTab === "students" ? "active" : ""}`}
-              onClick={() => setActiveTab("students")}
-            >
-              👥 Students ({loading ? '...' : students.length})
-            </button>
-          </div>
-
-          {activeTab === "schedule" && (
-            <div id="schedule-tab" className="tab-content">
-              <div className="schedule-section">
-                <h4>
-                  <FaCalendarAlt /> Weekly Class Schedule
-                </h4>
-                <div className="schedule-grid">
-                  {loading ? (
-                    <table className="schedule-table">
-                      <tbody>
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <tr key={i}>
-                            <td colSpan="5" style={{ padding: '8px 12px' }}>
-                              <div className="skeleton-table-row" style={{ width: '100%' }} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : schedules?.length > 0 ? (
-                    <ScheduleTable
-                      schedules={groupedSchedules}
-                      onDeleteSchedule={onDeleteSchedule}
-                    />
-                  ) : (
-                    <p className="no-data">No subjects scheduled yet.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "students" && (
-            <div id="students-tab" className="tab-content">
-              <div className="students-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h4><FaUsers /> Enrolled Students</h4>
-                  {sameGradeSections.length > 0 }
-                </div>
-                {loading ? (
-                  <table className="students-table">
-                    {/* skeleton */}
-                  </table>
-                ) : students.length > 0 ? (
-                  <StudentTable 
-                    students={students} 
-                    onTransfer={handleTransferClick} 
-                    showTransferButton={sameGradeSections.length > 0}
-                  />
-                ) : (
-                  <NoStudentsPlaceholder />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Transfer Student Modal */}
-      {showTransferModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3>Transfer Student</h3>
-              <FaTimes className="close-icon" onClick={() => setShowTransferModal(false)} />
-            </div>
-            <form onSubmit={handleTransferSubmit}>
-              <p>
-                Transfer <strong>{selectedStudent?.firstName} {selectedStudent?.lastName}</strong> from <strong>{section?.name}</strong> to:
-              </p>
-              <div className="input-group">
-                <label>Target Section (same grade level)</label>
-                <select
-                  required
-                  value={targetSectionId}
-                  onChange={(e) => setTargetSectionId(e.target.value)}
-                >
-                  <option value="">-- Select Section --</option>
-                  {sameGradeSections.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} (Current: {s.students_count || 0}/{s.capacity})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="modal-actions" style={{ marginTop: '20px' }}>
-                <button type="button" className="cancel-btn" onClick={() => setShowTransferModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn" disabled={transferLoading}>
-                  {transferLoading ? "Transferring..." : "Confirm Transfer"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
-
-
-  const ScheduleTable = memo(({ schedules, onDeleteSchedule }) => (
-    <table className="schedule-table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Subject</th>
-          <th>Day</th>
-          <th>Room</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {schedules.map((group) => (
-          <ScheduleRow 
-            key={`${group.subject_id}-${group.time_slot_id}`}
-            group={group}
-            onDelete={onDeleteSchedule}
-          />
-        ))}
-      </tbody>
-    </table>
-  ));
-
-  const ScheduleRow = memo(({ group, onDelete }) => {
-    const sortedDays = useMemo(() => 
-      [...group.days].sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b)),
-      [group.days]
+  // ── Schedule form helpers ──
+  const toggleDay = useCallback((day) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
-
-    return (
-      <tr>
-        <td>{group.time_slot?.display_label || "N/A"}</td>
-        <td>
-          <strong>{group.subject?.subjectName}</strong>
-          <div className="sched-teacher">
-            {group.teacher
-              ? `${group.teacher.firstName} ${group.teacher.lastName}`
-              : "No Teacher"}
-          </div>
-        </td>
-        <td>
-          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-            {sortedDays.map((day) => (
-              <span key={day} className="day-badge" style={{ fontSize: "0.75rem" }}>
-                {day.substring(0, 3)}
-              </span>
-            ))}
-          </div>
-        </td>
-        <td>{group.room?.room_name || "TBA"}</td>
-        <td>
-          <button
-            className="delete-icon-btn"
-            title="Delete all days for this subject"
-            onClick={() => onDelete(group.ids)}
-          >
-            <FaTimes style={{ color: "#e74c3c" }} />
-          </button>
-        </td>
-      </tr>
-    );
-  });
-
-  const StudentTable = memo(({ students, onTransfer, showTransferButton }) => (
-  <div className="students-grid">
-    <table className="students-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Student ID</th>
-          <th>Full Name</th>
-          <th>Email</th>
-          <th>Status</th>
-          {showTransferButton && <th>Action</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {students.map((student, index) => (
-          <StudentRow 
-            key={student.id} 
-            student={student} 
-            index={index} 
-            showTransferButton={showTransferButton}
-            onTransfer={onTransfer}
-          />
-        ))}
-      </tbody>
-    </table>
-  </div>
-));
-
-const StudentRow = memo(({ student, index, showTransferButton, onTransfer }) => (
-  <tr>
-    <td>{index + 1}</td>
-    <td><span className="student-id-badge">{student.studentId || "N/A"}</span></td>
-    <td>
-      <strong>{student.lastName}, {student.firstName}</strong>
-      {student.middleName && <span className="middle-name"> {student.middleName[0]}.</span>}
-    </td>
-    <td>{student.email || "N/A"}</td>
-    <td><span className={`status-badge ${student.status}`}>{student.status}</span></td>
-    {showTransferButton && (
-      <td>
-        <button className="transfer-btn" onClick={() => onTransfer(student)}>
-        Transfer
-      </button>
-      </td>
-    )}
-  </tr>
-));
-
-  const NoStudentsPlaceholder = memo(() => (
-    <div className="no-students-enrolled">
-      <FaUsers style={{ fontSize: "3rem", color: "#ddd", marginBottom: "10px" }} />
-      <p>No students enrolled in this section yet</p>
-    </div>
-  ));
-
-  const DayButton = memo(({ day, isSelected, hasConflict, onToggle }) => (
-    <button
-      type="button"
-      className={`day-btn ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
-      onClick={() => onToggle(day)}
-      
-    >
-      {isSelected && <FaCheck className="check-icon" />}
-      <span>{day}</span>
-    </button>
-  ));
-
-  const ConflictMessages = memo(({ messages }) => (
-    <div className="conflict-details-container" style={{ marginTop: "10px" }}>
-      {messages.map(({ reason, days }) => (
-        <p
-          key={reason}
-          style={{
-            color: "#e74c3c",
-            fontSize: "0.85rem",
-            margin: "4px 0",
-          }}
-        >
-          <strong>⚠ {days.join(", ")}:</strong> {reason}
-        </p>
-      ))}
-    </div>
-  ));
-
-  const ScheduleModal = memo(({ 
-  section,               // ✅ use section prop
-  teacherLoad, 
-  timeSlots, 
-  rooms, 
-  onSubmit, 
-  onClose,
-  isSubmitting,
-  selectedDays,
-  onToggleDay,
-  newSchedule,
-  onScheduleChange,
-  conflictMessages,
-  getScheduledTeacher,
-  occupiedSchedules ,
-  loading,  
-  sections,
-  setErrorMessage,   
-  setSuccessMessage  
-}) => {
-  
-  const filteredTeacherLoad = useMemo(() => {
-
-  const assignmentsForGrade = teacherLoad.filter(
-    a => a.gradeLevel === section?.gradeLevel
-  );
-
-  const occupiedForGrade = occupiedSchedules.filter(
-    sched => sched.section?.gradeLevel === section?.gradeLevel
-  );
-
-  const scheduledSubjectIds = new Set(occupiedForGrade.map(s => s.subject_id));
-
-
-  // Get the set of subject_assignment_ids already scheduled in ANY section for this grade
-  const scheduledAssignmentIds = new Set(
-    occupiedSchedules
-      .filter(sched => sched.section?.gradeLevel === section?.gradeLevel)
-      .map(sched => sched.subject_assignment_id)
-      .filter(Boolean)
-  );
-
-  // Determine how many sections exist for this grade level
-  const sectionsInThisGrade = sections.filter(sec => sec.gradeLevel === section?.gradeLevel).length;
-  const isSingleSection = sectionsInThisGrade === 1;
-
-  // If only one section exists, we must also prevent the same SUBJECT from being scheduled by any teacher
-  if (isSingleSection) {
-    const scheduledSubjectIds = new Set(
-      occupiedSchedules
-        .filter(sched => sched.section?.gradeLevel === section?.gradeLevel)
-        .map(sched => sched.subject_id)
-    );
-    return assignmentsForGrade.filter(
-      a => !scheduledSubjectIds.has(a.subject_id)
-    );
-  }
-
-        // Multiple sections: only hide the exact teacher‑subject assignment that is already scheduled
-      // Always prevent the same subject from being scheduled twice in THIS section
-      const scheduledSubjectsInThisSection = new Set(
-        occupiedSchedules
-          .filter(sched => sched.section_id === section?.id)
-          .map(sched => sched.subject_id)
-      );
-
-      // Start with assignments for this grade
-      let filtered = assignmentsForGrade;
-
-      // 1. Remove assignments for subjects already scheduled in this section
-      filtered = filtered.filter(a => !scheduledSubjectsInThisSection.has(a.subject_id));
-
-      // 2. For multiple sections, also remove the exact teacher‑subject assignment already used anywhere in the grade
-      if (!isSingleSection) {
-        filtered = filtered.filter(a => !scheduledAssignmentIds.has(a.id));
-      }
-
-      return filtered;
-
-
-}, [teacherLoad, section?.gradeLevel, occupiedSchedules, sections]);
-
-
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content schedule-modal-wide">
-        <div className="modal-header">
-          <h3>Add Subject Schedule to Section: {section?.name}</h3>
-          <FaTimes onClick={onClose} className="close-icon" />
-        </div>
-
-        <form onSubmit={onSubmit}>
-          <div className="input-group">
-            <label>Select Subject & Assigned Teacher</label>
-            <select
-              required
-              value={newSchedule.subject_assignment_id || ""}
-              onChange={(e) => onScheduleChange('assignment', e.target.value)}
-              disabled={loading}
-            >
-              <option value="">-- Select Teacher Load --</option>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <option key={i} disabled className="skeleton-option">
-                    &nbsp;
-                  </option>
-                ))
-              ) : (
-                filteredTeacherLoad.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.subject?.subjectName} — {a.teacher?.lastName}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          {/* ─── Day Selection (unchanged) ─── */}
-          <div className="input-group">
-            <label>Select Days (Click to toggle)</label>
-            <div className="day-selector-grid">
-              {DAYS.map((day) => {
-                const isSelected = selectedDays.includes(day);
-                const hasConflict = conflictMessages.some(msg => 
-                  msg.days.includes(day)
-                );
-
-                return (
-                  <DayButton
-                    key={day}
-                    day={day}
-                    isSelected={isSelected}
-                    hasConflict={hasConflict}
-                    onToggle={onToggleDay}
-                  />
-                );
-              })}
-            </div>
-            <ConflictMessages messages={conflictMessages} />
-            <p className="help-text">
-              Selected: {selectedDays.length > 0 ? selectedDays.join(", ") : "None"}
-            </p>
-          </div>
-
-          {/* ─── Time Slot & Room (unchanged) ─── */}
-          <div className="form-grid">
-            <div className="input-group">
-              <label>Time Slot</label>
-              <select
-                required
-                value={newSchedule.time_slot_id}
-                disabled={!newSchedule.subject_id}
-                onChange={(e) => onScheduleChange('time_slot', e.target.value)}
-              >
-                <option value="">-- Select Time --</option>
-                {timeSlots.map((slot) => (
-                  <option key={slot.id} value={slot.id}>
-                    {slot.display_label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="input-group">
-              <label>Room</label>
-              <select
-                required
-                value={newSchedule.room_id}
-                disabled={!newSchedule.time_slot_id}
-                onChange={(e) => onScheduleChange('room', e.target.value)}
-              >
-                <option value="">-- Select Room --</option>
-                {rooms.map((room) => (
-                  <option key={room.id} value={room.id}>
-                    {room.room_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="submit-btn"
-              disabled={isSubmitting || selectedDays.length === 0}
-              style={{
-                opacity: isSubmitting || selectedDays.length === 0 ? 0.5 : 1,
-              }}
-            >
-              {isSubmitting ? "Saving..." : "Save Schedule"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-});
-  const CreateSectionModal = memo(({ 
-    newSection, 
-    onSectionChange, 
-    onSubmit, 
-    onClose,
-    teachers 
-  }) => (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>Create New Section</h3>
-          <FaTimes onClick={onClose} className="close-icon" />
-        </div>
-
-        <form onSubmit={onSubmit}>
-          <div className="input-group">
-            <label>Section Name</label>
-            <input
-              required
-              value={newSection.name}
-              onChange={(e) => onSectionChange('name', e.target.value)}
-            />
-          </div>
-
-          <div className="form-grid">
-            <div className="input-group">
-              <label>Grade Level</label>
-              <select
-                required
-                value={newSection.gradeLevel}
-                onChange={(e) => onSectionChange('gradeLevel', e.target.value)}
-              >
-                <option value="">Select Grade</option>
-                {GRADE_LEVELS.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label>Max Capacity</label>
-              <input
-                type="number"
-                value={newSection.capacity}
-                onChange={(e) => onSectionChange('capacity', e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>Advisory Teacher</label>
-            <select
-              value={newSection.teacher_id}
-              onChange={(e) => onSectionChange('teacher_id', e.target.value)}
-            >
-              <option value="">Select an Adviser</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.firstName} {t.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button type="submit" className="submit-btn">
-            Create Section
-          </button>
-        </form>
-      </div>
-    </div>
-  ));
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // MAIN COMPONENT
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  export default function SectionManagement() {
-    const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
-    const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
-
-    const [user] = useState(() => {
-      try {
-        return JSON.parse(localStorage.getItem("user")) || null;
-      } catch {
-        return null;
-      }
-    });
-    const [scheduleModalLoading, setScheduleModalLoading] = useState(false);
-    const [studentModalLoading, setStudentModalLoading] = useState(false);
-    
-    // Data State
-    const [sections, setSections] = useState([]);
-    const [teachers, setTeachers] = useState([]);
-    const [rooms, setRooms] = useState([]);
-    const [timeSlots, setTimeSlots] = useState([]);
-    const [occupiedSchedules, setOccupiedSchedules] = useState([]);
-    const [teacherLoad, setTeacherLoad] = useState([]);
-
-    // UI State
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [showStudentModal, setShowStudentModal] = useState(false);
-    const [showScheduleModal, setShowScheduleModal] = useState(false);
-    const [selectedSection, setSelectedSection] = useState(null);
-    const [sectionStudents, setSectionStudents] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedDays, setSelectedDays] = useState([]);
-
-    // Form State
-    const [newSchedule, setNewSchedule] = useState(INITIAL_SCHEDULE_FORM);
-    const [newSection, setNewSection] = useState(INITIAL_SECTION_FORM);
-    const [errorMessage, setErrorMessage] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-
-    useEffect(() => {
-    if (currentSchoolYear && !selectedSchoolYear) {
-      setSelectedSchoolYear(currentSchoolYear);
-    }
-  }, [currentSchoolYear, selectedSchoolYear]);
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // MEMOIZED VALUES
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const groupedSchedules = useMemo(() => {
-    if (!selectedSection?.schedules) return [];
-    const grouped = selectedSection.schedules.reduce((acc, current) => {
-      const key = `${current.subject_id}-${current.time_slot_id}-${current.room_id}`;
-      if (!acc[key]) {
-        acc[key] = { ...current, days: [current.day], ids: [current.id] };
-      } else {
-        acc[key].days.push(current.day);
-        acc[key].ids.push(current.id);
-      }
-      return acc;
-    }, {});
-    return Object.values(grouped);
-  }, [selectedSection?.schedules]);
-
-  const occupiedSchedulesMap = useMemo(() => {
-    const map = new Map();
-    occupiedSchedules.forEach(sched => {
-      const key = `${sched.day}-${sched.time_slot_id}-${sched.section_id}-${sched.teacher_id}-${sched.room_id}`;
-      map.set(key, sched);
-    });
-    return map;
-  }, [occupiedSchedules]);
-
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // DATA FETCHING
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Cleanup‑aware data fetch
-useEffect(() => {
-  if (!selectedSchoolYear) return;
-  let cancelled = false;
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [secRes, teachRes, roomRes, slotRes, schedRes] = await Promise.all([
-        API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-        API.get("/teachers"),
-        API.get("/rooms"),
-        API.get("/time-slots"),
-        API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-      ]);
-
-      if (!cancelled) {
-        const sortedSections = sortSectionsByGrade(secRes.data);
-        setSections(sortedSections);
-        setTeachers(teachRes.data);
-        setRooms(roomRes.data);
-        setTimeSlots(slotRes.data);
-        setOccupiedSchedules(schedRes.data);
-      }
-    } catch (err) {
-      if (!cancelled) console.error("Error fetching data", err);
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  };
-
-  loadData();
-  return () => { cancelled = true; };
-}, [selectedSchoolYear]);
-
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // HANDLERS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    const getConflictMessages = useCallback(() => {
-      if (!newSchedule.time_slot_id || !newSchedule.teacher_id || !newSchedule.room_id) {
-        return [];
-      }
-
-      const dayConflicts = DAYS.map((day) => {
-        
-        const reasons = [];
-        
-        // ⚡ Use Map iteration for efficient checking (still O(n) per day but optimized with early returns)
-        for (const sched of occupiedSchedulesMap.values()) {
-
-
-          // Check section conflict
-          if (
-            !reasons.includes("Section is busy") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.section_id) === Number(selectedSection?.id)
-          ) {
-             console.warn(`⚠️ Teacher conflict on ${day}: teacher ${sched.teacher_id} already at time ${sched.time_slot_id}`);
-            reasons.push("Section is busy");
-          }
-
-          // Check teacher conflict
-          if (
-            !reasons.includes("Teacher is busy") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.teacher_id) === Number(newSchedule.teacher_id)
-          ) {
-            reasons.push("Teacher is busy");
-          }
-
-          // Check room conflict
-          if (
-            !reasons.includes("Room is occupied") &&
-            sched.day === day &&
-            Number(sched.time_slot_id) === Number(newSchedule.time_slot_id) &&
-            Number(sched.room_id) === Number(newSchedule.room_id)
-          ) {
-            reasons.push("Room is occupied");
-          }
-
-          // Early exit if all conflicts found
-          if (reasons.length === 3) break;
-        }
-
-        return { day, reasons };
-      });
-
-      const groups = dayConflicts.reduce((acc, item) => {
-        if (item.reasons.length === 0) return acc;
-
-        const key = item.reasons.join(" & ");
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(item.day);
-        return acc;
-      }, {});
-
-      return Object.entries(groups).map(([reason, days]) => ({ reason, days }));
-    }, [newSchedule, occupiedSchedulesMap, selectedSection?.id]);
-
-
-   const handleAddSchedule = useCallback(async (e) => {
-        e.preventDefault();
-
-        if (selectedDays.length === 0) {
-          setErrorMessage("Please select at least one day for this schedule");
-         setTimeout(() => setErrorMessage(""), 3000);
-          return;
-        }
-
-        const currentConflicts = getConflictMessages();
-        const conflictedSelectedDays = selectedDays.filter(day =>
-          currentConflicts.some(msg => msg.days.includes(day))
-        );
-
-        if (conflictedSelectedDays.length > 0) {
-          setErrorMessage(`Cannot save schedule. The following day(s) have conflicts: ${conflictedSelectedDays.join(", ")}. Please choose different days or adjust the time/room.`);
-          setTimeout(() => setErrorMessage(""), 4000);
-          return;
-        }
-        const sectionsInThisGrade = sections.filter(
-            s => s.gradeLevel === selectedSection.gradeLevel
-          ).length;
-
-          if (sectionsInThisGrade === 1) {
-            const subjectAlreadyScheduled = occupiedSchedules.some(
-              s =>
-                s.section?.gradeLevel === selectedSection.gradeLevel &&
-                Number(s.subject_id) === Number(newSchedule.subject_id)
-            );
-            if (subjectAlreadyScheduled) {
-              setErrorMessage(
-                "This subject is already scheduled in this grade level (only one section exists)."
-              );
-              setTimeout(() => setErrorMessage(""), 4000);
-              return;
-            }
-          }
-
-
-
-        setIsSubmitting(true);
-        try {
-          await API.post("/schedules", {
-            section_id: selectedSection.id,
-            subject_id: newSchedule.subject_id,
-            teacher_id: newSchedule.teacher_id,
-            subject_assignment_id: newSchedule.subject_assignment_id,
-            days: selectedDays,
-            time_slot_id: newSchedule.time_slot_id,
-            room_id: newSchedule.room_id,
-          });
-
-          const [sectionRes, loadRes, schedRes] = await Promise.all([
-            API.get(`/sections/${selectedSection.id}`, { params: { school_year: selectedSchoolYear } }),
-            API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-            API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-          ]);
-
-          setSelectedSection(sectionRes.data);
-          setTeacherLoad(loadRes.data);
-          setOccupiedSchedules(schedRes.data);
-
-          setSuccessMessage("Schedule added successfully!");
-          setTimeout(() => setSuccessMessage(""), 3000);
-          setNewSchedule(INITIAL_SCHEDULE_FORM);
-          setSelectedDays([]);
-        } catch (err) {
-          const msg = err.response?.data?.message || "Conflict or Error occurred.";
-          setErrorMessage(msg);
-          setTimeout(() => setErrorMessage(""), 4000);
-        } finally {
-          setIsSubmitting(false);
-        }
-      }, [selectedDays, selectedSection, newSchedule, selectedSchoolYear, getConflictMessages,sections, occupiedSchedules]);
-
-
-
-    const handleViewStudents = useCallback(async (section) => {
-       setStudentModalLoading(true);  
-        setShowStudentModal(true);
-    try {
-     
-      const res = await API.get(`/sections/${section.id}`, {
-        params: { school_year: selectedSchoolYear }
-      });
-      setSelectedSection(res.data);
-      setSectionStudents(res.data.students || []);
-      
-    } catch (err) {
-      console.error("Error loading section details");
-      setErrorMessage("Failed to load section details");
-      setTimeout(() => setErrorMessage(""), 4000);
-    } finally {
-    setStudentModalLoading(false);   // 🆕
-    setShowStudentModal(true);
-  }
-}, [selectedSchoolYear]);
-
-
-
-const handleOpenScheduleModal = useCallback(async (section) => {
-    setSelectedSection(section);
-    setScheduleModalLoading(true);
-     setShowScheduleModal(true); 
-    try {
-      
-      const [loadRes, sectionRes, schedRes] = await Promise.all([
-      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-      API.get(`/sections/${section.id}`, { params: { school_year: selectedSchoolYear } }),
-      API.get("/schedules", { params: { school_year: selectedSchoolYear } }),
-    ]);
-
-        setTeacherLoad(loadRes.data);
-        setSelectedSection(sectionRes.data);
-        setOccupiedSchedules(schedRes.data);
-        
-      } catch (err) {
-        console.error("DETAILED ERROR:", err.response || err);
-        setErrorMessage("Error loading data: " + (err.response?.data?.message || err.message));
-        setTimeout(() => setErrorMessage(""), 4000);
-      } finally {
-          setScheduleModalLoading(false);   // 🆕
-          setShowScheduleModal(true);
-        }
-      }, [selectedSchoolYear]);
-
-    const handleCreateSection = useCallback(async (e) => {
-      e.preventDefault();
-      try {
-        const res = await API.post("/sections", {
-      ...newSection,
-      school_year: selectedSchoolYear,  
-    });
-
-        setSections(prev => sortSectionsByGrade([...prev, res.data.section]));
-        setShowModal(false);
-        setNewSection(INITIAL_SECTION_FORM);
-        setSuccessMessage("Section created successfully!");
-        setTimeout(() => setSuccessMessage(""), 3000);
-      } catch (err) {
-        console.error("Create error:", err);
-        const errorMsg = err.response?.data?.message || "Failed to create section.";
-        setErrorMessage(errorMsg);
-        setTimeout(() => setErrorMessage(""), 4000);
-      }
-    }, [newSection,selectedSchoolYear]);
-
-
-        const handleDeleteSection = useCallback(async (section) => {
-      if (!window.confirm(`Are you sure you want to delete section "${section.name}" for ${selectedSchoolYear}?`)) {
-        return;
-      }
-
-      try {
-        // ✅ ADDED: pass school_year so the backend only deletes the right year's record
-        await API.delete(`/sections/${section.id}`, {
-          params: { school_year: selectedSchoolYear }
-        });
-        setSections(prev => prev.filter(s => s.id !== section.id));
-        setSuccessMessage(`Section "${section.name}" deleted for ${selectedSchoolYear} successfully!`);
-        setTimeout(() => setSuccessMessage(""), 3000);
-      } catch (err) {
-        console.error("Delete error:", err);
-        const errorMsg = err.response?.data?.message || "Failed to delete section.";
-        setErrorMessage(errorMsg);
-        setTimeout(() => setErrorMessage(""), 4000);
-      }
-    }, [selectedSchoolYear]);
-
-
-
-
-    const handleDeleteSchedule = useCallback(async (scheduleIds) => {
-      const idsToDelete = Array.isArray(scheduleIds) ? scheduleIds : [scheduleIds];
-
-      if (!window.confirm(`Are you sure you want to remove this subject for all selected days?`))
-        return;
-
-      try {
-        await API.delete(`/schedules/${idsToDelete[0]}`, {
-          data: { ids: idsToDelete },
-        });
-
-        setSelectedSection(prev => ({
-          ...prev,
-          schedules: prev.schedules.filter(s => !idsToDelete.includes(s.id)),
-        }));
-
-        setOccupiedSchedules(prev => prev.filter(s => !idsToDelete.includes(s.id)));
-        setSuccessMessage("Schedule removed successfully!");
-        setTimeout(() => setSuccessMessage(""), 3000);
-      } catch (err) {
-        console.error("Delete error:", err);
-        setErrorMessage("Failed to delete schedule: " + (err.response?.data?.message || "Server Error"));
-        setTimeout(() => setErrorMessage(""), 4000);
-      }
-    }, []);
-
-    const toggleDay = useCallback((day) => {
-      setSelectedDays(prev => 
-        prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-      );
-    }, []);
-
-    const handleScheduleChange = useCallback((type, value) => {
-      if (type === 'assignment') {
-        const load = teacherLoad.find(a => a.id === parseInt(value));
+  }, []);
+
+  const handleScheduleChange = useCallback(
+    (type, value) => {
+      if (type === "assignment") {
+        const load = teacherLoad.find((a) => a.id === parseInt(value));
         if (load) {
           setNewSchedule({
             subject_id: load.subject_id,
@@ -1139,196 +802,542 @@ const handleOpenScheduleModal = useCallback(async (section) => {
             room_id: "",
           });
         }
-      } else if (type === 'time_slot') {
-        setNewSchedule(prev => ({
+      } else if (type === "time_slot") {
+        setNewSchedule((prev) => ({
           ...prev,
           time_slot_id: value,
           room_id: "",
         }));
-      } else if (type === 'room') {
-        setNewSchedule(prev => ({
-          ...prev,
-          room_id: value,
-        }));
+      } else if (type === "room") {
+        setNewSchedule((prev) => ({ ...prev, room_id: value }));
       }
-    }, [teacherLoad]);
+    },
+    [teacherLoad]
+  );
 
-    const handleSectionChange = useCallback((type, value) => {
-      setNewSection(prev => ({
-        ...prev,
-        [type]: value,
-      }));
-    }, []);
+  const handleSectionChange = useCallback((type, value) => {
+    setNewSection((prev) => ({ ...prev, [type]: value }));
+  }, []);
 
-    const closeScheduleModal = useCallback(() => {
-      setShowScheduleModal(false);
-      setSelectedDays([]);
-      setNewSchedule(INITIAL_SCHEDULE_FORM);
-    }, []);
+  // ── Teacher load filter for Add Schedule form ──
+  const filteredTeacherLoad = useMemo(() => {
+    if (!selectedSection || !teacherLoad.length) return [];
+    // same logic as old ScheduleModal
+    const assignmentsForGrade = teacherLoad.filter(
+      (a) => a.gradeLevel === selectedSection.gradeLevel
+    );
+    const scheduledSubjectsInThisSection = new Set(
+      (selectedSection.schedules || []).map((s) => s.subject_id)
+    );
+    const sectionsInThisGrade = sections.filter(
+      (s) => s.gradeLevel === selectedSection.gradeLevel
+    ).length;
+    const isSingleSection = sectionsInThisGrade === 1;
 
-    const getScheduledTeacher = useCallback((subjectId) => {
-      const scheduleRecord = selectedSection?.schedules?.find(
-        (sched) => Number(sched.subject_id) === Number(subjectId),
+    if (isSingleSection) {
+      return assignmentsForGrade.filter(
+        (a) => !scheduledSubjectsInThisSection.has(a.subject_id)
       );
+    }
+    // multiple sections: also exclude exact assignment already scheduled in this grade
+    const scheduledAssignmentIds = new Set(
+      occupiedSchedules
+        .filter((s) => s.section?.gradeLevel === selectedSection.gradeLevel)
+        .map((s) => s.subject_assignment_id)
+    );
+    return assignmentsForGrade
+      .filter((a) => !scheduledSubjectsInThisSection.has(a.subject_id))
+      .filter((a) => !scheduledAssignmentIds.has(a.id));
+  }, [selectedSection, teacherLoad, sections, occupiedSchedules]);
 
-      if (scheduleRecord) {
-        const teacherObj = teachers.find(
-          (t) => Number(t.id) === Number(scheduleRecord.teacher_id),
-        );
-        return teacherObj ? teacherObj.lastName : "Assigned";
-      }
-      return null;
-    }, [selectedSection?.schedules, teachers]);
+  // Auto‑scroll selected section card into view
+useEffect(() => {
+  if (selectedSectionId) {
+    const el = document.getElementById(`section-card-${selectedSectionId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}, [selectedSectionId]);
 
-    
-
-    const conflictMessages = useMemo(() => getConflictMessages(), [getConflictMessages]);
-
-    return (
-    <>
-
-          <div
-            className="content-scroll-area"
-            style={{ padding: "20px", overflowY: "auto", flex: 1 }}
-          >
-            {yearLoading || !selectedSchoolYear ? (
-            <div className="loading-school-year">Loading school year...</div>
-          ) : (
-            <div className="management-container">
+  // ── Render ──
+  return (
+    <div className="section-management-page">
+      <div
+        className="content-scroll-area"
+        style={{ padding: "20px", overflowY: "auto", flex: 1 }}
+      >
+        {yearLoading || !selectedSchoolYear ? (
+          <div className="loading-school-year">Loading school year...</div>
+        ) : (
+          <div className="management-container split-layout">
+            {/* ── LEFT: Section Grid ── */}
+            <div className="section-grid-panel">
               <div className="management-header">
                 <div className="title-group">
                   <FaLayerGroup className="title-icon" />
                   <div>
                     <h2>Section Management</h2>
-                    <p>Organize classrooms, capacities, and advisory teachers.</p>
+                    <p>
+                      Organize classrooms, capacities, and advisory teachers.
+                    </p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                  }}
+                >
                   <select
                     value={selectedSchoolYear}
                     onChange={(e) => setSelectedSchoolYear(e.target.value)}
                     style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      border: '1px solid #b8860b',
-                      background: '#fff',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer'
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      border: "1px solid #b8860b",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
                     }}
                   >
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
+                    {["2024-2025", "2025-2026", "2026-2027", "2027-2028"].map(
+                      (y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      )
+                    )}
                   </select>
-                  <button className="add-btn" onClick={() => setShowModal(true)}>
+                  <button
+                    className="add-btn"
+                    onClick={() => setShowCreateModal(true)}
+                  >
                     <FaPlus /> New Section
                   </button>
                 </div>
               </div>
 
-              {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
-              {successMessage && <div className="alert alert-success">{successMessage}</div>}
+              {errorMessage && (
+                <div className="alert alert-error">{errorMessage}</div>
+              )}
+              {successMessage && (
+                <div className="alert alert-success">{successMessage}</div>
+              )}
 
               {loading ? (
-                <div style={{ 
-                  display: "flex", 
-                  justifyContent: "center", 
-                  alignItems: "center",
-                  minHeight: "400px",
-                  textAlign: "center"
-                }}>
-                  <div>
-                    <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
-                    <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Sections</h3>
-                    <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching classroom data...</p>
-                  </div>
-                </div>
+                <div className="loading-placeholder">Loading sections...</div>
               ) : (
                 <div className="section-grid">
                   {sections.map((section) => (
                     <SectionCard
                       key={section.id}
                       section={section}
-                      onSchedule={handleOpenScheduleModal}
-                      onViewStudents={handleViewStudents}
+                      isSelected={section.id === selectedSectionId}
+                      onSchedule={(s) => openDetail(s.id, "schedule")}
+                      onViewStudents={(s) => openDetail(s.id, "students")}
                       onDelete={handleDeleteSection}
+                      onClick={() => openDetail(section.id, "schedule")}
                     />
                   ))}
                 </div>
               )}
             </div>
-          )}
+
+            {/* ── RIGHT: Detail Panel ── */}
+            {selectedSection && (
+              <div className="detail-panel-wrapper">
+                <div className="detail-actions">
+                  <button
+                    onClick={() => switchMode("schedule")}
+                    className={
+                      detailMode === "schedule" ? "active" : ""
+                    }
+                  >
+                    📅 Schedule
+                  </button>
+                  <button
+                    onClick={() => switchMode("students")}
+                    className={
+                      detailMode === "students" ? "active" : ""
+                    }
+                  >
+                    👥 Students
+                  </button>
+                  <button
+                    onClick={() => switchMode("addSchedule")}
+                    className={
+                      detailMode === "addSchedule" ? "active" : ""
+                    }
+                  >
+                    ➕ Add Schedule
+                  </button>
+                  <button
+                    className="close-detail-btn"
+                    onClick={closeDetail}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+
+                <div className="detail-body">
+                  {detailLoading ? (
+                    <p style={{ textAlign: "center", padding: "20px" }}>
+                      Loading...
+                    </p>
+                  ) : (
+                    <>
+                      {/* ── Schedule mode ── */}
+                      {detailMode === "schedule" && (
+                        <div>
+                          <h4>
+                            <FaCalendarAlt /> Weekly Class Schedule
+                          </h4>
+                          {selectedSection.schedules?.length > 0 ? (
+                            <ScheduleTable
+                              schedules={groupedSchedules}
+                              onDeleteSchedule={handleDeleteSchedule}
+                            />
+                          ) : (
+                            <p className="no-data">
+                              No subjects scheduled yet.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Students mode ── */}
+                      {detailMode === "students" && (
+                        <div>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "15px",
+                            }}
+                          >
+                            <h4>
+                              <FaUsers /> Enrolled Students (
+                              {selectedSection.students_count || 0})
+                            </h4>
+                            {sameGradeSections.length > 0 }
+                          </div>
+                          {selectedSection.students?.length > 0 ? (
+                            <StudentTable
+                              students={selectedSection.students}
+                              onTransfer={handleTransferClick}
+                              showTransferButton={
+                                sameGradeSections.length > 0
+                              }
+                            />
+                          ) : (
+                            <NoStudentsPlaceholder />
+                          )}
+                          {/* ── Transfer Sub‑modal ── */}
+                          {showTransferModal && (
+                            <div className="modal-overlay">
+                              <div
+                                className="modal-content"
+                                style={{ maxWidth: "500px" }}
+                              >
+                                <div className="modal-header">
+                                  <h3>Transfer Student</h3>
+                                  <FaTimes
+                                    className="close-icon"
+                                    onClick={() =>
+                                      setShowTransferModal(false)
+                                    }
+                                  />
+                                </div>
+                                <form onSubmit={handleTransferSubmit}>
+                                  <p>
+                                    Transfer{" "}
+                                    <strong>
+                                      {selectedStudent?.firstName}{" "}
+                                      {selectedStudent?.lastName}
+                                    </strong>{" "}
+                                    from <strong>{selectedSection.name}</strong>{" "}
+                                    to:
+                                  </p>
+                                  <div className="input-group">
+                                    <label>
+                                      Target Section (same grade level)
+                                    </label>
+                                    <select
+                                      required
+                                      value={targetSectionId}
+                                      onChange={(e) =>
+                                        setTargetSectionId(e.target.value)
+                                      }
+                                    >
+                                      <option value="">
+                                        -- Select Section --
+                                      </option>
+                                      {sameGradeSections.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                          {s.name} ({s.students_count || 0}/
+                                          {s.capacity})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div
+                                    className="modal-actions"
+                                    style={{ marginTop: "20px" }}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="cancel-btn"
+                                      onClick={() =>
+                                        setShowTransferModal(false)
+                                      }
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="submit"
+                                      className="submit-btn"
+                                      disabled={transferLoading}
+                                    >
+                                      {transferLoading
+                                        ? "Transferring..."
+                                        : "Confirm Transfer"}
+                                    </button>
+                                  </div>
+                                </form>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Add Schedule mode ── */}
+                      {detailMode === "addSchedule" && (
+                        <div>
+                          <h4>Add Subject Schedule</h4>
+                          <form onSubmit={handleAddSchedule}>
+                            {/* Subject & Teacher select */}
+                            <div className="input-group">
+                              <label>Select Subject & Assigned Teacher</label>
+                              <select
+                                required
+                                value={
+                                  newSchedule.subject_assignment_id || ""
+                                }
+                                onChange={(e) =>
+                                  handleScheduleChange(
+                                    "assignment",
+                                    e.target.value
+                                  )
+                                }
+                                disabled={detailLoading}
+                              >
+                                <option value="">
+                                  -- Select Teacher Load --
+                                </option>
+                                {filteredTeacherLoad.map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.subject?.subjectName} —{" "}
+                                    {a.teacher?.lastName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Day Selection */}
+                            <div className="input-group">
+                              <label>Select Days (Click to toggle)</label>
+                              <div className="day-selector-grid">
+                                {DAYS.map((day) => {
+                                  const isSelected =
+                                    selectedDays.includes(day);
+                                  const hasConflict =
+                                    conflictMessages.some((msg) =>
+                                      msg.days.includes(day)
+                                    );
+                                  return (
+                                    <DayButton
+                                      key={day}
+                                      day={day}
+                                      isSelected={isSelected}
+                                      hasConflict={hasConflict}
+                                      onToggle={toggleDay}
+                                    />
+                                  );
+                                })}
+                              </div>
+                              <ConflictMessages
+                                messages={conflictMessages}
+                              />
+                              <p className="help-text">
+                                Selected:{" "}
+                                {selectedDays.length > 0
+                                  ? selectedDays.join(", ")
+                                  : "None"}
+                              </p>
+                            </div>
+
+                            {/* Time Slot & Room */}
+                            <div className="form-grid">
+                              <div className="input-group">
+                                <label>Time Slot</label>
+                                <select
+                                  required
+                                  value={newSchedule.time_slot_id}
+                                  disabled={!newSchedule.subject_id}
+                                  onChange={(e) =>
+                                    handleScheduleChange(
+                                      "time_slot",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <option value="">-- Select Time --</option>
+                                  {timeSlots.map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                      {slot.display_label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="input-group">
+                                <label>Room</label>
+                                <select
+                                  required
+                                  value={newSchedule.room_id}
+                                  disabled={!newSchedule.time_slot_id}
+                                  onChange={(e) =>
+                                    handleScheduleChange(
+                                      "room",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <option value="">-- Select Room --</option>
+                                  {rooms.map((room) => (
+                                    <option key={room.id} value={room.id}>
+                                      {room.room_name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="modal-actions">
+                              <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={() => setDetailMode("schedule")}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="submit-btn"
+                                disabled={
+                                  isSubmitting ||
+                                  selectedDays.length === 0
+                                }
+                                style={{
+                                  opacity:
+                                    isSubmitting ||
+                                    selectedDays.length === 0
+                                      ? 0.5
+                                      : 1,
+                                }}
+                              >
+                                {isSubmitting ? "Saving..." : "Save Schedule"}
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Create Section Modal (kept as overlay) ── */}
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Create New Section</h3>
+              <FaTimes
+                className="close-icon"
+                onClick={() => setShowCreateModal(false)}
+              />
+            </div>
+            <form onSubmit={handleCreateSection}>
+              <div className="input-group">
+                <label>Section Name</label>
+                <input
+                  required
+                  value={newSection.name}
+                  onChange={(e) =>
+                    handleSectionChange("name", e.target.value)
+                  }
+                />
+              </div>
+              <div className="form-grid">
+                <div className="input-group">
+                  <label>Grade Level</label>
+                  <select
+                    required
+                    value={newSection.gradeLevel}
+                    onChange={(e) =>
+                      handleSectionChange("gradeLevel", e.target.value)
+                    }
+                  >
+                    <option value="">Select Grade</option>
+                    {GRADE_LEVELS.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>Max Capacity</label>
+                  <input
+                    type="number"
+                    value={newSection.capacity}
+                    onChange={(e) =>
+                      handleSectionChange("capacity", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Advisory Teacher</label>
+                <select
+                  value={newSection.teacher_id}
+                  onChange={(e) =>
+                    handleSectionChange("teacher_id", e.target.value)
+                  }
+                >
+                  <option value="">Select an Adviser</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="submit-btn">
+                Create Section
+              </button>
+            </form>
+          </div>
         </div>
-
-          {/* Modals */}
-          {showStudentModal && (
-            <div className="table-scroll-wrapper">
-              <StudentModal
-              section={selectedSection}
-              students={sectionStudents}
-              schedules={selectedSection?.schedules}
-              onClose={() => setShowStudentModal(false)}
-              onDeleteSchedule={handleDeleteSchedule}
-              groupedSchedules={groupedSchedules}
-              loading={studentModalLoading} 
-              sections={sections}                      
-              schoolYear={selectedSchoolYear}  
-              setErrorMessage={setErrorMessage}
-              setSuccessMessage={setSuccessMessage}       
-              onStudentTransferred={async () => {
-               
-              const updatedSectionRes = await API.get(`/sections/${selectedSection.id}`, {
-                params: { school_year: selectedSchoolYear }
-              });
-              setSelectedSection(updatedSectionRes.data);
-              setSectionStudents(updatedSectionRes.data.students || []);
-              
-              // Refresh the entire sections list (grid cards)
-              const allSectionsRes = await API.get("/sections", {
-                params: { school_year: selectedSchoolYear }
-              });
-              setSections(sortSectionsByGrade(allSectionsRes.data));
-            }}
-          />
-            </div>
-            
-          )}
-
-          {showScheduleModal && (
-            <div className="table-scroll-wrapper">
-              <ScheduleModal
-              section={selectedSection}
-              teacherLoad={teacherLoad}
-              timeSlots={timeSlots}
-              rooms={rooms}
-              onSubmit={handleAddSchedule}
-              onClose={closeScheduleModal}
-              isSubmitting={isSubmitting}
-              selectedDays={selectedDays}
-              onToggleDay={toggleDay}
-              newSchedule={newSchedule}
-              onScheduleChange={handleScheduleChange}
-              conflictMessages={conflictMessages}
-              getScheduledTeacher={getScheduledTeacher}
-              occupiedSchedules={occupiedSchedules}
-              loading={scheduleModalLoading}
-              sections={sections}
-              setErrorMessage={setErrorMessage}
-              setSuccessMessage={setSuccessMessage}
-            />
-            </div>
-            
-          )}
-
-          {showModal && (
-            <CreateSectionModal
-              newSection={newSection}
-              onSectionChange={handleSectionChange}
-              onSubmit={handleCreateSection}
-              onClose={() => setShowModal(false)}
-              teachers={teachers}
-            />
-          )}
-       </>
-    );
-  }
+      )}
+    </div>
+  );
+}

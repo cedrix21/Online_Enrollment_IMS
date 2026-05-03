@@ -484,12 +484,12 @@
   border-radius: 12px;
   border: 1px solid #e0e0e0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 100px);
   overflow: hidden;                   
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 40px;
+  top: 80px;
 }
 
 .detail-actions {
