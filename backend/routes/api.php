@@ -116,7 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher-load',                    [TeacherController::class, 'getAllAssignments']);
         Route::get('/teachers/{teacherId}/assignments',[TeacherController::class, 'getAssignments']);
         Route::get('/teachers/subjects/available',     [TeacherController::class, 'getAvailableSubjects']);
-
+        Route::get('/teachers/{id}/schedule', [ScheduleController::class, 'getTeacherSchedule']);
         // Billing & Payments
         Route::get('/admin/billing/student/{studentId}',    [BillingController::class, 'getStudentLedger']);
         Route::post('/admin/billing/student/{studentId}/pay', [BillingController::class, 'addPayment']);

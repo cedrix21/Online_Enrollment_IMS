@@ -10,13 +10,12 @@ import {
   FaTrash,
   FaEdit,
   FaSyncAlt,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import "./TeacherDirectory.css";
 import { useCurrentSchoolYear } from "../hooks/useCurrentSchoolYear";
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// CONSTANTS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ─── CONSTANTS ─────────────────────────────────────────────
 const GRADE_LEVELS = [
   "Nursery",
   "Kindergarten 1",
@@ -29,15 +28,15 @@ const GRADE_LEVELS = [
   "Grade 6",
 ];
 
-const CACHE_KEY = 'teacher_directory_data';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_KEY = "teacher_directory_data";
+const CACHE_DURATION = 5 * 60 * 1000;
 
 const INITIAL_TEACHER_FORM = {
   firstName: "",
   lastName: "",
   email: "",
   specialization: "",
-  section_id: "",       
+  section_id: "",
   phone: "",
   status: "active",
 };
@@ -48,15 +47,11 @@ const INITIAL_ASSIGNMENT_FORM = {
   schedule: "",
 };
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HELPER: Sort teachers by advisory grade
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const sortTeachersByAdvisory = (teachers) => {
   const gradeOrder = GRADE_LEVELS.reduce((acc, grade, index) => {
     acc[grade] = index;
     return acc;
   }, {});
-
   return [...teachers].sort((a, b) => {
     const aGrade = a.advisory_section?.gradeLevel;
     const bGrade = b.advisory_section?.gradeLevel;
@@ -65,129 +60,51 @@ const sortTeachersByAdvisory = (teachers) => {
     }
     if (aGrade && !bGrade) return -1;
     if (!aGrade && bGrade) return 1;
-    return (a.lastName || '').localeCompare(b.lastName || '');
+    return (a.lastName || "").localeCompare(b.lastName || "");
   });
 };
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MEMOIZED COMPONENTS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const TeacherCard = memo(({ 
-  teacher, 
-  isExpanded, 
-  onToggleExpand, 
-  onAssign, 
-  onEdit, 
-  onRemoveAssignment,
-  onViewSchedule 
-}) => {
-  return (
-    <div className="teacher-card">
-      <div className="card-top">
-        <div className="teacher-avatar">
-          {teacher.firstName[0]}
-          {teacher.lastName[0]}
-        </div>
-        <div className="teacher-info">
-          <h3>
-            {teacher.firstName} {teacher.lastName}
-          </h3>
-          <span className="teacher-id">{teacher.teacherId}</span>
-        </div>
+// ── MEMOIZED TEACHER CARD ───────────────────────────────────
+const TeacherCard = memo(({ teacher, isSelected, onClick }) => (
+  <div
+    className={`teacher-card ${isSelected ? "selected" : ""}`}
+    onClick={onClick}
+  >
+    <div className="card-top">
+      <div className="teacher-avatar">
+        {teacher.firstName[0]}
+        {teacher.lastName[0]}
       </div>
-
-      <div className="card-body">
-        <div className="info-row">
-          <FaEnvelope className="icon" />
-          <span>{teacher.email}</span>
-        </div>
-        <div className="info-row">
-          <FaBookOpen className="icon" />
-          <strong>Adviser of: </strong>
-          <span className="advisory-tag">
-            {teacher.advisory_section 
-              ? `${teacher.advisory_section.name} (${teacher.advisory_section.gradeLevel})` 
-              : "None"}
-          </span>
-        </div>
-        <p style={{ fontSize: "0.9rem", marginTop: "10px" }}>
-          Specialization: <strong>{teacher.specialization}</strong>
-        </p>
-
-        {isExpanded && (
-          <div className="teacher-load-dropdown">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "10px",
-              }}
-            >
-              <h4>Assigned Subjects:</h4>
-              <button
-                className="mini-add-btn"
-                onClick={() => onAssign(teacher)}
-                title="Assign new subject"
-              >
-                <FaPlus /> Assign
-              </button>
-            </div>
-
-            {teacher.assignments && teacher.assignments.length > 0 ? (
-              <ul className="assignment-list">
-                {teacher.assignments.map((assignment) => (
-                  <li key={assignment.id} className="assignment-item">
-                    <div className="assignment-info">
-                      <strong>{assignment.subject?.subjectCode}:</strong>
-                      {assignment.subject?.subjectName}
-                      <span className="grade-pill">
-                        {assignment.gradeLevel}
-                      </span>
-                      {assignment.schedule && (
-                        <div className="schedule-text">
-                          {assignment.schedule}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      className="remove-assignment-btn"
-                      onClick={() => onRemoveAssignment(assignment.id)}
-                      title="Remove assignment"
-                    >
-                      <FaTrash />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="no-data-text">No subjects assigned yet.</p>
-            )}
-          </div>
-        )}
+      <div className="teacher-info">
+        <h3>
+          {teacher.firstName} {teacher.lastName}
+        </h3>
+        <span className="teacher-id">{teacher.teacherId}</span>
       </div>
-
-      <div className="card-actions">
-      <button className="edit-link" onClick={() => onEdit(teacher)}>
-        <FaEdit /> Edit
-      </button>
-      <button className="schedule-link" onClick={() => onViewSchedule(teacher)}>
-        📅 Schedule
-      </button>
-      <button className="assign-link" onClick={() => onToggleExpand(teacher.id)}>
-        {isExpanded ? "Hide Load" : "View Load"}
-      </button>
     </div>
+    <div className="card-body">
+      <div className="info-row">
+        <FaEnvelope className="icon" />
+        <span>{teacher.email}</span>
+      </div>
+      <div className="info-row">
+        <FaBookOpen className="icon" />
+        <strong>Adviser of: </strong>
+        <span className="advisory-tag">
+          {teacher.advisory_section
+            ? `${teacher.advisory_section.name} (${teacher.advisory_section.gradeLevel})`
+            : "None"}
+        </span>
+      </div>
+      <p style={{ fontSize: "0.9rem", marginTop: "10px" }}>
+        Specialization: <strong>{teacher.specialization}</strong>
+      </p>
     </div>
-  );
-});
+  </div>
+));
 
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MAIN COMPONENT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── MAIN COMPONENT ─────────────────────────────────────────
 export default function TeacherDirectory() {
-  // ✅ Use the hook to get the authoritative current school year
   const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
 
@@ -198,145 +115,45 @@ export default function TeacherDirectory() {
       return null;
     }
   });
-  
+
   const [teachers, setTeachers] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [teacherLoad, setTeacherLoad] = useState([]);
-  const [expandedTeacher, setExpandedTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  
-  // Modal states
-  const [showModal, setShowModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedTeacherForSchedule, setSelectedTeacherForSchedule] = useState(null);
-  
-  // Form states
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
+  const [detailMode, setDetailMode] = useState(null);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTeacherForAssign, setSelectedTeacherForAssign] = useState(null);
-  const [selectedTeacherForEdit, setSelectedTeacherForEdit] = useState(null);
-  
-  const [newTeacher, setNewTeacher] = useState(INITIAL_TEACHER_FORM);
   const [editTeacherForm, setEditTeacherForm] = useState(INITIAL_TEACHER_FORM);
   const [assignmentForm, setAssignmentForm] = useState(INITIAL_ASSIGNMENT_FORM);
   const [selectedSubjectsForBulk, setSelectedSubjectsForBulk] = useState([]);
   const [assignedSubjectIdsForTeacher, setAssignedSubjectIdsForTeacher] = useState(new Set());
   const [sections, setSections] = useState([]);
 
-  // ✅ Initialise selectedSchoolYear when currentSchoolYear becomes available
-  useEffect(() => {
-    if (currentSchoolYear && !selectedSchoolYear) {
-      setSelectedSchoolYear(currentSchoolYear);
-    }
-  }, [currentSchoolYear, selectedSchoolYear]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTeacher, setNewTeacher] = useState(INITIAL_TEACHER_FORM);
+  const [assignMode, setAssignMode] = useState("single");
+  const [refreshingAssignSubjects, setRefreshingAssignSubjects] = useState(false);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Cache helpers
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const invalidateCache = useCallback(() => {
-    localStorage.removeItem(CACHE_KEY);
-    localStorage.removeItem(`${CACHE_KEY}_time`);
-  }, []);
-
-  const fetchData = useCallback(async (force = false, signal = { cancelled: false }) => {
-  if (!selectedSchoolYear) return;
-  try {
-    if (!signal.cancelled) setLoading(true);
-    // reset load array
-    if (!signal.cancelled) setTeacherLoad([]);
-
-    if (!force) {
-      const cached = localStorage.getItem(CACHE_KEY);
-      const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
-      if (cached && cacheTime) {
-        const age = Date.now() - parseInt(cacheTime);
-        if (age < CACHE_DURATION) {
-          if (!signal.cancelled) {
-            const data = JSON.parse(cached);
-            setTeachers(sortTeachersByAdvisory(data.teachers));
-            setAvailableSubjects(data.subjects);
-            setTeacherLoad(data.load);
-            setLoading(false);
-          }
-          return;
-        }
-      }
-    }
-
-    const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
-      API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
-      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
-      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-      API.get("/sections", { params: { school_year: selectedSchoolYear } }),
-    ]);
-
-    if (signal.cancelled) return;
-
-    const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
-    const data = {
-      teachers: sortedTeachers,
-      subjects: subjectRes.data,
-      load: loadRes.data,
-      sections: sectionRes.data,
-    };
-
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
-
-    setTeachers(sortedTeachers);
-    setAvailableSubjects(data.subjects);
-    setTeacherLoad(data.load);
-    setSections(sectionRes.data);
-  } catch (err) {
-    if (!signal.cancelled) console.error("Error fetching data", err);
-  } finally {
-    if (!signal.cancelled) setLoading(false);
-  }
-}, [selectedSchoolYear, invalidateCache]);
-
-  useEffect(() => {
-  if (!selectedSchoolYear) return;
-  const signal = { cancelled: false };
-  invalidateCache();
-  fetchData(true, signal);
-  return () => { signal.cancelled = true; };
-}, [selectedSchoolYear, invalidateCache, fetchData]);
-
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Memoized Maps (unchanged)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const gradeAdvisers = useMemo(() => {
-    const map = new Map();
-    teachers.forEach((t) => {
-      if (t.advisory_grade) {
-        const sectionName = t.advisory_section?.name || 'Unnamed Section'; 
-        const entry = { teacher: t, sectionName };
-        if (!map.has(t.advisory_grade)) {
-          map.set(t.advisory_grade, [entry]);
-        } else {
-          map.get(t.advisory_grade).push(entry);
-        }
-      }
-    });
-    return map;
-  }, [teachers]);
+  const selectedTeacher = useMemo(
+    () => teachers.find((t) => t.id === selectedTeacherId) || null,
+    [teachers, selectedTeacherId]
+  );
 
   const sectionsByGrade = useMemo(() => {
     const map = new Map();
-    sections.forEach(section => {
+    sections.forEach((section) => {
       const grade = section.gradeLevel;
-      if (!map.has(grade)) {
-        map.set(grade, []);
-      }
+      if (!map.has(grade)) map.set(grade, []);
       map.get(grade).push(section);
     });
     return map;
   }, [sections]);
-
 
   const availableSubjectsForAssignment = useMemo(() => {
     return availableSubjects.filter(
@@ -344,231 +161,379 @@ const gradeAdvisers = useMemo(() => {
     );
   }, [availableSubjects, assignedSubjectIdsForTeacher]);
 
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Event Handlers
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleAddTeacher = useCallback(async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-
-  try {
-    // ✅ Include selected school year in the payload
-    const payload = {
-      ...newTeacher,
-      school_year: selectedSchoolYear,
-    };
-    const res = await API.post("/teachers", payload);
-    setTeachers(prev => sortTeachersByAdvisory([...prev, res.data.teacher]));
-    invalidateCache();
-    setNewTeacher(INITIAL_TEACHER_FORM);
-    setShowModal(false);
-    setSuccessMessage("Teacher added successfully!");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  } catch (err) {
-    console.error("Backend Error:", err.response?.data);
-    setErrorMessage(err.response?.data?.message || "Failed to add teacher");
-    setTimeout(() => setErrorMessage(""), 3000);
-  } finally {
-    setIsSubmitting(false);
-  }
-}, [newTeacher, invalidateCache, selectedSchoolYear]);  
-
-
-  const openAssignModal = useCallback((teacher) => {
-  setSelectedTeacherForAssign(teacher);
-  // Compute subject IDs already assigned to this teacher
-  const teacherAssignments = teacherLoad.filter(a => a.teacher_id === teacher.id);
-  const ids = new Set(teacherAssignments.map(a => Number(a.subject_id)));
-  setAssignedSubjectIdsForTeacher(ids);
-  setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
-  setSelectedSubjectsForBulk([]);
-  setShowAssignModal(true);
-}, [teacherLoad]);
-
-  const handleAssignSubject = useCallback(async (e) => {
-  e.preventDefault();
-  const subjectsToAssign = selectedSubjectsForBulk.length > 0 
-    ? selectedSubjectsForBulk 
-    : (assignmentForm.subject_id ? [assignmentForm.subject_id] : []);
-
-  if (subjectsToAssign.length === 0) {
-    setErrorMessage("Please select at least one subject");
-    setTimeout(() => setErrorMessage(""), 3000);
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    const assignmentPromises = subjectsToAssign.map((subjectId) => {
-      const subject = availableSubjects.find(s => s.id === parseInt(subjectId));
-      return API.post(
-        `/teachers/${selectedTeacherForAssign.id}/assign-subject`,
-        {
-          subject_id: subjectId,
-          gradeLevel: subject?.gradeLevel || "",
-          schedule: "",
-          school_year: selectedSchoolYear, 
-        }
-      );
-    });
-
-    const responses = await Promise.all(assignmentPromises);
-    
-    // 🆕 Update assigned subjects set
-    setAssignedSubjectIdsForTeacher(prev => {
-      const updated = new Set(prev);
-      subjectsToAssign.forEach(id => updated.add(Number(id)));
-      return updated;
-    });
-
-    setTeachers(prev => prev.map(teacher => {
-      if (teacher.id === selectedTeacherForAssign.id) {
-        const newAssignments = responses.map(res => res.data.assignment);
-        return {
-          ...teacher,
-          assignments: [...(teacher.assignments || []), ...newAssignments]
-        };
-      }
-      return teacher;
-    }));
-    
-    setTeacherLoad(prev => [...prev, ...responses.map(res => res.data.assignment)]);
-    invalidateCache();
-    setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
-    setSelectedSubjectsForBulk([]);
-    setSuccessMessage(`✅ ${subjectsToAssign.length} subject(s) assigned successfully!`);
-    setTimeout(() => setSuccessMessage(""), 3000);
-  } catch (err) {
-    console.error("Assignment Error:", err.response?.data);
-    setErrorMessage(err.response?.data?.message || "Failed to assign subjects");
-    setTimeout(() => setErrorMessage(""), 3000);
-  } finally {
-    setIsSubmitting(false);
-  }
-}, [assignmentForm, selectedSubjectsForBulk, selectedTeacherForAssign, availableSubjects, invalidateCache, selectedSchoolYear]);
-  const handleRemoveAssignment = useCallback(async (assignmentId) => {
-    if (!window.confirm("Remove this subject assignment?")) return;
-
-    try {
-      await API.delete(`/teachers/subject-assignments/${assignmentId}`); 
-      setTeachers(prev => prev.map(teacher => {
-        if (teacher.assignments) {
-          return {
-            ...teacher,
-            assignments: teacher.assignments.filter(a => a.id !== assignmentId)
-          };
-        }
-        return teacher;
-      }));
-      setTeacherLoad(prev => prev.filter(a => a.id !== assignmentId));
-      invalidateCache();
-      setSuccessMessage("✅ Assignment removed successfully!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } catch (err) {
-      console.error("Remove Error:", err.response?.data);
-      setErrorMessage("Failed to remove assignment");
-      setTimeout(() => setErrorMessage(""), 3000);
+  useEffect(() => {
+    if (currentSchoolYear && !selectedSchoolYear) {
+      setSelectedSchoolYear(currentSchoolYear);
     }
-  }, [invalidateCache]);
+  }, [currentSchoolYear, selectedSchoolYear]);
 
-  const handleSubjectChange = useCallback((subjectId) => {
-    const selectedSub = availableSubjects.find((s) => s.id === parseInt(subjectId));
-    setAssignmentForm(prev => ({
-      ...prev,
-      subject_id: subjectId,
-      gradeLevel: selectedSub?.gradeLevel || "",
-    }));
-  }, [availableSubjects]);
-
-  const openEditModal = useCallback((teacher) => {
-
-    setSelectedTeacherForEdit(teacher);
-    setEditTeacherForm({
-      firstName: teacher.firstName,
-      lastName: teacher.lastName,
-      email: teacher.email,
-      specialization: teacher.specialization,
-      section_id: teacher.advisory_section?.id || "",
-      phone: teacher.phone || "",
-      status: teacher.status,
-    });
-    setShowEditModal(true);
+  const invalidateCache = useCallback(() => {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(`${CACHE_KEY}_time`);
   }, []);
 
-  const handleEditTeacher = useCallback(async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
+  const fetchData = useCallback(
+    async (force = false, signal = { cancelled: false }) => {
+      if (!selectedSchoolYear) return;
+      try {
+        if (!signal.cancelled) setLoading(true);
+        if (!signal.cancelled) setTeacherLoad([]);
 
-  try {
-    const payload = {
-      ...editTeacherForm,
-      school_year: selectedSchoolYear,
-    };
-    await API.put(`/teachers/${selectedTeacherForEdit.id}`, payload);
-    
-    // ✅ Refresh all teachers from server to capture changes for all teachers
+        if (!force) {
+          const cached = localStorage.getItem(CACHE_KEY);
+          const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
+          if (cached && cacheTime) {
+            const age = Date.now() - parseInt(cacheTime);
+            if (age < CACHE_DURATION) {
+              if (!signal.cancelled) {
+                const data = JSON.parse(cached);
+                setTeachers(sortTeachersByAdvisory(data.teachers));
+                setAvailableSubjects(data.subjects);
+                setTeacherLoad(data.load);
+                setLoading(false);
+              }
+              return;
+            }
+          }
+        }
+
+        const [teacherRes, subjectRes, loadRes, sectionRes] = await Promise.all([
+          API.get("/teachers", { params: { school_year: selectedSchoolYear } }),
+          API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+          API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+          API.get("/sections", { params: { school_year: selectedSchoolYear } }),
+        ]);
+
+        if (signal.cancelled) return;
+
+        const sortedTeachers = sortTeachersByAdvisory(teacherRes.data);
+        const data = {
+          teachers: sortedTeachers,
+          subjects: subjectRes.data,
+          load: loadRes.data,
+          sections: sectionRes.data,
+        };
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
+
+        setTeachers(sortedTeachers);
+        setAvailableSubjects(data.subjects);
+        setTeacherLoad(data.load);
+        setSections(sectionRes.data);
+      } catch (err) {
+        if (!signal.cancelled) console.error("Error fetching data", err);
+      } finally {
+        if (!signal.cancelled) setLoading(false);
+      }
+    },
+    [selectedSchoolYear]
+  );
+
+  useEffect(() => {
+    if (!selectedSchoolYear) return;
+    const signal = { cancelled: false };
     invalidateCache();
-    await fetchData(true);  // force fresh data from server
-    
-    setShowEditModal(false);
-    setSuccessMessage("✅ Teacher updated successfully!");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  } catch (err) {
-    console.error("Edit Error:", err.response?.data);
-    setErrorMessage(err.response?.data?.message || "Failed to update teacher");
-    setTimeout(() => setErrorMessage(""), 3000);
-  } finally {
-    setIsSubmitting(false);
-  }
-}, [editTeacherForm, selectedTeacherForEdit, invalidateCache, selectedSchoolYear, fetchData]);
+    fetchData(true, signal);
+    return () => { signal.cancelled = true; };
+  }, [selectedSchoolYear, invalidateCache, fetchData]);
 
+  useEffect(() => {
+    if (detailMode !== "schedule" || !selectedTeacher) return;
+    if (!selectedSchoolYear) return;
+    let cancelled = false;
+    setScheduleLoading(true);
+    API.get(`/teachers/${selectedTeacher.id}/schedule`, {
+      params: { school_year: selectedSchoolYear },
+    })
+      .then((res) => {
+        if (!cancelled) setScheduleData(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setErrorMessage("Could not load schedule.");
+      })
+      .finally(() => {
+        if (!cancelled) setScheduleLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [detailMode, selectedTeacher, selectedSchoolYear]);
 
-const openScheduleModal = useCallback((teacher) => {
-  setSelectedTeacherForSchedule(teacher);
-  setShowScheduleModal(true);
-}, []);
+  const openDetail = useCallback(
+  (teacherId, mode) => {
+    // If clicking the same teacher, close the panel (peekaboo)
+    if (teacherId === selectedTeacherId) {
+      closeDetail();
+      return;
+    }
 
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
 
-  const toggleExpandTeacher = useCallback((teacherId) => {
-    setExpandedTeacher(prev => prev === teacherId ? null : teacherId);
-  }, []);
+    setSelectedTeacherId(teacherId);
+    setDetailMode(mode);
+
+    if (mode === "edit") {
+      setEditTeacherForm({
+        firstName: teacher.firstName,
+        lastName: teacher.lastName,
+        email: teacher.email,
+        specialization: teacher.specialization,
+        section_id: teacher.advisory_section?.id || "",
+        phone: teacher.phone || "",
+        status: teacher.status,
+      });
+    }
+
+    if (mode === "assign") {
+      const teacherAssignments = teacherLoad.filter(
+        (a) => a.teacher_id === teacher.id
+      );
+      const ids = new Set(teacherAssignments.map((a) => Number(a.subject_id)));
+      setAssignedSubjectIdsForTeacher(ids);
+      setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+      setSelectedSubjectsForBulk([]);
+      setAssignMode("single");
+    }
+  },
+  [teachers, teacherLoad, selectedTeacherId]
+);
+
+  const closeDetail = () => {
+    setSelectedTeacherId(null);
+    setDetailMode(null);
+  };
+
+  const handleEditSave = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+        const payload = { ...editTeacherForm, school_year: selectedSchoolYear };
+        await API.put(`/teachers/${selectedTeacher.id}`, payload);
+        invalidateCache();
+        await fetchData(true);
+        closeDetail();
+        setSuccessMessage("✅ Teacher updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        setErrorMessage(err.response?.data?.message || "Failed to update teacher");
+        setTimeout(() => setErrorMessage(""), 3000);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [editTeacherForm, selectedTeacher, selectedSchoolYear, invalidateCache, fetchData]
+  );
+
+  const handleAssignSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const subjectsToAssign =
+        selectedSubjectsForBulk.length > 0
+          ? selectedSubjectsForBulk
+          : assignmentForm.subject_id
+          ? [assignmentForm.subject_id]
+          : [];
+
+      if (subjectsToAssign.length === 0) {
+        setErrorMessage("Please select at least one subject");
+        setTimeout(() => setErrorMessage(""), 3000);
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const promises = subjectsToAssign.map((subjectId) => {
+          const subject = availableSubjects.find((s) => s.id === parseInt(subjectId));
+          return API.post(`/teachers/${selectedTeacher.id}/assign-subject`, {
+            subject_id: subjectId,
+            gradeLevel: subject?.gradeLevel || "",
+            schedule: "",
+            school_year: selectedSchoolYear,
+          });
+        });
+
+        const responses = await Promise.all(promises);
+
+        // 1. Collection of the new assignment objects
+        const newAssignments = responses.map((res) => ({
+          ...res.data.assignment,
+          teacher_id: Number(res.data.assignment.teacher_id)   // ← ensure it’s a number
+        }));
+
+        // 2. Update teacherLoad AND assignedSubjectIdsForTeacher in one pass
+        setTeacherLoad((prev) => {
+          const updatedLoad = [...prev, ...newAssignments];
+         
+          // Re‑calculate the set of assigned subject IDs for this teacher
+          const teacherAssignments = updatedLoad.filter(
+            (a) => a.teacher_id === selectedTeacher.id
+          );
+          const ids = new Set(teacherAssignments.map((a) => Number(a.subject_id)));
+          setAssignedSubjectIdsForTeacher(ids);
+
+          return updatedLoad;
+        });
+
+        invalidateCache();
+        setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+        setSelectedSubjectsForBulk([]);
+        setSuccessMessage(`✅ ${subjectsToAssign.length} subject(s) assigned!`);
+        setTimeout(() => setSuccessMessage(""), 3000);
+
+        // 3. Switch to "Load" tab so the user sees the new assignment instantly
+        setDetailMode("view");
+        
+      } catch (err) {
+        setErrorMessage(err.response?.data?.message || "Failed to assign subjects");
+        setTimeout(() => setErrorMessage(""), 3000);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      assignmentForm,
+      selectedSubjectsForBulk,
+      selectedTeacher,
+      availableSubjects,
+      selectedSchoolYear,
+      invalidateCache,
+    ]
+  );
+
+  const handleRemoveAssignment = useCallback(
+    async (assignmentId) => {
+      if (!window.confirm("Remove this subject assignment?")) return;
+      try {
+        await API.delete(`/teachers/subject-assignments/${assignmentId}`);
+        setTeacherLoad((prev) => prev.filter((a) => a.id !== assignmentId));
+        invalidateCache();
+        setSuccessMessage("✅ Assignment removed successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        setErrorMessage("Failed to remove assignment");
+        setTimeout(() => setErrorMessage(""), 3000);
+      }
+    },
+    [invalidateCache]
+  );
+
+  const handleSubjectChange = useCallback(
+    (subjectId) => {
+      const selectedSub = availableSubjects.find((s) => s.id === parseInt(subjectId));
+      setAssignmentForm((prev) => ({
+        ...prev,
+        subject_id: subjectId,
+        gradeLevel: selectedSub?.gradeLevel || "",
+      }));
+    },
+    [availableSubjects]
+  );
 
   const refreshSubjects = useCallback(async () => {
-  try {
-    const [subjectRes, loadRes] = await Promise.all([
-      API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
-      API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
-    ]);
-    setAvailableSubjects(subjectRes.data);
-    setTeacherLoad(loadRes.data);
-    // Update cache
-    const cachedData = localStorage.getItem(CACHE_KEY);
-    if (cachedData) {
-      const data = JSON.parse(cachedData);
-      data.subjects = subjectRes.data;
-      data.load = loadRes.data;
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(`${CACHE_KEY}_time`, Date.now().toString());
+    try {
+      const [subjectRes, loadRes] = await Promise.all([
+        API.get("/subjects", { params: { school_year: selectedSchoolYear } }),
+        API.get("/teacher-load", { params: { school_year: selectedSchoolYear } }),
+      ]);
+      setAvailableSubjects(subjectRes.data);
+      setTeacherLoad(loadRes.data);
+    } catch (err) {
+      console.error("Refresh failed", err);
     }
-    setSuccessMessage("✅ Subject list refreshed!");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  } catch (err) {
-    console.error("Refresh failed", err);
-    setErrorMessage("Failed to refresh subjects. Please try again.");
-    setTimeout(() => setErrorMessage(""), 3000);
-  }
-}, [selectedSchoolYear]);
+  }, [selectedSchoolYear]);
 
+  const handleRefreshAssignSubjects = async () => {
+    setRefreshingAssignSubjects(true);
+    await refreshSubjects();
+    setRefreshingAssignSubjects(false);
+  };
+
+  const toggleBulkSelect = (subjectId) => {
+    setSelectedSubjectsForBulk((prev) =>
+      prev.includes(subjectId)
+        ? prev.filter((id) => id !== subjectId)
+        : [...prev, subjectId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedSubjectsForBulk.length === availableSubjectsForAssignment.length) {
+      setSelectedSubjectsForBulk([]);
+    } else {
+      setSelectedSubjectsForBulk(availableSubjectsForAssignment.map((s) => s.id));
+    }
+  };
+
+  const handleAddTeacher = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+        const payload = { ...newTeacher, school_year: selectedSchoolYear };
+        const res = await API.post("/teachers", payload);
+        setTeachers((prev) => sortTeachersByAdvisory([...prev, res.data.teacher]));
+        invalidateCache();
+        setNewTeacher(INITIAL_TEACHER_FORM);
+        setShowAddModal(false);
+        setSuccessMessage("Teacher added successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        setErrorMessage(err.response?.data?.message || "Failed to add teacher");
+        setTimeout(() => setErrorMessage(""), 3000);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [newTeacher, selectedSchoolYear, invalidateCache]
+  );
+
+  const formatTime12 = (time24) => {
+    if (!time24) return "";
+    const [hour, minute] = time24.split(":");
+    let h = parseInt(hour, 10);
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${h}:${minute} ${ampm}`;
+  };
+
+  const switchMode = useCallback((mode) => {
+  if (!selectedTeacher) return;
+  setDetailMode(mode);
+
+  if (mode === "edit") {
+    setEditTeacherForm({
+      firstName: selectedTeacher.firstName,
+      lastName: selectedTeacher.lastName,
+      email: selectedTeacher.email,
+      specialization: selectedTeacher.specialization,
+      section_id: selectedTeacher.advisory_section?.id || "",
+      phone: selectedTeacher.phone || "",
+      status: selectedTeacher.status,
+    });
+  }
+
+  if (mode === "assign") {
+    const teacherAssignments = teacherLoad.filter(
+      (a) => a.teacher_id === selectedTeacher.id
+    );
+    const ids = new Set(teacherAssignments.map((a) => Number(a.subject_id)));
+    setAssignedSubjectIdsForTeacher(ids);
+    setAssignmentForm(INITIAL_ASSIGNMENT_FORM);
+    setSelectedSubjectsForBulk([]);
+    setAssignMode("single");
+  }
+}, [selectedTeacher, teacherLoad]);
 
   return (
     <>
-        <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
-          {yearLoading || !selectedSchoolYear ? (
-            <div className="loading-school-year">Loading school year...</div>
-          ) : (
-            <div className="directory-container">
+      <div className="content-scroll-area" style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+        {yearLoading || !selectedSchoolYear ? (
+          <div className="loading-school-year">Loading school year...</div>
+        ) : (
+          <div className="directory-container split-layout">
+            {/* ── LEFT: Teacher Grid ── */}
+            <div className="teacher-grid-panel">
               <div className="directory-header">
                 <div className="title-group">
                   <FaChalkboardTeacher
@@ -580,24 +545,24 @@ const openScheduleModal = useCallback((teacher) => {
                     <p>Manage advisory roles and subject assignments</p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                   <select
                     value={selectedSchoolYear}
                     onChange={(e) => setSelectedSchoolYear(e.target.value)}
                     style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      border: '1px solid #b8860b',
-                      background: '#fff',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer'
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      border: "1px solid #b8860b",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
                     }}
                   >
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(y => (
+                    {["2024-2025", "2025-2026", "2026-2027", "2027-2028"].map((y) => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
-                  <button className="add-teacher-btn" onClick={() => setShowModal(true)}>
+                  <button className="add-teacher-btn" onClick={() => setShowAddModal(true)}>
                     <FaUserPlus /> Add Teacher
                   </button>
                 </div>
@@ -607,767 +572,510 @@ const openScheduleModal = useCallback((teacher) => {
               {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
               {loading ? (
-                <div style={{ 
-                  display: "flex", 
-                  justifyContent: "center", 
-                  alignItems: "center",
-                  minHeight: "400px",
-                  textAlign: "center"
-                }}>
-                  <div>
-                    <div style={{ fontSize: "3rem", marginBottom: "20px", color: "#b8860b" }}>⏳</div>
-                    <h3 style={{ color: "#333", fontWeight: 600, marginBottom: "10px" }}>Loading Faculty</h3>
-                    <p style={{ color: "#666", fontSize: "0.95rem" }}>Fetching faculty directory...</p>
-                  </div>
-                </div>
+                <div className="loading-placeholder">Loading faculty...</div>
               ) : (
                 <div className="teacher-grid">
                   {teachers.map((teacher) => (
                     <TeacherCard
                       key={teacher.id}
                       teacher={teacher}
-                      isExpanded={expandedTeacher === teacher.id}
-                      onToggleExpand={toggleExpandTeacher}
-                      onAssign={openAssignModal}
-                      onEdit={openEditModal}
-                      onRemoveAssignment={handleRemoveAssignment}
-                      onViewSchedule={openScheduleModal}
+                      isSelected={teacher.id === selectedTeacherId}
+                      onClick={() => openDetail(teacher.id, "view")}
                     />
                   ))}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {showModal && (
-          <AddTeacherModal
-            newTeacher={newTeacher}
-            setNewTeacher={setNewTeacher}
-            onSubmit={handleAddTeacher}
-            onClose={() => setShowModal(false)}
-            isSubmitting={isSubmitting}
-            sectionsByGrade={sectionsByGrade}
-          />
-        )}
+            {/* ── RIGHT: Detail Panel ── */}
+            {selectedTeacher && (
+              <div className="detail-panel-wrapper">
+                <div className="detail-actions">
+                  <button onClick={() => switchMode("view")}>
+                    <FaBookOpen /> Load
+                  </button>
+                  <button onClick={() => switchMode("schedule")}>
+                    <FaCalendarAlt /> Schedule
+                  </button>
+                  <button onClick={() => switchMode("edit")}>
+                    <FaEdit /> Edit
+                  </button>
+                  <button onClick={() => switchMode("assign")}>
+                    <FaPlus /> Assign
+                  </button>
+                  <button className="close-detail-btn" onClick={closeDetail}>
+                    <FaTimes />
+                  </button>
+                </div>
 
-        {showEditModal && (
-          <EditTeacherModal
-            editTeacherForm={editTeacherForm}
-            setEditTeacherForm={setEditTeacherForm}
-            onSubmit={handleEditTeacher}
-            onClose={() => setShowEditModal(false)}
-            isSubmitting={isSubmitting}
-            selectedTeacher={selectedTeacherForEdit}  
-            sectionsByGrade={sectionsByGrade} 
-          />
-        )}
+                <div className="detail-body">
+                  {/* Mode: View Load */}
+                  {detailMode === "view" && (
+                    <div className="teacher-load-detail">
+                      <h4>Assigned Subjects</h4>
+                      {teacherLoad.filter((a) => a.teacher_id === selectedTeacher.id).length > 0 ? (
+                        <ul className="assignment-list">
+                          {teacherLoad
+                            .filter((a) => a.teacher_id === selectedTeacher.id)
+                            .map((assignment) => (
+                              <li key={assignment.id} className="assignment-item">
+                                <div className="assignment-info">
+                                  <strong>{assignment.subject?.subjectCode}:</strong>{" "}
+                                  {assignment.subject?.subjectName}
+                                  <span className="grade-pill">{assignment.gradeLevel}</span>
+                                  {assignment.schedule && (
+                                    <div className="schedule-text">{assignment.schedule}</div>
+                                  )}
+                                </div>
+                                <button
+                                  className="remove-assignment-btn"
+                                  onClick={() => handleRemoveAssignment(assignment.id)}
+                                  title="Remove assignment"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="no-data-text">No subjects assigned yet.</p>
+                      )}
+                    </div>
+                  )}
 
-        {showAssignModal && (
-          <AssignSubjectModal
-            assignmentForm={assignmentForm}
-            onSubjectChange={handleSubjectChange}
-            onSubmit={handleAssignSubject}
-            onClose={() => {
-              setShowAssignModal(false);
-              setSelectedSubjectsForBulk([]);
-            }}
-            isSubmitting={isSubmitting}
-            selectedTeacher={selectedTeacherForAssign}
-            availableSubjects={availableSubjectsForAssignment}
-            selectedSubjectsForBulk={selectedSubjectsForBulk}
-            setSelectedSubjectsForBulk={setSelectedSubjectsForBulk}
-            onRefreshSubjects={refreshSubjects}
-          />
-        )}
-        {showScheduleModal && (
-          <TeacherScheduleModal
-            teacher={selectedTeacherForSchedule}
-            onClose={() => setShowScheduleModal(false)}
-             schoolYear={selectedSchoolYear}  
-          />
-        )}
-</>
-  );
-}
+                  {/* Mode: Schedule */}
+                  {detailMode === "schedule" && (
+                    <div className="schedule-section">
+                      <h4><FaCalendarAlt /> Weekly Schedule</h4>
+                      {scheduleLoading ? (
+                        <p>Loading schedule…</p>
+                      ) : scheduleData.length > 0 ? (
+                        <div className="schedule-table-wrapper">
+                          <table className="teacher-schedule-table">
+                            <thead>
+                              <tr>
+                                <th>Time</th>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[
+                                ...new Set(
+                                  scheduleData.map(
+                                    (s) => `${s.time_slot.start_time}-${s.time_slot.end_time}`
+                                  )
+                                ),
+                              ]
+                                .sort()
+                                .map((timeSlot) => {
+                                  const [start24, end24] = timeSlot.split("-");
+                                  return (
+                                    <tr key={timeSlot}>
+                                      <td className="schedule-time">
+                                        {formatTime12(start24)} – {formatTime12(end24)}
+                                      </td>
+                                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(
+                                        (day) => {
+                                          const schedule = scheduleData.find(
+                                            (s) =>
+                                              s.day === day &&
+                                              `${s.time_slot.start_time}-${s.time_slot.end_time}` === timeSlot
+                                          );
+                                          return (
+                                            <td key={day}>
+                                              {schedule ? (
+                                                <div className="schedule-subject">
+                                                  <strong>{schedule.subject?.subjectCode}</strong>
+                                                  <div className="schedule-subject-name">
+                                                    {schedule.subject?.subjectName}
+                                                  </div>
+                                                  <div className="schedule-grade">
+                                                    {schedule.section?.name} ({schedule.section?.gradeLevel})
+                                                  </div>
+                                                  <div className="schedule-room">
+                                                    Room: {schedule.room?.room_name || "?"}
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <span className="schedule-empty">—</span>
+                                              )}
+                                            </td>
+                                          );
+                                        }
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p>No scheduled classes found.</p>
+                      )}
+                    </div>
+                  )}
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MODAL COMPONENTS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const AddTeacherModal = memo(({ 
-  newTeacher, 
-  setNewTeacher, 
-  onSubmit, 
-  onClose, 
-  isSubmitting,
-  sectionsByGrade                 
-}) => (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <div className="modal-header">
-        <h3>Register New Faculty</h3>
-        <FaTimes className="close-icon" onClick={onClose} />
-      </div>
+                  {/* Mode: Edit */}
+                  {detailMode === "edit" && (
+                  <div className="edit-form">
+                    <h4>Edit Teacher Details</h4>
+                    <form onSubmit={handleEditSave} className="teacher-edit-form">
+                      <div className="form-group">
+                        <label>First Name</label>
+                        <input
+                          type="text"
+                          value={editTeacherForm.firstName}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, firstName: e.target.value })}
+                          required
+                        />
+                      </div>
 
-      <form onSubmit={onSubmit}>
-        <div className="form-grid">
-          <input
-            type="text"
-            placeholder="First Name"
-            required
-            value={newTeacher.firstName}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, firstName: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Last Name"
-            required
-            value={newTeacher.lastName}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, lastName: e.target.value })
-            }
-          />
-        </div>
+                      <div className="form-group">
+                        <label>Last Name</label>
+                        <input
+                          type="text"
+                          value={editTeacherForm.lastName}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, lastName: e.target.value })}
+                          required
+                        />
+                      </div>
 
-        <div className="form-grid">
-          <input
-            type="email"
-            placeholder="Email Address"
-            required
-            value={newTeacher.email}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, email: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Phone Number"
-            required
-            value={newTeacher.phone}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, phone: e.target.value })
-            }
-          />
-        </div>
+                      <div className="form-group">
+                        <label>Email Address</label>
+                        <input
+                          type="email"
+                          value={editTeacherForm.email}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, email: e.target.value })}
+                          required
+                        />
+                      </div>
 
-        <input
-          type="text"
-          placeholder="Specialization (e.g., Mathematics)"
-          required
-          value={newTeacher.specialization}
-          onChange={(e) =>
-            setNewTeacher({ ...newTeacher, specialization: e.target.value })
-          }
-        />
+                      <div className="form-group">
+                        <label>Phone Number</label>
+                        <input
+                          type="text"
+                          value={editTeacherForm.phone}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, phone: e.target.value })}
+                          required
+                        />
+                      </div>
 
-        <div className="form-grid">
-          {/* ─── UPDATED ADVISORY DROPDOWN ────────────────────────────── */}
-          <select
-            value={newTeacher.section_id || ""}
-            onChange={(e) => setNewTeacher({ ...newTeacher, section_id: e.target.value })}
-          >
-            <option value="">No Advisory (N/A)</option>
-            {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
-              <optgroup key={grade} label={grade}>
-                {gradeSections.map(section => {
-                  const currentAdviser = section.advisor 
-                    ? `${section.advisor.firstName} ${section.advisor.lastName}` 
-                    : 'Unassigned';
-                  return (
-                    <option key={section.id} value={section.id}>
-                      {section.name} — Adviser: {currentAdviser}
-                    </option>
-                  );
-                })}
-              </optgroup>
-            ))}
-          </select>
+                      <div className="form-group">
+                        <label>Specialization</label>
+                        <input
+                          type="text"
+                          value={editTeacherForm.specialization}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, specialization: e.target.value })}
+                          required
+                        />
+                      </div>
 
-          <select
-            value={newTeacher.status}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, status: e.target.value })
-            }
-          >
-            <option value="active">Status: Active</option>
-            <option value="on_leave">Status: On Leave</option>
-            <option value="resigned">Status: Resigned</option>
-          </select>
-        </div>
+                      <div className="form-group">
+                        <label>Advisory Section</label>
+                        <select
+                          value={editTeacherForm.section_id || ""}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, section_id: e.target.value })}
+                        >
+                          <option value="">No Advisory (N/A)</option>
+                          {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
+                            <optgroup key={grade} label={grade}>
+                              {gradeSections.map((section) => (
+                                <option key={section.id} value={section.id}>
+                                  {section.name} — Adviser:{" "}
+                                  {section.advisor
+                                    ? `${section.advisor.firstName} ${section.advisor.lastName}`
+                                    : "Unassigned"}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
 
-        <button
-          type="submit"
-          className="submit-btn"
-          disabled={isSubmitting}
-          style={{ opacity: isSubmitting ? 0.7 : 1 }}
-        >
-          {isSubmitting ? "Registering..." : "Register Teacher"}
-        </button>
-      </form>
-    </div>
-  </div>
-));
+                      <div className="form-group">
+                        <label>Status</label>
+                        <select
+                          value={editTeacherForm.status}
+                          onChange={(e) => setEditTeacherForm({ ...editTeacherForm, status: e.target.value })}
+                        >
+                          <option value="active">Active</option>
+                          <option value="on_leave">On Leave</option>
+                          <option value="resigned">Resigned</option>
+                        </select>
+                      </div>
 
-const EditTeacherModal = memo(({ 
-  editTeacherForm, 
-  setEditTeacherForm, 
-  onSubmit, 
-  onClose, 
-  isSubmitting,
-  selectedTeacher,
-  sectionsByGrade                
-}) => (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <div className="modal-header">
-        <h3>
-          <FaEdit /> Edit Teacher - {selectedTeacher?.firstName}{" "}
-          {selectedTeacher?.lastName}
-        </h3>
-        <FaTimes className="close-icon" onClick={onClose} />
-      </div>
+                      <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                        {isSubmitting ? "Updating..." : "Save Changes"}
+                      </button>
+                    </form>
+                  </div>
+                )}
 
-      <form onSubmit={onSubmit}>
-        <div className="form-grid">
-          <input
-            type="text"
-            placeholder="First Name"
-            required
-            value={editTeacherForm.firstName}
-            onChange={(e) =>
-              setEditTeacherForm({ ...editTeacherForm, firstName: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Last Name"
-            required
-            value={editTeacherForm.lastName}
-            onChange={(e) =>
-              setEditTeacherForm({ ...editTeacherForm, lastName: e.target.value })
-            }
-          />
-        </div>
+                  {/* Mode: Assign (fully built) */}
+                  {detailMode === "assign" && (
+                    <div className="assign-form">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <h4>Assign Subjects</h4>
+                        <button
+                          type="button"
+                          onClick={handleRefreshAssignSubjects}
+                          disabled={refreshingAssignSubjects}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                          title="Refresh subject list"
+                        >
+                          <FaSyncAlt className={refreshingAssignSubjects ? "spinning" : ""} />
+                        </button>
+                      </div>
 
-        <div className="form-grid">
-          <input
-            type="email"
-            placeholder="Email Address"
-            required
-            value={editTeacherForm.email}
-            onChange={(e) =>
-              setEditTeacherForm({ ...editTeacherForm, email: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Phone Number"
-            required
-            value={editTeacherForm.phone}
-            onChange={(e) =>
-              setEditTeacherForm({ ...editTeacherForm, phone: e.target.value })
-            }
-          />
-        </div>
+                      {/* Mode Tabs */}
+                      <div style={{ display: "flex", borderBottom: "2px solid #e0d8b0", marginBottom: "20px" }}>
+                        <button
+                          type="button"
+                          style={{
+                            flex: 1,
+                            padding: "12px",
+                            background: assignMode === "single" ? "#f7e14b" : "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            color: assignMode === "single" ? "#333" : "#999",
+                            borderBottom: assignMode === "single" ? "3px solid #b8860b" : "none",
+                          }}
+                          onClick={() => { setAssignMode("single"); setSelectedSubjectsForBulk([]); }}
+                        >
+                          📌 Single Subject
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            flex: 1,
+                            padding: "12px",
+                            background: assignMode === "bulk" ? "#f7e14b" : "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            color: assignMode === "bulk" ? "#333" : "#999",
+                            borderBottom: assignMode === "bulk" ? "3px solid #b8860b" : "none",
+                          }}
+                          onClick={() => setAssignMode("bulk")}
+                        >
+                          ✓ Bulk ({selectedSubjectsForBulk.length})
+                        </button>
+                      </div>
 
-        <input
-          type="text"
-          placeholder="Specialization (e.g., Mathematics)"
-          required
-          value={editTeacherForm.specialization}
-          onChange={(e) =>
-            setEditTeacherForm({
-              ...editTeacherForm,
-              specialization: e.target.value,
-            })
-          }
-        />
+                      <form onSubmit={handleAssignSubmit}>
+                        {assignMode === "single" ? (
+                          <>
+                            <div className="form-group">
+                              <label>Select Subject</label>
+                              <select
+                                value={assignmentForm.subject_id}
+                                onChange={(e) => handleSubjectChange(e.target.value)}
+                                required
+                                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "2px solid #e0d8b0" }}
+                              >
+                                <option value="">-- Choose Subject --</option>
+                                {availableSubjectsForAssignment.map((subject) => (
+                                  <option key={subject.id} value={subject.id}>
+                                    {subject.subjectCode} - {subject.subjectName} ({subject.gradeLevel})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label>Detected Grade Level</label>
+                              <input
+                                type="text"
+                                value={assignmentForm.gradeLevel}
+                                placeholder="Select a subject to detect grade..."
+                                readOnly
+                                style={{
+                                  backgroundColor: "#f0f0f0",
+                                  cursor: "not-allowed",
+                                  width: "100%",
+                                  padding: "10px",
+                                  borderRadius: "6px",
+                                  border: "2px solid #e0d8b0",
+                                }}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ marginBottom: "20px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                              <h4 style={{ margin: 0 }}>Choose Subjects</h4>
+                              <button
+                                type="button"
+                                onClick={toggleSelectAll}
+                                style={{
+                                  padding: "6px 12px",
+                                  background: "#f7e14b",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontWeight: 600,
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                {selectedSubjectsForBulk.length === availableSubjectsForAssignment.length ? "Deselect All" : "Select All"}
+                              </button>
+                            </div>
 
-        <div className="form-grid">
-          {/* ─── UPDATED ADVISORY DROPDOWN ────────────────────────────── */}
-          <select
-            value={editTeacherForm.section_id || ""}
-            onChange={(e) => setEditTeacherForm({ ...editTeacherForm, section_id: e.target.value })}
-          >
-            <option value="">No Advisory (N/A)</option>
-            {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
-              <optgroup key={grade} label={grade}>
-                {gradeSections.map(section => {
-                  const currentAdviser = section.advisor 
-                    ? `${section.advisor.firstName} ${section.advisor.lastName}` 
-                    : 'Unassigned';
-                  const isCurrentTeacher = section.teacher_id === selectedTeacher?.id;
-                  return (
-                    <option key={section.id} value={section.id}>
-                      {section.name} — Adviser: {currentAdviser}
-                      {isCurrentTeacher ? ' (Current)' : ''}
-                    </option>
-                  );
-                })}
-              </optgroup>
-            ))}
-          </select>
-
-          <select
-            value={editTeacherForm.status}
-            onChange={(e) =>
-              setEditTeacherForm({ ...editTeacherForm, status: e.target.value })
-            }
-          >
-            <option value="active">Status: Active</option>
-            <option value="on_leave">Status: On Leave</option>
-            <option value="resigned">Status: Resigned</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          className="submit-btn"
-          disabled={isSubmitting}
-          style={{ opacity: isSubmitting ? 0.7 : 1 }}
-        >
-          {isSubmitting ? "Updating..." : "Update Teacher"}
-        </button>
-      </form>
-    </div>
-  </div>
-));
-
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEACHER SCHEDULE MODAL
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEACHER SCHEDULE MODAL (fetches actual schedules from backend)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Helper: convert 24-hour time (e.g., "14:00:00") to 12-hour format (e.g., "2:00 PM")
-  const formatTime12 = (time24) => {
-    if (!time24) return '';
-    let [hour, minute] = time24.split(':');
-    let h = parseInt(hour, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${h}:${minute} ${ampm}`;
-  };
-
-  useEffect(() => {
-  if (!teacher) return;
-  let cancelled = false;
-
-  const fetchSchedules = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get(`/teachers/${teacher.id}/schedule`, {
-        params: { school_year: schoolYear },
-      });
-      if (!cancelled) setSchedules(res.data);
-    } catch (err) {
-      if (!cancelled) {
-        console.error("Failed to fetch schedules", err);
-        setError("Could not load schedule data.");
-      }
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  };
-
-  fetchSchedules();
-
-  return () => { cancelled = true; };
-}, [teacher, schoolYear]);
-
-  if (!teacher) return null;
-
-  const dayOrder = {
-    Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
-  };
-
-  const schedulesByDay = {
-    Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [],
-  };
-
-  schedules.forEach(sched => {
-    const day = sched.day;
-    if (schedulesByDay[day]) {
-      schedulesByDay[day].push(sched);
-    }
-  });
-
-  Object.keys(schedulesByDay).forEach(day => {
-    schedulesByDay[day].sort((a, b) => {
-      const timeA = a.time_slot?.start_time || '';
-      const timeB = b.time_slot?.start_time || '';
-      return timeA.localeCompare(timeB);
-    });
-  });
-
-  // Unique time slots for table rows (keep original 24h string for grouping)
-  const allTimeSlots = [...new Set(
-    schedules.flatMap(s => s.time_slot ? `${s.time_slot.start_time}-${s.time_slot.end_time}` : '')
-  )].sort();
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'auto' }}>
-        <div className="modal-header">
-          <h3>
-            📅 Weekly Schedule - {teacher.firstName} {teacher.lastName}
-          </h3>
-          <FaTimes className="close-icon" onClick={onClose} />
-        </div>
-
-        <div style={{ padding: '0 10px 10px 10px' }}>
-          {loading && <p style={{ textAlign: 'center' }}>Loading schedule...</p>}
-          {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
-
-          {!loading && schedules.length === 0 && (
-            <p style={{ textAlign: 'center', color: '#666' }}>No scheduled classes found for this teacher.</p>
-          )}
-
-          {!loading && schedules.length > 0 && (
-            <>
-              <div className="schedule-table-wrapper">
-                <table className="teacher-schedule-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Monday</th>
-                      <th>Tuesday</th>
-                      <th>Wednesday</th>
-                      <th>Thursday</th>
-                      <th>Friday</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allTimeSlots.map(timeSlot => {
-                      const [start24, end24] = timeSlot.split('-');
-                      return (
-                        <tr key={timeSlot}>
-                          <td className="schedule-time">
-                            {formatTime12(start24)} – {formatTime12(end24)}
-                          </td>
-                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
-                            const schedule = schedulesByDay[day]?.find(
-                              s => s.time_slot && `${s.time_slot.start_time}-${s.time_slot.end_time}` === timeSlot
-                            );
-                            return (
-                              <td key={day}>
-                                {schedule ? (
-                                  <div className="schedule-subject">
-                                    <strong>{schedule.subject?.subjectCode}</strong>
-                                    <div className="schedule-subject-name">{schedule.subject?.subjectName}</div>
-                                    <div className="schedule-grade">
-                                      {schedule.section?.name} ({schedule.section?.gradeLevel})
+                            <div
+                              style={{
+                                maxHeight: "200px",
+                                overflowY: "auto",
+                                border: "2px solid #e0d8b0",
+                                borderRadius: "6px",
+                                padding: "10px",
+                              }}
+                            >
+                              {availableSubjectsForAssignment.length > 0 ? (
+                                availableSubjectsForAssignment.map((subject) => (
+                                  <label
+                                    key={subject.id}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      padding: "10px",
+                                      marginBottom: "8px",
+                                      background: selectedSubjectsForBulk.includes(subject.id) ? "#fffef8" : "transparent",
+                                      borderRadius: "4px",
+                                      cursor: "pointer",
+                                      border: selectedSubjectsForBulk.includes(subject.id) ? "1px solid #f7e14b" : "none",
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubjectsForBulk.includes(subject.id)}
+                                      onChange={() => toggleBulkSelect(subject.id)}
+                                      style={{ marginRight: "12px", cursor: "pointer", width: "18px", height: "18px" }}
+                                    />
+                                    <div style={{ flex: 1 }}>
+                                      <strong>{subject.subjectCode}</strong> - {subject.subjectName}
+                                      <div style={{ fontSize: "0.85rem", color: "#666" }}>{subject.gradeLevel}</div>
                                     </div>
-                                    <div className="schedule-room">
-                                      Room: {schedule.room?.room_name || '?'}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="schedule-empty">—</span>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                  </label>
+                                ))
+                              ) : (
+                                <p style={{ textAlign: "center", color: "#999", margin: "20px 0" }}>
+                                  No subjects available for assignment
+                                </p>
+                              )}
+                            </div>
+                            <div style={{ marginTop: "10px", padding: "10px", background: "#f0f0f0", borderRadius: "6px" }}>
+                              <strong>{selectedSubjectsForBulk.length}</strong> subject(s) selected
+                            </div>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="submit-btn"
+                          disabled={isSubmitting}
+                          style={{ width: "100%", marginTop: "15px" }}
+                        >
+                          {isSubmitting ? "Assigning..." : "Assign Subject(s)"}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
               </div>
-            </>
-          )}
-        </div>
-
-        <button className="submit-btn" onClick={onClose} style={{ marginTop: '20px' }}>
-          Close
-        </button>
-      </div>
-    </div>
-  );
-});
-
-
-const AssignSubjectModal = memo(({ 
-  assignmentForm, 
-  onSubjectChange, 
-  onSubmit, 
-  onClose, 
-  isSubmitting,
-  selectedTeacher,
-  availableSubjects,
-  selectedSubjectsForBulk,
-  setSelectedSubjectsForBulk,
-  onRefreshSubjects,
-}) => {
-  const [assignMode, setAssignMode] = useState("single");
-  const [refreshing, setRefreshing] = useState(false);
-  const [modalError, setModalError] = useState('');
-
-  const handleCheckboxChange = (subjectId) => {
-    setSelectedSubjectsForBulk(prev =>
-      prev.includes(subjectId)
-        ? prev.filter(id => id !== subjectId)
-        : [...prev, subjectId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedSubjectsForBulk.length === availableSubjects.length) {
-      setSelectedSubjectsForBulk([]);
-    } else {
-      setSelectedSubjectsForBulk(availableSubjects.map(s => s.id));
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await onRefreshSubjects();
-    setRefreshing(false);
-  };
-
-  const handleBulkSubmit = (e) => {
-    e.preventDefault();
-    if (selectedSubjectsForBulk.length === 0) {
-      setModalError("Please select at least one subject");
-  setTimeout(() => setModalError(''), 3000);
-      return;
-    }
-    onSubmit(e);
-  };
-
-  const handleSingleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(e);
-  };
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: "600px" }}>
-        <div className="modal-header">
-          <h3>
-            Assign Subjects to {selectedTeacher?.firstName}{" "}
-            {selectedTeacher?.lastName}
-          </h3>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "1.2rem",
-                padding: "5px",
-                borderRadius: "4px",
-                transition: "all 0.2s",
-              }}
-              title="Refresh subject list"
-            >
-              <FaSyncAlt className={refreshing ? "spinning" : ""} />
-            </button>
-            <FaTimes className="close-icon" onClick={onClose} />
+            )}
           </div>
-        </div>
-        
-         {modalError && <div className="alert alert-error">{modalError}</div>}
+        )}
+      </div>
 
-        {/* Mode Tabs */}
-        <div style={{ display: "flex", borderBottom: "2px solid #e0d8b0", marginBottom: "20px" }}>
-          <button
-            type="button"
-            style={{
-              flex: 1,
-              padding: "12px",
-              background: assignMode === "single" ? "#f7e14b" : "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: 600,
-              color: assignMode === "single" ? "#333" : "#999",
-              borderBottom: assignMode === "single" ? "3px solid #b8860b" : "none",
-            }}
-            onClick={() => {
-              setAssignMode("single");
-              setSelectedSubjectsForBulk([]);
-            }}
-          >
-            📌 Single Subject
-          </button>
-          <button
-            type="button"
-            style={{
-              flex: 1,
-              padding: "12px",
-              background: assignMode === "bulk" ? "#f7e14b" : "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: 600,
-              color: assignMode === "bulk" ? "#333" : "#999",
-              borderBottom: assignMode === "bulk" ? "3px solid #b8860b" : "none",
-            }}
-            onClick={() => setAssignMode("bulk")}
-          >
-            ✓ Bulk ({selectedSubjectsForBulk.length})
-          </button>
-        </div>
-
-        {/* Single Subject Mode */}
-        {assignMode === "single" ? (
-          <form onSubmit={handleSingleSubmit}>
-            <div className="form-group">
-              <label>Select Subject</label>
-              <select
-                value={assignmentForm.subject_id}
-                onChange={(e) => onSubjectChange(e.target.value)}
-                required
-                style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "2px solid #e0d8b0" }}
-              >
-                <option value="">-- Choose Subject --</option>
-                {availableSubjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.subjectCode} - {subject.subjectName} ({subject.gradeLevel})
-                  </option>
-                ))}
-              </select>
+      {/* Add Teacher Modal */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Register New Faculty</h3>
+              <FaTimes className="close-icon" onClick={() => setShowAddModal(false)} />
             </div>
-
-            <div className="form-group">
-              <label>Detected Grade Level</label>
+            <form onSubmit={handleAddTeacher}>
+              <div className="form-grid">
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  required
+                  value={newTeacher.firstName}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, firstName: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  required
+                  value={newTeacher.lastName}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, lastName: e.target.value })}
+                />
+              </div>
+              <div className="form-grid">
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  required
+                  value={newTeacher.email}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  required
+                  value={newTeacher.phone}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
+                />
+              </div>
               <input
                 type="text"
-                value={assignmentForm.gradeLevel}
-                placeholder="Select a subject to detect grade..."
-                readOnly
-                style={{
-                  backgroundColor: "#f0f0f0",
-                  cursor: "not-allowed",
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "2px solid #e0d8b0",
-                }}
+                placeholder="Specialization (e.g., Mathematics)"
+                required
+                value={newTeacher.specialization}
+                onChange={(e) => setNewTeacher({ ...newTeacher, specialization: e.target.value })}
               />
-            </div>
-
-            <button
-              type="submit"
-              className="submit-btn"
-              disabled={!assignmentForm.subject_id || isSubmitting}
-              style={{ opacity: isSubmitting ? 0.7 : 1 }}
-            >
-              {isSubmitting ? "Assigning..." : "Assign Subject"}
-            </button>
-          </form>
-        ) : (
-          /* Bulk Assignment Mode */
-          <form onSubmit={handleBulkSubmit}>
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                <h4 style={{ margin: 0 }}>Choose Subjects</h4>
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  style={{
-                    padding: "6px 12px",
-                    background: "#f7e14b",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                  }}
+              <div className="form-grid">
+                <select
+                  value={newTeacher.section_id || ""}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, section_id: e.target.value })}
                 >
-                  {selectedSubjectsForBulk.length === availableSubjects.length ? "Deselect All" : "Select All"}
-                </button>
+                  <option value="">No Advisory (N/A)</option>
+                  {Array.from(sectionsByGrade.entries()).map(([grade, gradeSections]) => (
+                    <optgroup key={grade} label={grade}>
+                      {gradeSections.map((section) => {
+                        const currentAdviser = section.advisor
+                          ? `${section.advisor.firstName} ${section.advisor.lastName}`
+                          : "Unassigned";
+                        return (
+                          <option key={section.id} value={section.id}>
+                            {section.name} — Adviser: {currentAdviser}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+                <select
+                  value={newTeacher.status}
+                  onChange={(e) => setNewTeacher({ ...newTeacher, status: e.target.value })}
+                >
+                  <option value="active">Status: Active</option>
+                  <option value="on_leave">Status: On Leave</option>
+                  <option value="resigned">Status: Resigned</option>
+                </select>
               </div>
-
-              <div
-                style={{
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                  border: "2px solid #e0d8b0",
-                  borderRadius: "6px",
-                  padding: "10px",
-                }}
-              >
-                {availableSubjects.length > 0 ? (
-                  availableSubjects.map((subject) => (
-                    <label
-                      key={subject.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        padding: "10px",
-                        marginBottom: "8px",
-                        background: selectedSubjectsForBulk.includes(subject.id) ? "#fffef8" : "transparent",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        border: selectedSubjectsForBulk.includes(subject.id) ? "1px solid #f7e14b" : "none",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSubjectsForBulk.includes(subject.id)}
-                        onChange={() => handleCheckboxChange(subject.id)}
-                        style={{ marginRight: "12px", cursor: "pointer", width: "18px", height: "18px" }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <strong>{subject.subjectCode}</strong> - {subject.subjectName}
-                        <div style={{ fontSize: "0.85rem", color: "#666" }}>
-                          {subject.gradeLevel}
-                        </div>
-                      </div>
-                    </label>
-                  ))
-                ) : (
-                  <p style={{ textAlign: "center", color: "#999", margin: "20px 0" }}>
-                    No subjects available for assignment
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "15px", padding: "10px", background: "#f0f0f0", borderRadius: "6px" }}>
-              <strong>{selectedSubjectsForBulk.length}</strong> subject(s) selected
-            </div>
-
-            <button
-              type="submit"
-              className="submit-btn"
-              disabled={selectedSubjectsForBulk.length === 0 || isSubmitting}
-              style={{ opacity: isSubmitting || selectedSubjectsForBulk.length === 0 ? 0.7 : 1 }}
-            >
-              {isSubmitting ? "Assigning..." : `Assign ${selectedSubjectsForBulk.length} Subject(s)`}
-            </button>
-          </form>
-        )}
-
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            marginTop: "10px",
-            width: "100%",
-            padding: "10px",
-            background: "#f0f0f0",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontWeight: 600,
-            color: "#333",
-          }}
-        >
-          Close
-        </button>
-      </div>
-    </div>
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Registering..." : "Register Teacher"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
-});
+}
