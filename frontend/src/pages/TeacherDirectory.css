@@ -535,7 +535,7 @@
 .teacher-card.selected {
   border-color: #b8860b;
   box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.3);
-  order: -1; 
+  /* order: -1;  */
 }
 
 /* Responsive stacking */
