@@ -67,6 +67,7 @@ const sortTeachersByAdvisory = (teachers) => {
 // ── MEMOIZED TEACHER CARD ───────────────────────────────────
 const TeacherCard = memo(({ teacher, isSelected, onClick }) => (
   <div
+    id={`teacher-card-${teacher.id}`}  
     className={`teacher-card ${isSelected ? "selected" : ""}`}
     onClick={onClick}
   >
@@ -139,6 +140,15 @@ export default function TeacherDirectory() {
   const [newTeacher, setNewTeacher] = useState(INITIAL_TEACHER_FORM);
   const [assignMode, setAssignMode] = useState("single");
   const [refreshingAssignSubjects, setRefreshingAssignSubjects] = useState(false);
+
+  useEffect(() => {
+  if (selectedTeacherId) {
+    const el = document.getElementById(`teacher-card-${selectedTeacherId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}, [selectedTeacherId]);
 
   const selectedTeacher = useMemo(
     () => teachers.find((t) => t.id === selectedTeacherId) || null,
