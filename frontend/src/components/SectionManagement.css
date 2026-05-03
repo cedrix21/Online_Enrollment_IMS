@@ -786,3 +786,9 @@
     position: static;
   }
 }
+.section-card-actions .delete-section-btn {
+  flex: none;              
+  width: auto;             
+  min-width: 0;            
+  padding: 8px 16px;
+}

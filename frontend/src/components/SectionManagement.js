@@ -70,7 +70,7 @@ const sortSectionsByGrade = (sections) => {
 // ───────────────────────────────────────────────
 
 const SectionCard = memo(
-  ({ section, isSelected, onSchedule, onViewStudents, onDelete, onClick }) => (
+  ({ section, isSelected, onDelete, onClick }) => (
     <div
       id={`section-card-${section.id}`}
       className={`section-card ${isSelected ? "selected" : ""}`}
@@ -107,22 +107,6 @@ const SectionCard = memo(
         </div>
       </div>
       <div className="section-card-actions">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSchedule(section);
-          }}
-        >
-          Schedule
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewStudents(section);
-          }}
-        >
-          Students
-        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -932,14 +916,12 @@ useEffect(() => {
                 <div className="section-grid">
                   {sections.map((section) => (
                     <SectionCard
-                      key={section.id}
-                      section={section}
-                      isSelected={section.id === selectedSectionId}
-                      onSchedule={(s) => openDetail(s.id, "schedule")}
-                      onViewStudents={(s) => openDetail(s.id, "students")}
-                      onDelete={handleDeleteSection}
-                      onClick={() => openDetail(section.id, "schedule")}
-                    />
+                    key={section.id}
+                    section={section}
+                    isSelected={section.id === selectedSectionId}
+                    onDelete={handleDeleteSection}
+                    onClick={() => openDetail(section.id, "schedule")}
+                  />
                   ))}
                 </div>
               )}
