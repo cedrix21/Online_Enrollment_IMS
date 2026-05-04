@@ -17,6 +17,9 @@ use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
 use App\Http\Controllers\Admin\UserManagementController;   
+use Illuminate\Support\Facades\Artisan; 
+
+
 
 
 /*
@@ -185,3 +188,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('auth:sanctum')->post('/activity-logs', [App\Http\Controllers\Api\ActivityLogController::class, 'store']);
 });
 
+// Temporary – remove after use
+Route::post('/seed-users', function () {
+    Artisan::call('db:seed', [
+        '--class' => 'UserSeeder',
+        '--force' => true,
+    ]);
+    return response()->json(['message' => 'UserSeeder executed.']);
+});
