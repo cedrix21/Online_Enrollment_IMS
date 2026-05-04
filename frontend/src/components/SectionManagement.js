@@ -34,6 +34,8 @@ const INITIAL_SCHEDULE_FORM = {
   subject_assignment_id: "",
   time_slot_id: "",
   room_id: "",
+  start_time: "",    
+  end_time: "",      
 };
 const INITIAL_SECTION_FORM = {
   name: "",
@@ -644,9 +646,9 @@ export default function SectionManagement() {
               s.section_id === selectedSection?.id
           );
 
-        if (allMapehSameSection) return false; // safe for MAPEH block
+        if (allMapehSameSection) return false;
       }
-      return true; // truly blocked
+      return true;
     });
 
     if (blockedDays.length > 0) {
@@ -676,35 +678,72 @@ export default function SectionManagement() {
       }
     }
 
+    // ── Resolve time slot from start / end times ──────────────
+    const start = newSchedule.start_time;
+    const end = newSchedule.end_time;
+
+    if (!start || !end) {
+      setErrorMessage("Please select both start and end time.");
+      setTimeout(() => setErrorMessage(""), 3000);
+      return;
+    }
+
+    // Try to find an existing exact match
+    let timeSlot = timeSlots.find(
+      (s) => s.start_time === start && s.end_time === end
+    );
+
+    if (!timeSlot) {
+      try {
+        // Create a new time slot (backend must support POST /time-slots)
+        const slotRes = await API.post("/time-slots", {
+          start_time: start,
+          end_time: end,
+        });
+        timeSlot = slotRes.data;
+        // Add it to the local list so later uses see it immediately
+        setTimeSlots((prev) => [...prev, timeSlot]);
+      } catch (err) {
+        setErrorMessage(
+          "Could not create a new time slot. Please choose an existing one."
+        );
+        setTimeout(() => setErrorMessage(""), 4000);
+        return;
+      }
+    }
+
+    const resolvedTimeSlotId = timeSlot.id;
+
+    // Update newSchedule.time_slot_id so conflict calculator can still work
+    setNewSchedule((prev) => ({ ...prev, time_slot_id: resolvedTimeSlotId }));
+
     setIsSubmitting(true);
     try {
-      // 1. Schedule the primary subject
+      // 1. Schedule the primary subject (use resolvedTimeSlotId)
       await API.post("/schedules", {
         section_id: selectedSection.id,
         subject_id: newSchedule.subject_id,
         teacher_id: newSchedule.teacher_id,
         subject_assignment_id: newSchedule.subject_assignment_id,
         days: selectedDays,
-        time_slot_id: newSchedule.time_slot_id,
+        time_slot_id: resolvedTimeSlotId,
         room_id: newSchedule.room_id,
       });
 
-      // 2. If the subject is MAPEH, automatically schedule the other MAPEH components
-      let mapehCount = 1; // count of scheduled MAPEH subjects
+      // 2. If MAPEH, auto‑schedule the remaining components
+      let mapehCount = 1;
       if (selectedAssignment?.subject && isMapehComponent(selectedAssignment.subject.subjectCode)) {
-        // Already scheduled subject IDs (including the one just saved)
         const alreadyScheduled = new Set(
           (selectedSection.schedules || []).map((s) => s.subject_id)
         );
         alreadyScheduled.add(newSchedule.subject_id);
 
-        // All MAPEH assignments for the same grade, taught by the **same teacher**
         const remainingMapehAssignments = teacherLoad.filter(
           (a) =>
             a.gradeLevel === selectedSection.gradeLevel &&
             isMapehComponent(a.subject?.subjectCode) &&
             !alreadyScheduled.has(a.subject_id) &&
-            a.teacher_id === newSchedule.teacher_id // same teacher as the selected one
+            a.teacher_id === newSchedule.teacher_id
         );
 
         if (remainingMapehAssignments.length > 0) {
@@ -715,7 +754,7 @@ export default function SectionManagement() {
               teacher_id: a.teacher_id,
               subject_assignment_id: a.id,
               days: selectedDays,
-              time_slot_id: newSchedule.time_slot_id,
+              time_slot_id: resolvedTimeSlotId,
               room_id: newSchedule.room_id,
             })
           );
@@ -724,7 +763,7 @@ export default function SectionManagement() {
         }
       }
 
-      // 3. Refresh detail
+      // 3. Refresh detail (NO CHANGES HERE – exactly as before)
       const [sectionRes, loadRes, schedRes] = await Promise.all([
         API.get(`/sections/${selectedSection.id}`, {
           params: { school_year: selectedSchoolYear },
@@ -766,7 +805,8 @@ export default function SectionManagement() {
     getConflictMessages,
     sections,
     occupiedSchedules,
-    teacherLoad, // required for MAPEH grouping
+    teacherLoad,
+    timeSlots,   // ⬅️ added: needed for time slot lookup
   ]
 );
   // ── Delete Schedule ──
@@ -909,18 +949,25 @@ export default function SectionManagement() {
         const load = teacherLoad.find((a) => a.id === parseInt(value));
         if (load) {
           setNewSchedule({
+            ...INITIAL_SCHEDULE_FORM,     // reset everything
             subject_id: load.subject_id,
             teacher_id: load.teacher_id,
             subject_assignment_id: value,
-            time_slot_id: "",
-            room_id: "",
           });
         }
-      } else if (type === "time_slot") {
+      } else if (type === "start_time") {
         setNewSchedule((prev) => ({
           ...prev,
-          time_slot_id: value,
+          start_time: value,
+          room_id: "",        // clear room when time changes
+          time_slot_id: "",   // clear the old slot
+        }));
+      } else if (type === "end_time") {
+        setNewSchedule((prev) => ({
+          ...prev,
+          end_time: value,
           room_id: "",
+          time_slot_id: "",
         }));
       } else if (type === "room") {
         setNewSchedule((prev) => ({ ...prev, room_id: value }));
@@ -1291,40 +1338,47 @@ useEffect(() => {
                               </p>
                             </div>
 
-                            {/* Time Slot & Room */}
+                            {/* Time selection – Start & End */}
                             <div className="form-grid">
                               <div className="input-group">
-                                <label>Time Slot</label>
-                                <select
-                                  required
-                                  value={newSchedule.time_slot_id}
-                                  disabled={!newSchedule.subject_id}
+                                <label>Start Time</label>
+                                <input
+                                  type="time"
+                                  value={newSchedule.start_time || ""}
                                   onChange={(e) =>
-                                    handleScheduleChange(
-                                      "time_slot",
-                                      e.target.value
-                                    )
+                                    handleScheduleChange("start_time", e.target.value)
                                   }
-                                >
-                                  <option value="">-- Select Time --</option>
-                                  {timeSlots.map((slot) => (
-                                    <option key={slot.id} value={slot.id}>
-                                      {slot.display_label}
-                                    </option>
-                                  ))}
-                                </select>
+                                  step="300"   // 5‑minute steps
+                                  disabled={!newSchedule.subject_id}
+                                />
                               </div>
+                              <div className="input-group">
+                                <label>End Time</label>
+                                <input
+                                  type="time"
+                                  value={newSchedule.end_time || ""}
+                                  onChange={(e) =>
+                                    handleScheduleChange("end_time", e.target.value)
+                                  }
+                                  step="300"
+                                  disabled={!newSchedule.subject_id}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Room – enabled only after both times are set */}
+                            <div className="form-grid">
                               <div className="input-group">
                                 <label>Room</label>
                                 <select
                                   required
                                   value={newSchedule.room_id}
-                                  disabled={!newSchedule.time_slot_id}
+                                  disabled={
+                                    !newSchedule.start_time ||
+                                    !newSchedule.end_time
+                                  }
                                   onChange={(e) =>
-                                    handleScheduleChange(
-                                      "room",
-                                      e.target.value
-                                    )
+                                    handleScheduleChange("room", e.target.value)
                                   }
                                 >
                                   <option value="">-- Select Room --</option>

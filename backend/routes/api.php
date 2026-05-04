@@ -142,6 +142,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Schedule Management
         Route::post('/schedules',                      [ScheduleController::class, 'store']);
         Route::delete('/schedules/{id}',               [ScheduleController::class, 'destroy']);
+        Route::post('/time-slots', [App\Http\Controllers\TimeSlotController::class, 'store']);
 
         // Subject Management (create, update, delete)
         Route::post('/subjects',                       [SubjectController::class, 'store']);
