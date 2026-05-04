@@ -84,6 +84,8 @@ return [
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
+    'cron_secret' => env('APP_CRON_SECRET', 'croncleanupsecret'),
+
     /*
     |--------------------------------------------------------------------------
     | Encryption Key

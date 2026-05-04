@@ -17,7 +17,17 @@ use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
 use App\Http\Controllers\Admin\UserManagementController;   
+use Illuminate\Support\Facades\Artisan;
 
+
+Route::get('/cron/clean-logs', function (Request $request) {
+    $secret = config('app.cron_secret');
+    if ($request->query('token') !== $secret) {
+        return response('Unauthorized', 401);
+    }
+    Artisan::call('activity-log:clean');
+    return response(Artisan::output());
+});
 
 
 
