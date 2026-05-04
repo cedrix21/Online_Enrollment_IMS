@@ -13,9 +13,9 @@ class CleanActivityLogs extends Command
 
     public function handle()
     {
-        $cutoffDate = Carbon::now()->subDays(90);
+        $cutoffDate = Carbon::now()->subDays(30);
         $deleted = Activity::where('created_at', '<', $cutoffDate)->delete();
 
-        $this->info("Deleted {$deleted} log entries older than 90 days.");
+        $this->info("Deleted {$deleted} log entries older than 30 days.");
     }
 }

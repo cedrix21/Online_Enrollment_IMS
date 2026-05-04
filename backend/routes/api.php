@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Support\Facades\Artisan;
 
 
+
+// Temporary route for cleaning activity logs via cron job
 Route::get('/cron/clean-logs', function (Request $request) {
     $secret = config('app.cron_secret');
     if ($request->query('token') !== $secret) {
