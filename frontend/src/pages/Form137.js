@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import API from '../api/api';
 import { SICS_LOGO_BASE64 } from '../constants/reportImages';
+import {DEPED_LOGO_BASE64} from '../constants/reportImages';
 import { useOptimizedFetch } from '../hooks/useOptimizedFetch';
  
 
@@ -111,11 +112,14 @@ export default function Form137() {
   const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [studentSchoolYear, setStudentSchoolYear] = useState('');
+  const mountedRef = useRef(false);
 
-  const mountedRef = useRef(true);
   useEffect(() => {
-    return () => { mountedRef.current = false; };
-  }, []);
+  mountedRef.current = true;   // 👈 explicit set on mount
+  return () => {
+    mountedRef.current = false;
+  };
+}, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,6 +133,7 @@ export default function Form137() {
       if (!cancelled) setSubjects(res.data);
     } catch (err) {
       if (!cancelled) console.error('Failed to fetch subjects', err);
+      if (!cancelled) setSubjectsLoading(false);
     } finally {
       if (!cancelled) setSubjectsLoading(false);
     }
@@ -311,6 +316,7 @@ export default function Form137() {
 
   } catch (err) {
     console.error('❌ Error loading Form 137 data:', err);
+    setGradesLoading(false); 
   } finally {
     if (mountedRef.current) setGradesLoading(false);
   }
@@ -509,11 +515,12 @@ export default function Form137() {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:;">
 <title>Form 137 – ${student.lastName}, ${student.firstName}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Arial,sans-serif;font-size:9pt;color:#000;}
-  @page{size:8.5in 13in portrait;margin:0.4in 0.5in;}
+  @page{size:8.5in 14in portrait;margin:0.4in 0.5in;}
   .school-header{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;}
   .logo-sics{width:55px;height:55px;object-fit:contain;flex-shrink:0;}
   .school-header-text{text-align:center;}
@@ -576,6 +583,7 @@ export default function Form137() {
     <div class="school-name">Siloam International Christian School</div>
     <div class="school-address">Purok Bayanihan, Motong, Dumaguete City, Negros Oriental, Philippines</div>
   </div>
+  <img src="${DEPED_LOGO_BASE64}" class="logo-sics" alt="SICS Logo">
 </div>
 <div class="form-title">Grade School Permanent Record</div>
 
@@ -842,6 +850,7 @@ ${buildObsTable(['I','II','III'])}
                       </button>
                     ))}
                   </div>
+                  {console.log({ subjectsLoading, gradesLoading })}
                   {subjectsLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>Loading subjects...</div>
                   ) : gradesLoading ? (
