@@ -58,6 +58,7 @@ const GradeLevelFilter = memo(({ gradeLevels, selected, onSelect }) => (
 
 const StudentCard = memo(({ student, isSelected, onClick }) => (
   <div
+    id={`student-card-${student.id}`}  
     className={`student-card ${isSelected ? "selected" : ""}`}
     onClick={onClick}
   >
@@ -334,6 +335,15 @@ const EvaluationManagement = () => {
     });
     return studentsMap.get(selectedStudentId) || null;
   }, [allGrades, selectedGradeLevel, selectedStudentId]);
+
+  useEffect(() => {
+  if (selectedStudentId) {
+    const el = document.getElementById(`student-card-${selectedStudentId}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [selectedStudentId]);
 
   // ── School year init ──
   useEffect(() => {
