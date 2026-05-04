@@ -65,6 +65,12 @@ const sortSectionsByGrade = (sections) => {
   });
 };
 
+const isMapehComponent = (subjectCode) => {
+  if (!subjectCode) return false;
+  const code = subjectCode.toUpperCase();
+  return code.includes("MUSIC") || code.includes("ARTS") || code.includes("PE") || code.includes("HEALTH");
+};
+
 // ───────────────────────────────────────────────
 // MEMOIZED SUB‑COMPONENTS
 // ───────────────────────────────────────────────
@@ -136,10 +142,14 @@ const ScheduleTable = memo(({ schedules, onDeleteSchedule }) => (
     <tbody>
       {schedules.map((group) => (
         <ScheduleRow
-          key={`${group.subject_id}-${group.time_slot_id}`}
-          group={group}
-          onDelete={onDeleteSchedule}
-        />
+          key={
+            group.isMapehGroup
+              ? `mapeh-${group.time_slot_id}-${group.room_id}`
+                  : `${group.subject_id}-${group.time_slot_id}`
+              }
+              group={group}
+              onDelete={onDeleteSchedule}
+            />
       ))}
     </tbody>
   </table>
@@ -155,12 +165,30 @@ const ScheduleRow = memo(({ group, onDelete }) => {
     <tr>
       <td>{group.time_slot?.display_label || "N/A"}</td>
       <td>
-        <strong>{group.subject?.subjectName}</strong>
-        <div className="sched-teacher">
-          {group.teacher
-            ? `${group.teacher.firstName} ${group.teacher.lastName}`
-            : "No Teacher"}
-        </div>
+        {group.isMapehGroup ? (
+          <>
+            <strong>MAPEH</strong>
+            {group.subjects.map((sub) => (
+              <div key={sub.id} className="sched-mapeh-sub">
+                {sub.subjectName}
+              </div>
+            ))}
+            <div className="sched-teacher">
+              {group.teacher
+                ? `${group.teacher.firstName} ${group.teacher.lastName}`
+                : "No Teacher"}
+            </div>
+          </>
+        ) : (
+          <>
+            <strong>{group.subject?.subjectName}</strong>
+            <div className="sched-teacher">
+              {group.teacher
+                ? `${group.teacher.firstName} ${group.teacher.lastName}`
+                : "No Teacher"}
+            </div>
+          </>
+        )}
       </td>
       <td>
         <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
@@ -334,20 +362,53 @@ export default function SectionManagement() {
     [sections, selectedSection]
   );
 
-  const groupedSchedules = useMemo(() => {
-    if (!selectedSection?.schedules) return [];
-    const grouped = selectedSection.schedules.reduce((acc, cur) => {
-      const key = `${cur.subject_id}-${cur.time_slot_id}-${cur.room_id}`;
-      if (!acc[key])
-        acc[key] = { ...cur, days: [cur.day], ids: [cur.id] };
-      else {
-        acc[key].days.push(cur.day);
-        acc[key].ids.push(cur.id);
+ const groupedSchedules = useMemo(() => {
+  if (!selectedSection?.schedules) return [];
+
+  // First pass: group by subject_id + time_slot + room (as before)
+  const grouped = selectedSection.schedules.reduce((acc, cur) => {
+    const key = `${cur.subject_id}-${cur.time_slot_id}-${cur.room_id}`;
+    if (!acc[key]) {
+      acc[key] = { ...cur, days: [cur.day], ids: [cur.id] };
+    } else {
+      acc[key].days.push(cur.day);
+      acc[key].ids.push(cur.id);
+    }
+    return acc;
+  }, {});
+
+  // Second pass: merge MAPEH groups that share time_slot & room
+  const mergedMapeh = {};
+  const nonMapeh = [];
+
+  Object.values(grouped).forEach((group) => {
+    const isMapeh = group.subject?.subjectCode
+      ? isMapehComponent(group.subject.subjectCode)
+      : false;
+
+    if (isMapeh) {
+      const mergeKey = `${group.time_slot_id}-${group.room_id}`;
+      if (!mergedMapeh[mergeKey]) {
+        mergedMapeh[mergeKey] = {
+          ...group,
+          subjects: [group.subject],           // array of subject objects
+          isMapehGroup: true,
+        };
+      } else {
+        mergedMapeh[mergeKey].ids.push(...group.ids);
+        mergedMapeh[mergeKey].subjects.push(group.subject);
+        // Days should be identical, but deduplicate just in case
+        mergedMapeh[mergeKey].days = [
+          ...new Set([...mergedMapeh[mergeKey].days, ...group.days]),
+        ];
       }
-      return acc;
-    }, {});
-    return Object.values(grouped);
-  }, [selectedSection?.schedules]);
+    } else {
+      nonMapeh.push(group);
+    }
+  });
+
+  return [...nonMapeh, ...Object.values(mergedMapeh)];
+}, [selectedSection?.schedules]);
 
   const occupiedSchedulesMap = useMemo(() => {
     const map = new Map();
@@ -540,105 +601,174 @@ export default function SectionManagement() {
 
   const switchMode = (mode) => setDetailMode(mode);
 
-  // ── Add Schedule ──
-  const handleAddSchedule = useCallback(
-    async (e) => {
-      e.preventDefault();
-      if (selectedDays.length === 0) {
-        setErrorMessage("Please select at least one day.");
-        setTimeout(() => setErrorMessage(""), 3000);
-        return;
-      }
 
-      const currentConflicts = getConflictMessages();
-      const conflictedDays = selectedDays.filter((day) =>
-        currentConflicts.some((msg) => msg.days.includes(day))
+  // ── Add Schedule ──
+      const handleAddSchedule = useCallback(
+  async (e) => {
+    e.preventDefault();
+    if (selectedDays.length === 0) {
+      setErrorMessage("Please select at least one day.");
+      setTimeout(() => setErrorMessage(""), 3000);
+      return;
+    }
+
+    // ── Check if the new subject is MAPEH ──────────────────
+    const selectedAssignment = teacherLoad.find(
+      (a) => a.id === parseInt(newSchedule.subject_assignment_id)
+    );
+    const subjectIsMapeh = selectedAssignment?.subject?.subjectCode
+      ? isMapehComponent(selectedAssignment.subject.subjectCode)
+      : false;
+
+    // ── Calculate true blocked days (ignoring MAPEH‑only conflicts) ──
+    const blockedDays = selectedDays.filter((day) => {
+      const hasConflict = getConflictMessages().some((msg) =>
+        msg.days.includes(day)
       );
-      if (conflictedDays.length > 0) {
+      if (!hasConflict) return false;
+
+      if (subjectIsMapeh) {
+        const conflictingSchedules = occupiedSchedules.filter(
+          (s) =>
+            s.day === day &&
+            Number(s.time_slot_id) === Number(newSchedule.time_slot_id) &&
+            (Number(s.room_id) === Number(newSchedule.room_id) ||
+             Number(s.teacher_id) === Number(newSchedule.teacher_id) ||
+             Number(s.section_id) === Number(selectedSection?.id))
+        );
+
+        const allMapehSameSection = conflictingSchedules.length > 0 &&
+          conflictingSchedules.every(
+            (s) =>
+              isMapehComponent(s.subject?.subjectCode) &&
+              s.section_id === selectedSection?.id
+          );
+
+        if (allMapehSameSection) return false; // safe for MAPEH block
+      }
+      return true; // truly blocked
+    });
+
+    if (blockedDays.length > 0) {
+      setErrorMessage(
+        `Conflicts on ${blockedDays.join(", ")}. Please choose different days or adjust time/room.`
+      );
+      setTimeout(() => setErrorMessage(""), 4000);
+      return;
+    }
+
+    // ── single‑section guard ──────────────────
+    const sectionsInThisGrade = sections.filter(
+      (s) => s.gradeLevel === selectedSection.gradeLevel
+    ).length;
+    if (sectionsInThisGrade === 1) {
+      const subjectAlreadyScheduled = occupiedSchedules.some(
+        (s) =>
+          s.section?.gradeLevel === selectedSection.gradeLevel &&
+          Number(s.subject_id) === Number(newSchedule.subject_id)
+      );
+      if (subjectAlreadyScheduled) {
         setErrorMessage(
-          `Conflicts on ${conflictedDays.join(
-            ", "
-          )}. Please choose different days or adjust time/room.`
+          "This subject is already scheduled in this grade level (only one section exists)."
         );
         setTimeout(() => setErrorMessage(""), 4000);
         return;
       }
+    }
 
-      // single‑section guard
-      const sectionsInThisGrade = sections.filter(
-        (s) => s.gradeLevel === selectedSection.gradeLevel
-      ).length;
-      if (sectionsInThisGrade === 1) {
-        const subjectAlreadyScheduled = occupiedSchedules.some(
-          (s) =>
-            s.section?.gradeLevel === selectedSection.gradeLevel &&
-            Number(s.subject_id) === Number(newSchedule.subject_id)
+    setIsSubmitting(true);
+    try {
+      // 1. Schedule the primary subject
+      await API.post("/schedules", {
+        section_id: selectedSection.id,
+        subject_id: newSchedule.subject_id,
+        teacher_id: newSchedule.teacher_id,
+        subject_assignment_id: newSchedule.subject_assignment_id,
+        days: selectedDays,
+        time_slot_id: newSchedule.time_slot_id,
+        room_id: newSchedule.room_id,
+      });
+
+      // 2. If the subject is MAPEH, automatically schedule the other MAPEH components
+      let mapehCount = 1; // count of scheduled MAPEH subjects
+      if (selectedAssignment?.subject && isMapehComponent(selectedAssignment.subject.subjectCode)) {
+        // Already scheduled subject IDs (including the one just saved)
+        const alreadyScheduled = new Set(
+          (selectedSection.schedules || []).map((s) => s.subject_id)
         );
-        if (subjectAlreadyScheduled) {
-          setErrorMessage(
-            "This subject is already scheduled in this grade level (only one section exists)."
+        alreadyScheduled.add(newSchedule.subject_id);
+
+        // All MAPEH assignments for the same grade, taught by the **same teacher**
+        const remainingMapehAssignments = teacherLoad.filter(
+          (a) =>
+            a.gradeLevel === selectedSection.gradeLevel &&
+            isMapehComponent(a.subject?.subjectCode) &&
+            !alreadyScheduled.has(a.subject_id) &&
+            a.teacher_id === newSchedule.teacher_id // same teacher as the selected one
+        );
+
+        if (remainingMapehAssignments.length > 0) {
+          const mapehPromises = remainingMapehAssignments.map((a) =>
+            API.post("/schedules", {
+              section_id: selectedSection.id,
+              subject_id: a.subject_id,
+              teacher_id: a.teacher_id,
+              subject_assignment_id: a.id,
+              days: selectedDays,
+              time_slot_id: newSchedule.time_slot_id,
+              room_id: newSchedule.room_id,
+            })
           );
-          setTimeout(() => setErrorMessage(""), 4000);
-          return;
+          await Promise.all(mapehPromises);
+          mapehCount += remainingMapehAssignments.length;
         }
       }
 
-      setIsSubmitting(true);
-      try {
-        await API.post("/schedules", {
-          section_id: selectedSection.id,
-          subject_id: newSchedule.subject_id,
-          teacher_id: newSchedule.teacher_id,
-          subject_assignment_id: newSchedule.subject_assignment_id,
-          days: selectedDays,
-          time_slot_id: newSchedule.time_slot_id,
-          room_id: newSchedule.room_id,
-        });
+      // 3. Refresh detail
+      const [sectionRes, loadRes, schedRes] = await Promise.all([
+        API.get(`/sections/${selectedSection.id}`, {
+          params: { school_year: selectedSchoolYear },
+        }),
+        API.get("/teacher-load", {
+          params: { school_year: selectedSchoolYear },
+        }),
+        API.get("/schedules", {
+          params: { school_year: selectedSchoolYear },
+        }),
+      ]);
 
-        // refresh detail
-        const [sectionRes, loadRes, schedRes] = await Promise.all([
-          API.get(`/sections/${selectedSection.id}`, {
-            params: { school_year: selectedSchoolYear },
-          }),
-          API.get("/teacher-load", {
-            params: { school_year: selectedSchoolYear },
-          }),
-          API.get("/schedules", {
-            params: { school_year: selectedSchoolYear },
-          }),
-        ]);
+      setSections((prev) =>
+        prev.map((s) => (s.id === sectionRes.data.id ? sectionRes.data : s))
+      );
+      setTeacherLoad(loadRes.data);
+      setOccupiedSchedules(schedRes.data);
 
-        setSections((prev) =>
-          prev.map((s) =>
-            s.id === sectionRes.data.id ? sectionRes.data : s
-          )
-        );
-        setTeacherLoad(loadRes.data);
-        setOccupiedSchedules(schedRes.data);
-
-        setSuccessMessage("Schedule added successfully!");
-        setTimeout(() => setSuccessMessage(""), 3000);
-        // switch back to schedule view
-        setDetailMode("schedule");
-      } catch (err) {
-        const msg = err.response?.data?.message || "Conflict or Error occurred.";
-        setErrorMessage(msg);
-        setTimeout(() => setErrorMessage(""), 4000);
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      selectedDays,
-      selectedSection,
-      newSchedule,
-      selectedSchoolYear,
-      getConflictMessages,
-      sections,
-      occupiedSchedules,
-    ]
-  );
-
+      setSuccessMessage(
+        mapehCount > 1
+          ? `All ${mapehCount} MAPEH subjects scheduled together!`
+          : "Schedule added successfully!"
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
+      setDetailMode("schedule");
+    } catch (err) {
+      const msg = err.response?.data?.message || "Conflict or Error occurred.";
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(""), 4000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  },
+  [
+    selectedDays,
+    selectedSection,
+    newSchedule,
+    selectedSchoolYear,
+    getConflictMessages,
+    sections,
+    occupiedSchedules,
+    teacherLoad, // required for MAPEH grouping
+  ]
+);
   // ── Delete Schedule ──
   const handleDeleteSchedule = useCallback(async (scheduleIds) => {
     const idsToDelete = Array.isArray(scheduleIds) ? scheduleIds : [scheduleIds];

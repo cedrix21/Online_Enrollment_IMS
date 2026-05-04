@@ -34,137 +34,238 @@ public function index(Request $request)
     return response()->json($schedules);
 }
 
+/**
+ * Check if a subject is a MAPEH component (Music, Arts, PE, Health).
+ */
+private function isMapehSubject($subjectId)
+{
+    $subject = \App\Models\Subject::find($subjectId);
+    if (!$subject || !$subject->subjectCode) {
+        return false;
+    }
+    $code = strtoupper($subject->subjectCode);
+    return str_contains($code, 'MUSIC') ||
+           str_contains($code, 'ARTS') ||
+           str_contains($code, 'PE') ||
+           str_contains($code, 'HEALTH');
+}
 
     public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'section_id'   => 'required|exists:sections,id',
-                'subject_id'   => 'required|exists:subjects,id',
-                'teacher_id'   => 'required|exists:teachers,id',
-                'subject_assignment_id' => 'required|exists:subject_assignments,id',
-                'days'         => 'required|array', // Expecting array from React
-                'time_slot_id' => 'required|exists:time_slots,id',
-                'room_id'      => 'required|exists:rooms,id',
-            ]);
+{
+    try {
+        $validated = $request->validate([
+            'section_id'            => 'required|exists:sections,id',
+            'subject_id'            => 'required|exists:subjects,id',
+            'teacher_id'            => 'required|exists:teachers,id',
+            'subject_assignment_id' => 'required|exists:subject_assignments,id',
+            'days'                  => 'required|array',
+            'time_slot_id'          => 'required|exists:time_slots,id',
+            'room_id'               => 'required|exists:rooms,id',
+        ]);
 
-            $timeSlotId = $request->time_slot_id;
-            $roomId = $request->room_id;
-            $teacherId = $request->teacher_id;
-            $sectionId = $request->section_id;
-            $subjectAssignmentId = $request->subject_assignment_id;
-            $gradeLevel = Section::find($sectionId)->gradeLevel;
-            $sectionsCount = Section::where('gradeLevel', $gradeLevel)->count();
+        $timeSlotId          = $request->time_slot_id;
+        $roomId              = $request->room_id;
+        $teacherId           = $request->teacher_id;
+        $sectionId           = $request->section_id;
+        $subjectId           = $request->subject_id;
+        $subjectAssignmentId = $request->subject_assignment_id;
+        $gradeLevel          = Section::find($sectionId)->gradeLevel;
+        $sectionsCount       = Section::where('gradeLevel', $gradeLevel)->count();
+        $schoolYear          = $this->getCurrentSchoolYear();
 
-           $getCurrentSchoolYear = $this->getCurrentSchoolYear();
+        // ── Basic duplicate checks (unchanged) ──────────────────
+        if ($sectionsCount === 1) {
+            $subjectAlreadyScheduled = Schedule::whereHas('section', fn($q) => $q->where('gradeLevel', $gradeLevel))
+                ->where('subject_id', $subjectId)
+                ->where('school_year', $schoolYear)
+                ->exists();
+            if ($subjectAlreadyScheduled) {
+                return response()->json([
+                    'message' => 'This subject is already scheduled for this grade level (only one section exists).',
+                ], 422);
+            }
+        }
 
-                if ($sectionsCount === 1) {
-                    $subjectAlreadyScheduled = Schedule::whereHas('section', fn($q) => $q->where('gradeLevel', $gradeLevel))
-                        ->where('subject_id', $request->subject_id)
-                        ->where('school_year', $getCurrentSchoolYear)   // 🆕 ADD THIS LINE
-                        ->exists();
+        $subjectAlreadyInSection = Schedule::where('section_id', $sectionId)
+            ->where('subject_id', $subjectId)
+            ->where('school_year', $schoolYear)
+            ->exists();
+        if ($subjectAlreadyInSection) {
+            return response()->json([
+                'message' => 'This subject is already scheduled in this section.',
+            ], 422);
+        }
 
-                    if ($subjectAlreadyScheduled) {
+        // ── MAPEH helper flag ────────────────────────────────────
+        $isNewMapeh = $this->isMapehSubject($subjectId);
+
+        // ── Transactional creation per day ───────────────────────
+        return DB::transaction(function () use (
+            $request, $sectionId, $subjectId, $teacherId, $subjectAssignmentId,
+            $timeSlotId, $roomId, $schoolYear, $isNewMapeh
+        ) {
+            $createdSchedules = [];
+
+            foreach ($request->days as $day) {
+
+                // ---------------------------------------------------
+                // Check A: Room conflict
+                // ---------------------------------------------------
+                $roomConflictExists = Schedule::where('day', $day)
+                    ->where('time_slot_id', $timeSlotId)
+                    ->where('room_id', $roomId)
+                    ->where('school_year', $schoolYear)
+                    ->exists();
+
+                if ($roomConflictExists) {
+                    // Allow sharing **only** if new subject is MAPEH and
+                    // ALL existing schedules in this slot/room are MAPEH of the same section
+                    if ($isNewMapeh) {
+                        $conflictingSchedules = Schedule::where('day', $day)
+                            ->where('time_slot_id', $timeSlotId)
+                            ->where('room_id', $roomId)
+                            ->where('school_year', $schoolYear)
+                            ->get();
+
+                        $allMapeh = $conflictingSchedules->every(function ($s) use ($sectionId) {
+                            return $this->isMapehSubject($s->subject_id) &&
+                                   $s->section_id == $sectionId;
+                        });
+
+                        if (!$allMapeh) {
+                            return response()->json(['message' => "Room conflict on $day."], 422);
+                        }
+
+                        // Optional: limit to 4 distinct MAPEH subjects per section/day/time
+                        $alreadyScheduledIds = $conflictingSchedules
+                            ->pluck('subject_id')->unique()->toArray();
+                        if (count($alreadyScheduledIds) >= 4) {
+                            return response()->json(['message' => "All MAPEH components already scheduled on $day."], 422);
+                        }
+                    } else {
+                        return response()->json(['message' => "Room conflict on $day."], 422);
+                    }
+                }
+
+                // ---------------------------------------------------
+                // Check B: Teacher conflict
+                // ---------------------------------------------------
+                $teacherConflictExists = Schedule::where('day', $day)
+                    ->where('time_slot_id', $timeSlotId)
+                    ->where('teacher_id', $teacherId)
+                    ->where('school_year', $schoolYear)
+                    ->exists();
+
+                if ($teacherConflictExists) {
+                    if ($isNewMapeh) {
+                        $conflictingTeacherSchedules = Schedule::where('day', $day)
+                            ->where('time_slot_id', $timeSlotId)
+                            ->where('teacher_id', $teacherId)
+                            ->where('school_year', $schoolYear)
+                            ->get();
+
+                        $allTeacherMapeh = $conflictingTeacherSchedules->every(function ($s) use ($sectionId) {
+                            return $this->isMapehSubject($s->subject_id) &&
+                                   $s->section_id == $sectionId;
+                        });
+
+                        if (!$allTeacherMapeh) {
+                            $teacher = Teacher::find($teacherId);
+                            return response()->json([
+                                'message' => "Teacher {$teacher->lastName} is busy on $day.",
+                            ], 422);
+                        }
+                    } else {
+                        $teacher = Teacher::find($teacherId);
                         return response()->json([
-                            'message' => 'This subject is already scheduled for this grade level (only one section exists).'
+                            'message' => "Teacher {$teacher->lastName} is busy on $day.",
                         ], 422);
                     }
                 }
 
-                 $subjectAlreadyInSection = Schedule::where('section_id', $sectionId)
-                ->where('subject_id', $request->subject_id)
-                ->where('school_year', $getCurrentSchoolYear)
-                ->exists();
-
-            if ($subjectAlreadyInSection) {
-                return response()->json([
-                    'message' => 'This subject is already scheduled in this section.'
-                ], 422);
-            }
-
-            // Use a transaction to ensure atomic operations
-            return DB::transaction(function () use ($validated, $request, $timeSlotId, $roomId, $teacherId, $sectionId, $subjectAssignmentId,$getCurrentSchoolYear) {
-                $createdSchedules = [];
-
-                foreach ($request->days as $day) {
-                    // Check A: Room Conflict
-                    $roomConflict = Schedule::where('day', $day)
-                        ->where('time_slot_id', $timeSlotId)
-                        ->where('room_id', $roomId)
-                         ->where('school_year', $getCurrentSchoolYear)
-                        ->exists();
-                    if ($roomConflict) {
-                        return response()->json(['message' => "Room conflict on $day."], 422);
-                    }
-
-                    // Check B: Teacher Conflict
-                    $teacherConflict = Schedule::where('day', $day)
-                        ->where('time_slot_id', $timeSlotId)
-                        ->where('teacher_id', $teacherId)
-                         ->where('school_year', $getCurrentSchoolYear)
-                        ->exists();
-                    if ($teacherConflict) {
-                        $teacher = Teacher::find($teacherId);
-                        return response()->json(['message' => "Teacher {$teacher->lastName} is busy on $day."], 422);
-                    }
-
-                    // Check C: Section Conflict
-                    $sectionConflict = Schedule::where('day', $day)
-                        ->where('time_slot_id', $timeSlotId)
-                        ->where('section_id', $sectionId)
-                         ->where('school_year', $getCurrentSchoolYear)
-                        ->exists();
-                    if ($sectionConflict) {
-                        return response()->json(['message' => "Section already has a class on $day at this time."], 422);
-                    }
-
-                    // Check D: Subject already scheduled for this section ON THIS DAY
-                    $subjectExists = Schedule::where('section_id', $sectionId)
-                        ->where('subject_id', $request->subject_id)
-                        ->where('day', $day)
-                         ->where('school_year', $getCurrentSchoolYear)
-                        ->exists();
-                    if ($subjectExists) {
-                        return response()->json(['message' => "This subject is already scheduled for this section on $day."], 422);
-                    }
-
-                    $existing = Schedule::where('section_id', $sectionId)
-                    ->where('subject_assignment_id', $subjectAssignmentId)
-                    ->where('day', $day)
-                    ->where('school_year', $getCurrentSchoolYear)
+                // ---------------------------------------------------
+                // Check C: Section conflict
+                // ---------------------------------------------------
+                $sectionConflictExists = Schedule::where('day', $day)
+                    ->where('time_slot_id', $timeSlotId)
+                    ->where('section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
                     ->exists();
 
-                if ($existing) {
+                if ($sectionConflictExists) {
+                    if ($isNewMapeh) {
+                        $conflictingSectionSchedules = Schedule::where('day', $day)
+                            ->where('time_slot_id', $timeSlotId)
+                            ->where('section_id', $sectionId)
+                            ->where('school_year', $schoolYear)
+                            ->get();
+
+                        $allSectionMapeh = $conflictingSectionSchedules->every(function ($s) {
+                            return $this->isMapehSubject($s->subject_id);
+                        });
+
+                        if (!$allSectionMapeh) {
+                            return response()->json([
+                                'message' => "Section already has a class on $day at this time.",
+                            ], 422);
+                        }
+                    } else {
+                        return response()->json([
+                            'message' => "Section already has a class on $day at this time.",
+                        ], 422);
+                    }
+                }
+
+                // ---------------------------------------------------
+                // Check D: Subject already scheduled for this section on this day
+                // ---------------------------------------------------
+                $subjectExists = Schedule::where('section_id', $sectionId)
+                    ->where('subject_id', $subjectId)
+                    ->where('day', $day)
+                    ->where('school_year', $schoolYear)
+                    ->exists();
+                if ($subjectExists) {
                     return response()->json([
-                        'message' => "This teacher is already scheduled for this subject on $day."
+                        'message' => "This subject is already scheduled for this section on $day.",
                     ], 422);
                 }
 
-                    // Create the record for this specific day
-                    $createdSchedules[] = Schedule::create([
-                        'section_id'   => $sectionId,
-                        'subject_id'   => $request->subject_id,
-                        'teacher_id'   => $teacherId,
-                        'subject_assignment_id' => $subjectAssignmentId,
-                        'day'          => $day,
-                        'time_slot_id' => $timeSlotId,
-                        'room_id'      => $roomId,
-                        'school_year'           => $this->getCurrentSchoolYear(), 
-                    ]);
+                // Check E: Subject assignment already used for this section on this day
+                $existing = Schedule::where('section_id', $sectionId)
+                    ->where('subject_assignment_id', $subjectAssignmentId)
+                    ->where('day', $day)
+                    ->where('school_year', $schoolYear)
+                    ->exists();
+                if ($existing) {
+                    return response()->json([
+                        'message' => "This teacher is already scheduled for this subject on $day.",
+                    ], 422);
                 }
 
-                return response()->json([
-                    'message' => 'Schedules created successfully!',
-                    'data' => $createdSchedules
-                ], 201);
-            });
+                // ── All checks passed → create schedule ──────────
+                $createdSchedules[] = Schedule::create([
+                    'section_id'            => $sectionId,
+                    'subject_id'            => $subjectId,
+                    'teacher_id'            => $teacherId,
+                    'subject_assignment_id' => $subjectAssignmentId,
+                    'day'                   => $day,
+                    'time_slot_id'          => $timeSlotId,
+                    'room_id'               => $roomId,
+                    'school_year'           => $schoolYear,
+                ]);
+            } // end foreach day
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
-        }
+            return response()->json([
+                'message' => 'Schedules created successfully!',
+                'data'    => $createdSchedules,
+            ], 201);
+        });
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json(['errors' => $e->errors()], 422);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
     }
+}
 
   public function destroy(Request $request, $id)
 {
