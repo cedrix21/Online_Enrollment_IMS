@@ -17,6 +17,7 @@ const emptyForm = {
   school_year:   '',
   tuition_fee:   '',
   korean_fee:    0,
+   book_fee:      0, 
   down_payment:  5000,
   monthly_terms: 10,
   is_active:     true,
@@ -89,6 +90,7 @@ export default function TuitionFeeManagement() {
       school_year:   fee.school_year,
       tuition_fee:   fee.tuition_fee,
       korean_fee:    fee.korean_fee,
+      book_fee:      fee.book_fee || 0,
       down_payment:  fee.down_payment,
       monthly_terms: fee.monthly_terms,
       is_active:     fee.is_active,
@@ -116,7 +118,7 @@ export default function TuitionFeeManagement() {
 
   // computed preview
   const miscTotal = form.misc_items.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0);
-  const totalFee  = (parseFloat(form.tuition_fee) || 0) + miscTotal + (parseFloat(form.korean_fee) || 0);
+  const totalFee  = (parseFloat(form.tuition_fee) || 0) + miscTotal + (parseFloat(form.korean_fee) || 0) + (parseFloat(form.book_fee) || 0);
   const remaining = totalFee - (parseFloat(form.down_payment) || 0);
   const monthly   = form.monthly_terms > 0 ? Math.round(remaining / form.monthly_terms) : 0;
 
@@ -236,20 +238,35 @@ export default function TuitionFeeManagement() {
                   </div>
 
                   {/* Totals */}
-                  <div className="tfm-totals-row">
-                    <div className="tfm-total-box">
-                      <div className="tfm-total-label">Total Fee</div>
-                      <div className="tfm-total-val">{fmt(fee.total_fee)}</div>
+                  <div
+                      className="tfm-totals-row"
+                      style={{
+                        gridTemplateColumns: fee.book_fee > 0
+                          ? 'repeat(4, 1fr)'
+                          : 'repeat(3, 1fr)',
+                      }}
+                    >
+                      <div className="tfm-total-box">
+                        <div className="tfm-total-label">Total Fee</div>
+                        <div className="tfm-total-val">{fmt(fee.total_fee)}</div>
+                      </div>
+                      <div className="tfm-total-box">
+                        <div className="tfm-total-label">Down Payment</div>
+                        <div className="tfm-total-val">{fmt(fee.down_payment)}</div>
+                      </div>
+                      <div className="tfm-total-box tfm-total-box--highlight">
+                        <div className="tfm-total-label tfm-total-label--light">Monthly</div>
+                        <div className="tfm-total-val tfm-total-val--light">{fmt(fee.monthly_payment)}</div>
+                      </div>
+                      {fee.book_fee > 0 && (
+                        <div className="tfm-total-box tfm-total-box--highlight">
+                          <div className="tfm-total-label tfm-total-label--light">Book Monthly</div>
+                          <div className="tfm-total-val tfm-total-val--light">
+                            {fmt(fee.book_monthly_payment)}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="tfm-total-box">
-                      <div className="tfm-total-label">Down Payment</div>
-                      <div className="tfm-total-val">{fmt(fee.down_payment)}</div>
-                    </div>
-                    <div className="tfm-total-box tfm-total-box--highlight">
-                      <div className="tfm-total-label tfm-total-label--light">Monthly</div>
-                      <div className="tfm-total-val tfm-total-val--light">{fmt(fee.monthly_payment)}</div>
-                    </div>
-                  </div>
 
                   {/* Breakdown */}
                   <div className="tfm-breakdown">
@@ -259,6 +276,11 @@ export default function TuitionFeeManagement() {
                     {fee.korean_fee > 0 && (
                       <div className="tfm-breakdown-row">
                         <span>Korean Language Fee</span><span>{fmt(fee.korean_fee)}</span>
+                      </div>
+                    )}
+                    {fee.book_fee > 0 && (
+                      <div className="tfm-breakdown-row">
+                        <span>Books Fee</span><span>{fmt(fee.book_fee)}</span>
                       </div>
                     )}
                     <div className="tfm-breakdown-row">
@@ -352,6 +374,15 @@ export default function TuitionFeeManagement() {
                         className="tfm-input"
                         value={form.korean_fee}
                         onChange={e => setField('korean_fee', e.target.value)}
+                      />
+                    </div>
+                    <div className="tfm-form-group">
+                      <label className="tfm-label">Books Fee (₱)</label>
+                      <input
+                        type='number' step='0.01' min='0'
+                        className="tfm-input"
+                        value={form.book_fee || ''}
+                        onChange={e => setField('book_fee', e.target.value)}
                       />
                     </div>
                   </div>

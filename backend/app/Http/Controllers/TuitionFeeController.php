@@ -56,6 +56,7 @@ class TuitionFeeController extends Controller
             'tuition_fee'   => 'required|numeric|min:0',
             'korean_fee'    => 'nullable|numeric|min:0',
             'down_payment'  => 'required|numeric|min:0',
+            'book_fee' => 'numeric|min:0',
             'monthly_terms' => 'required|integer|min:1',
             'is_active'     => 'boolean',
             'misc_items'    => 'nullable|array',
@@ -101,6 +102,7 @@ class TuitionFeeController extends Controller
             'tuition_fee'   => 'sometimes|numeric|min:0',
             'korean_fee'    => 'nullable|numeric|min:0',
             'down_payment'  => 'sometimes|numeric|min:0',
+            'book_fee' => 'numeric|min:0',
             'monthly_terms' => 'sometimes|integer|min:1',
             'is_active'     => 'sometimes|boolean',
             'misc_items'    => 'nullable|array',
@@ -142,36 +144,55 @@ class TuitionFeeController extends Controller
 
     // ── helpers ──────────────────────────────────────────────────
 
-    private function format(TuitionFee $f): array
-    {
-        $miscTotal = $f->miscItems->sum('amount');
-        $total     = $f->tuition_fee + $miscTotal + $f->korean_fee;
-        $remaining = $total - $f->down_payment;
-        $monthly   = $f->monthly_terms > 0
-                        ? round($remaining / $f->monthly_terms, 2)
-                        : 0;
+   private function format(TuitionFee $f): array
+{
+    $miscTotal = $f->miscItems->sum('amount');
 
-        return [
-            'id'                => $f->id,
-            'grade_level'       => $f->grade_level,
-            'school_year'       => $f->school_year,
-            'tuition_fee'       => (float) $f->tuition_fee,
-            'korean_fee'        => (float) $f->korean_fee,
-            'down_payment'      => (float) $f->down_payment,
-            'monthly_terms'     => $f->monthly_terms,
-            'is_active'         => $f->is_active,
-            'misc_total'        => (float) $miscTotal,
-            'total_fee'         => (float) $total,
-            'remaining_balance' => (float) $remaining,
-            'monthly_payment'   => (float) $monthly,
-            'misc_items'        => $f->miscItems->map(fn($m) => [
-                'id'         => $m->id,
-                'label'      => $m->label,
-                'amount'     => (float) $m->amount,
-                'sort_order' => $m->sort_order,
-            ])->values(),
-        ];
-    }
+    // Tuition-only total (without books)
+    $tuitionOnlyTotal = $f->tuition_fee + $miscTotal + $f->korean_fee;
+
+    // Total fee including books
+    $total = $tuitionOnlyTotal + ($f->book_fee ?? 0);
+
+    // Down payment subtracted FROM tuition only
+    $remainingAfterDown = max(0, $tuitionOnlyTotal - $f->down_payment);
+
+    // Monthly amounts
+    $tuitionMonthly = $f->monthly_terms > 0
+        ? round($remainingAfterDown / $f->monthly_terms, 2)
+        : 0;
+
+    $bookMonthly = $f->monthly_terms > 0
+        ? round(($f->book_fee ?? 0) / $f->monthly_terms, 2)
+        : 0;
+
+    // Total monthly (for reference)
+    $totalMonthly = $tuitionMonthly + $bookMonthly;
+
+    return [
+        'id'                   => $f->id,
+        'grade_level'          => $f->grade_level,
+        'school_year'          => $f->school_year,
+        'tuition_fee'          => (float) $f->tuition_fee,
+        'korean_fee'           => (float) $f->korean_fee,
+        'book_fee'             => (float) ($f->book_fee ?? 0),
+        'down_payment'         => (float) $f->down_payment,
+        'monthly_terms'        => $f->monthly_terms,
+        'is_active'            => $f->is_active,
+        'misc_total'           => (float) $miscTotal,
+        'total_fee'            => (float) $total,
+        'remaining_balance'    => (float) max(0, $total - $f->down_payment),
+        'monthly_payment'      => (float) $tuitionMonthly,   // tuition monthly only
+        'book_monthly_payment' => (float) $bookMonthly,
+        'total_monthly'        => (float) $totalMonthly,      // optional combined
+        'misc_items'           => $f->miscItems->map(fn($m) => [
+            'id'         => $m->id,
+            'label'      => $m->label,
+            'amount'     => (float) $m->amount,
+            'sort_order' => $m->sort_order,
+        ])->values(),
+    ];
+}
 
 
 }

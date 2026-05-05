@@ -610,6 +610,12 @@ const verifyStudentId = async () => {
                                 <td style={{ textAlign: 'right', color: '#444' }}>{fmtPeso(fee.korean_fee)}</td>
                               </tr>
                             )}
+                            {fee.book_fee > 0 && (
+                                <tr>
+                                  <td style={{ padding: '4px 0', color: '#444' }}>Books Fee</td>
+                                  <td style={{ textAlign: 'right', color: '#444' }}>{fmtPeso(fee.book_fee)}</td>
+                                </tr>
+                              )}
                             <tr style={{ borderTop: '1px solid #e6dbac', fontWeight: 'bold' }}>
                               <td style={{ padding: '6px 0', color: '#b8860b' }}>Total</td>
                               <td style={{ textAlign: 'right', color: '#b8860b' }}>{fmtPeso(fee.total_fee)}</td>
@@ -637,6 +643,17 @@ const verifyStudentId = async () => {
                             </div>
                             <div style={{ fontWeight: 'bold', color: '#fff' }}>{fmtPeso(fee.monthly_payment)}</div>
                           </div>
+                            {fee.book_fee > 0 && (
+                            <div style={{ backgroundColor: '#b8860b', borderRadius: '8px', padding: '10px'}}>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>
+                                Books Monthly ({fee.monthly_terms} mo.)
+                              </div>
+                              <div style={{ fontWeight: 'bold', color: '#fff' }}>
+                                {fmtPeso(fee.book_monthly_payment || 0)}
+                              </div>
+                            </div>
+                          )}
+                            
                         </div>
                         {fee.misc_items?.length > 0 && (
                           <details style={{ marginTop: '10px' }}>

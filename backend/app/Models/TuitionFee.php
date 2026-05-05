@@ -11,6 +11,7 @@ class TuitionFee extends Model
         'school_year',
         'tuition_fee',
         'korean_fee',
+        'book_fee', 
         'down_payment',
         'monthly_terms',
         'is_active',
