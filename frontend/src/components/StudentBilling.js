@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import API from '../api/api';
 import './StudentBilling.css';
 import { logActivity } from '../utils/activityLogger';
@@ -265,6 +265,14 @@ const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000
     const bookSummary = books || { total: 0, paid: 0, balance: 0, status: 'unpaid' };
     const isBooksFullyPaid = bookSummary.balance <= 0;
 
+    
+    const sortedPayments = useMemo(() => {
+  if (!payments || payments.length === 0) return [];
+  return [...payments].sort((a, b) =>
+    new Date(b.created_at || b.payment_date) - new Date(a.created_at || a.payment_date)
+  );
+}, [payments]);
+
     return (
         <div className="billing-container">
             <div className="billing-header">
@@ -343,7 +351,7 @@ const StudentBilling = ({ studentId, studentName, payments, totalTuition = 25000
                         {loading ? (
                             <TableSkeleton />
                         ) : payments.length > 0 ? (
-                            payments.map((p) => (
+                            sortedPayments.map((p) => (
                                 <tr key={p.id}>
                                     <td>{new Date(p.payment_date || p.created_at).toLocaleDateString()}</td>
                                     <td className="billing-payment-type">{p.payment_type}</td>

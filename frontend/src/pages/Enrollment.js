@@ -813,7 +813,7 @@ const verifyStudentId = async () => {
                         onChange={handleChange} required />
                     </div>
                     <div className="input-group">
-                      <label>Gender</label>
+                      <label>Sex</label>
                       <select name="gender" value={formData.gender} onChange={handleChange} required>
                         <option value="">Select</option>
                         <option value="Male">Male</option>

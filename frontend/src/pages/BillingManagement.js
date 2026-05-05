@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import StudentBilling from '../components/StudentBilling';
 import API from '../api/api';
 import './BillingManagement.css';
@@ -23,7 +23,7 @@ const BillingManagement = ({ user }) => {
         location.state?.paymentFilter || 'all'
     );
 
-    // Define tuition rates
+    // Define tuition rates (used for search filtering only)
     const rates = {
         'Kindergarten 1': 20000,
         'Kindergarten 2': 20000,
@@ -34,6 +34,19 @@ const BillingManagement = ({ user }) => {
         'Grade 5': 34000,
         'Grade 6': 36000,
     };
+
+    // ── Compute total paid for the selected student ───
+    const totalPaid = useMemo(() => {
+        if (!payments || payments.length === 0) return 0;
+        return payments.reduce((sum, p) => sum + (parseFloat(p.amount_paid) || 0), 0);
+    }, [payments]);
+
+    // Balance from tuition + fees
+    const tuitionBalance = totalTuition - totalPaid;
+    // Books balance
+    const booksBalance = booksSummary?.balance || 0;
+    // True if any money is still owed
+    const hasOutstandingBalance = tuitionBalance > 0 || booksBalance > 0;
 
     // Sync school year
     useEffect(() => {
@@ -144,8 +157,8 @@ const BillingManagement = ({ user }) => {
 
         if (filterPaymentStatus === 'unpaid') {
             const tuitionAmount = rates[s.gradeLevel] || 25000;
-            const totalPaid = s.payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0) || 0;
-            const hasBalance = (tuitionAmount - totalPaid) > 0;
+            const totalPaidByStudent = s.payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0) || 0;
+            const hasBalance = (tuitionAmount - totalPaidByStudent) > 0;
             return matchesSearch && hasBalance;
         }
 
@@ -239,6 +252,37 @@ const BillingManagement = ({ user }) => {
                                         Student ID: {selectedStudent.studentId} | {selectedStudent.gradeLevel}
                                     </p>
                                 </div>
+
+                                {/* ⚠️ Late Payment / Outstanding Balance Notice */}
+                                {!ledgerLoading && hasOutstandingBalance && (
+                                    <div className="outstanding-notice" style={{
+                                        backgroundColor: tuitionBalance > 0 ? '#fff3e0' : '#fce4ec',
+                                        borderLeft: `4px solid ${tuitionBalance > 0 ? '#ff9800' : '#d32f2f'}`,
+                                        borderRadius: '6px',
+                                        padding: '12px 16px',
+                                        marginBottom: '20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        fontSize: '0.9rem',
+                                        color: '#333',
+                                    }}>
+                                        <div>
+                                            <strong>Remaining Balance</strong>
+                                            <div style={{ fontSize: '0.85rem', color: '#555', marginTop: '4px' }}>
+                                                {tuitionBalance > 0 && (
+                                                    <div>Tuition & Fees: <span style={{ fontWeight: 'bold', color: '#d32f2f' }}>₱{tuitionBalance.toLocaleString()}</span></div>
+                                                )}
+                                                {booksBalance > 0 && (
+                                                    <div>Books: <span style={{ fontWeight: 'bold', color: '#d32f2f' }}>₱{booksBalance.toLocaleString()}</span></div>
+                                                )}
+                                                <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
+                                                    Please remind the parent/guardian to settle the remaining amount.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <StudentBilling 
                                     studentId={selectedStudent.id}

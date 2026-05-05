@@ -202,10 +202,10 @@ class EnrollmentController extends Controller
 
         // Create enrollment
         $enrollmentData = [
-            'firstName'         => $validated['firstName'],
-            'lastName'          => $validated['lastName'],
-            'middleName'        => $validated['middleName'] ?? null,
-            'nickname'          => $validated['nickname'] ?? null,
+            'firstName'         => $this->toTitleCase($validated['firstName']),
+            'lastName'          => $this->toTitleCase($validated['lastName']),
+            'middleName'        => $this->toTitleCase($validated['middleName']) ?? null,
+            'nickname'          => $this->toTitleCase($validated['nickname']) ?? null,
             'email'             => $validated['email'],
             'gradeLevel'        => $validated['gradeLevel'],
             'gender'            => $validated['gender'],
@@ -213,19 +213,19 @@ class EnrollmentController extends Controller
             'registrationType'  => $validated['registrationType'],
             'handedness'        => $validated['handedness'] ?? null,
 
-            'fatherName'        => $validated['fatherName'] ?? null,
-            'fatherContact'     => $validated['fatherContact'] ?? null,
-            'fatherOccupation'  => $validated['fatherOccupation'] ?? null,
+            'fatherName'        => $this->toTitleCase($validated['fatherName']) ?? null,
+            'fatherContact'     => $this->toTitleCase($validated['fatherContact']) ?? null,
+            'fatherOccupation'  => $this->toTitleCase($validated['fatherOccupation']) ?? null,
             'fatherEmail'       => $validated['fatherEmail'] ?? null,
-            'fatherAddress'     => $validated['fatherAddress'] ?? null,
-            'motherName'        => $validated['motherName'] ?? null,
-            'motherContact'     => $validated['motherContact'] ?? null,
-            'motherOccupation'  => $validated['motherOccupation'] ?? null,
+            'fatherAddress'     => $this->toTitleCase($validated['fatherAddress']) ?? null,
+            'motherName'        => $this->toTitleCase($validated['motherName']) ?? null,
+            'motherContact'     => $this->toTitleCase($validated['motherContact']) ?? null,
+            'motherOccupation'  => $this->toTitleCase($validated['motherOccupation']) ?? null,
             'motherEmail'       => $validated['motherEmail'] ?? null,
-            'motherAddress'     => $validated['motherAddress'] ?? null,
+            'motherAddress'     => $this->toTitleCase($validated['motherAddress']) ?? null,
 
-            'emergencyContact'  => $validated['emergencyContact'],
-            'medicalConditions' => $validated['medicalConditions'] ?? null,
+            'emergencyContact'  => $this->toTitleCase($validated['emergencyContact']),
+            'medicalConditions' => $this->toTitleCase($validated['medicalConditions']) ?? null,
             'status'            => 'pending',
         ];
 
@@ -280,7 +280,7 @@ class EnrollmentController extends Controller
             foreach ($validated['siblings'] as $sib) {
                 if (!empty($sib['name'])) {
                     $enrollment->siblings()->create([
-                        'full_name'  => $sib['name'],
+                        'full_name'  => $this->toTitleCase($sib['name']),
                         'birth_date' => $sib['birthDate'],
                     ]);
                 }
@@ -383,10 +383,10 @@ class EnrollmentController extends Controller
             $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
             $studentData = [
                 'studentId'   => $formattedId,
-                'firstName'   => $enrollment->firstName,
-                'lastName'    => $enrollment->lastName,
-                'middleName'  => $enrollment->middleName,
-                'nickname'    => $enrollment->nickname,
+                'firstName'   => $this->toTitleCase($enrollment->firstName),
+                'lastName'    => $this->toTitleCase($enrollment->lastName),
+                'middleName'  => $this->toTitleCase($enrollment->middleName),
+                'nickname'    => $this->toTitleCase($enrollment->nickname),
                 'email'       => $enrollment->email,
                 'gradeLevel'  => $enrollment->gradeLevel,
                 'gender'      => $enrollment->gender,
@@ -584,17 +584,17 @@ class EnrollmentController extends Controller
 
             // Create enrollment
             $enrollmentData = [
-                'firstName'         => $validated['firstName'],
-                'lastName'          => $validated['lastName'],
-                'middleName'        => $validated['middleName'] ?? null,
-                'nickname'          => $validated['nickname'] ?? null,
+                'firstName'         => $this->toTitleCase($validated['firstName']),
+                'lastName'          => $this->toTitleCase($validated['lastName']),
+                'middleName'        => $this->toTitleCase($validated['middleName']) ?? null,
+                'nickname'          => $this->toTitleCase($validated['nickname']) ?? null,
                 'email'             => $validated['email'],
                 'gradeLevel'        => $validated['gradeLevel'],
                 'gender'            => $validated['gender'],
                 'dateOfBirth'       => $validated['dateOfBirth'],
                 'registrationType'  => $validated['registrationType'],
                 'handedness'        => $validated['handedness'] ?? null,
-                'medicalConditions' => $validated['medicalConditions'] ?? null,
+                'medicalConditions' => $this->toTitleCase($validated['medicalConditions']) ?? null,
                 'psa_received'      => $request->psaReceived ?? false,
                 'id_picture_received' => $request->idPictureReceived ?? false,
                 'good_moral_received' => $request->goodMoralReceived ?? false,
@@ -617,7 +617,7 @@ class EnrollmentController extends Controller
                 foreach ($validated['siblings'] as $sib) {
                     if (!empty($sib['name'])) {
                         $enrollment->siblings()->create([
-                            'full_name' => $sib['name'],
+                            'full_name'  => $this->toTitleCase($sib['name']),
                             'birth_date' => $sib['birthDate'],
                         ]);
                     }
@@ -648,9 +648,9 @@ class EnrollmentController extends Controller
 
                 $studentData = [
                     'studentId'     => $formattedId,
-                    'firstName'     => $validated['firstName'],
-                    'lastName'      => $validated['lastName'],
-                    'middleName'    => $validated['middleName'] ?? null,
+                    'firstName'  => $this->toTitleCase($validated['firstName']),
+                    'lastName'      => $this->toTitleCase($validated['lastName']),
+                    'middleName'    => $this->toTitleCase($validated['middleName']) ?? null,
                     'email'         => $validated['email'],
                     'gradeLevel'    => $validated['gradeLevel'],
                     'section_id'    => $section->id,
@@ -751,6 +751,16 @@ class EnrollmentController extends Controller
     return $labels[$type] ?? ucfirst(str_replace('_', ' ', $type));
 }
 
+/**
+ * Convert a string to Title Case (first letter of each word uppercase, rest lowercase).
+ */
+private function toTitleCase(?string $value): ?string
+{
+    if (is_null($value) || $value === '') {
+        return $value;
+    }
+    return ucwords(strtolower(trim($value)));
+}
 
 /**
  * Find a student by their human-readable studentId (e.g., SICS-2025-0001)

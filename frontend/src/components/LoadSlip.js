@@ -279,20 +279,46 @@ export default function LoadSlip() {
                       />
                     </div>
 
-                    <div className="student-token-grid">
+                    <ul className="student-list" style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      backgroundColor: '#fff',
+                    }}>
                       {filteredStudents.length > 0 ? (
                         filteredStudents.map(stu => (
-                          <StudentToken
+                          <li
                             key={stu.id}
-                            student={stu}
-                            isSelected={selectedStudent?.id === stu.id}
                             onClick={() => handleStudentClick(stu)}
-                          />
+                            style={{
+                              padding: '10px 14px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f1f5f9',
+                              backgroundColor: selectedStudent?.id === stu.id ? '#e8f0fe' : 'transparent',
+                              color: selectedStudent?.id === stu.id ,
+                              fontWeight: selectedStudent?.id === stu.id ? '600' : '400',
+                              transition: 'background 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (selectedStudent?.id !== stu.id) e.currentTarget.style.backgroundColor = '#f8fafc';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (selectedStudent?.id !== stu.id) e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            {stu.firstName} {stu.lastName}
+                          </li>
                         ))
                       ) : (
-                        <p className="text-muted">No students match your search.</p>
+                        <li style={{ padding: '12px 14px', color: '#94a3b8', textAlign: 'center' }}>
+                          No students match your search.
+                        </li>
                       )}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>
