@@ -75,7 +75,19 @@ export default function PaymentSuccess() {
               <ul style={{ paddingLeft: '20px', color: '#444', lineHeight: '1.8', fontSize: '0.95rem' }}>
                 <li>Check your email (<strong>{email}</strong>) for further updates.</li>
                 <li>Visit the school office to submit physical requirements.</li>
-                <li>Ensure <strong>Kid's Note</strong> is installed on your mobile device.</li>
+                <li>
+                Ensure{' '}
+                <strong>
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.vaultmicro.kidsnote&hl=en-US&pli=1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Kid's Note
+                  </a>
+                </strong>{' '}
+                is installed on your mobile device.
+              </li>
               </ul>
             </div>
             <Link 

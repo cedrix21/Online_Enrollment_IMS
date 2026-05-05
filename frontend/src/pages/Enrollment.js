@@ -703,9 +703,9 @@ const verifyStudentId = async () => {
                     </label>
                     <input type="file" accept="image/*,.pdf"
                       onChange={e => handleRequirementFile('psa', e.target.files[0])} />
-                    {requirementFiles.psa && (
+                    {/* {requirementFiles.psa && (
                       <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.psa.name}</small>
-                    )}
+                    )} */}
                   </div>
                 )}
 
@@ -716,9 +716,9 @@ const verifyStudentId = async () => {
                     </label>
                     <input type="file" accept="image/*"
                       onChange={e => handleRequirementFile('picture_2x2', e.target.files[0])} />
-                    {requirementFiles.picture_2x2 && (
+                    {/* {requirementFiles.picture_2x2 && (
                       <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.picture_2x2.name}</small>
-                    )}
+                    )} */}
                   </div>
 
                   {/* 1x1 Picture — all types */}
@@ -728,9 +728,9 @@ const verifyStudentId = async () => {
                     </label>
                     <input type="file" accept="image/*"
                       onChange={e => handleRequirementFile('picture_1x1', e.target.files[0])} />
-                    {requirementFiles.picture_1x1 && (
+                    {/* {requirementFiles.picture_1x1 && (
                       <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.picture_1x1.name}</small>
-                    )}
+                    )} */}
                   </div>
 
                   {/* Good Moral — New, Transferee, Returning only */}
@@ -741,9 +741,9 @@ const verifyStudentId = async () => {
                       </label>
                       <input type="file" accept="image/*,.pdf"
                         onChange={e => handleRequirementFile('good_moral', e.target.files[0])} />
-                      {requirementFiles.good_moral && (
+                      {/* {requirementFiles.good_moral && (
                         <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.good_moral.name}</small>
-                      )}
+                      )} */}
                     </div>
                   )}
 
@@ -758,9 +758,9 @@ const verifyStudentId = async () => {
                       </label>
                       <input type="file" accept="image/*,.pdf"
                         onChange={e => handleRequirementFile('report_card', e.target.files[0])} />
-                      {requirementFiles.report_card && (
+                      {/* {requirementFiles.report_card && (
                         <small style={{ color: '#2e7d32' }}>✓ {requirementFiles.report_card.name}</small>
-                      )}
+                      )} */}
                     </div>
                   )}
 

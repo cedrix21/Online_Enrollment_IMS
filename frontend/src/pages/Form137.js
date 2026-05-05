@@ -850,7 +850,7 @@ ${buildObsTable(['I','II','III'])}
                       </button>
                     ))}
                   </div>
-                  {console.log({ subjectsLoading, gradesLoading })}
+                  
                   {subjectsLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>Loading subjects...</div>
                   ) : gradesLoading ? (
