@@ -169,7 +169,7 @@ const GradesPanel = ({
             <tr>
               <th>Subject</th>
               <th>Teacher</th>
-              <th>Score</th>
+              <th>Grade</th>
               <th>Remarks</th>
               <th>Action</th>
             </tr>

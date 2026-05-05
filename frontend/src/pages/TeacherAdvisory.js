@@ -521,7 +521,7 @@ export default function TeacherAdvisory() {
                     <div className="subjects-table-header">
                       <div className="subject-col subject-name">Subject</div>
                       <div className="subject-col subject-code">Code</div>
-                      <div className="subject-col subject-score">Score (0-100)</div>
+                      <div className="subject-col subject-score">Grade (0-100)</div>
                       <div className="subject-col subject-action">Action</div>
                     </div>
                     <div className="subjects-table-body">

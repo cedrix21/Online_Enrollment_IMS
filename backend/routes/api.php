@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => response()->json($request->user()));
 
     Route::get('/payment/verify', [PaymentController::class, 'verifyPayment']);
+    Route::get('/teachers/{id}/schedule',          [ScheduleController::class, 'getTeacherSchedule']);
 
     /*
     |--------------------------------------------------------------------------
@@ -89,7 +90,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/teacher/grades',                        [GradeController::class, 'submitGrade']);
         Route::get('/teacher/dashboard',                      [TeacherPortalController::class, 'getDashboardData']);
         Route::post('/teacher/grades/bulk',                   [TeacherPortalController::class, 'bulkSaveGrades']);
-        Route::get('/teachers/{id}/schedule',          [ScheduleController::class, 'getTeacherSchedule']);
     });
 
     /*
@@ -144,7 +144,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher-load',                    [TeacherController::class, 'getAllAssignments']);
         Route::get('/teachers/{teacherId}/assignments',[TeacherController::class, 'getAssignments']);
         Route::get('/teachers/subjects/available',     [TeacherController::class, 'getAvailableSubjects']);
-        Route::get('/teachers/{id}/schedule', [ScheduleController::class, 'getTeacherSchedule']);
         // Billing & Payments
         Route::get('/admin/billing/student/{studentId}',    [BillingController::class, 'getStudentLedger']);
         Route::post('/admin/billing/student/{studentId}/pay', [BillingController::class, 'addPayment']);
