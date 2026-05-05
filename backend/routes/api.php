@@ -20,9 +20,11 @@ use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Support\Facades\Artisan;
 
 
+// Temporary – remove after use
 Route::post('/sync-teacher-user-ids', function () {
     $teachers = \App\Models\Teacher::whereNull('user_id')->get();
     $updated = 0;
+
     foreach ($teachers as $teacher) {
         $user = \App\Models\User::where('email', $teacher->email)->first();
         if ($user) {
@@ -31,8 +33,15 @@ Route::post('/sync-teacher-user-ids', function () {
             $updated++;
         }
     }
-    return response()->json(['message' => "Synced $updated teacher(s)."]);
+
+    $remaining = \App\Models\Teacher::whereNull('user_id')->count();
+
+    return response()->json([
+        'message'   => "Synced $updated teacher(s).",
+        'remaining' => $remaining,
+    ]);
 });
+
 
 // Temporary route for cleaning activity logs via cron job
 Route::get('/cron/clean-logs', function (Request $request) {
