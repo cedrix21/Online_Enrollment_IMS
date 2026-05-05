@@ -22,6 +22,9 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaFileExcel,
+  FaPaperclip,
+  FaEye,
+  FaFilePdf,
 } from 'react-icons/fa';
 
 // ── Requirements Checklist Component ─────────────────────────────────────────
@@ -94,7 +97,8 @@ import {
     <div style={{ marginTop: '16px' }}>
        {localError && <div style={{ color: 'red', padding: '8px', marginBottom: '10px' }}>❌ {localError}</div>}
       <h4 style={{ color: '#b8860b', marginBottom: '10px', fontSize: '0.95rem' }}>
-        📎 Uploaded Requirements
+        <FaPaperclip style={{ marginRight: '6px' }} />
+        Uploaded Requirements
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {requirements.map(req => (
@@ -131,13 +135,14 @@ import {
                   backgroundColor: '#f1f5f9', fontSize: '2rem',
                 }}>
                   <a href={req.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                    📄
+                    <FaFilePdf />
                   </a>
                 </div>
                 <a href={req.url} target="_blank" rel="noreferrer"
                   style={{ display: 'block', marginTop: '4px', fontSize: '0.72rem', color: '#b8860b', textDecoration: 'none', textAlign: 'center' }}
                 >
-                  👁 Full size
+                  <FaEye style={{ marginRight: '4px', fontSize: '0.8rem' }} />
+                  Full size
                 </a>
               </div>
               <div>
@@ -1208,8 +1213,10 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   border: "1px solid #ddd",
                 }}
               >
+                <h3>
                 <FaCreditCard style={{ marginRight: '8px', fontSize: '1.1rem' }} />
-                    Payment Information
+                Payment Information
+              </h3>
                 <div
                   className="details-grid"
                   style={{
@@ -1354,8 +1361,10 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   border: "1px solid #ddd",
                 }}
               >
-               <FaFolderOpen style={{ marginRight: '8px', fontSize: '1.1rem' }} />
-                  Submitted Documents
+               <h3>
+                <FaFolderOpen style={{ marginRight: '8px', fontSize: '1.1rem' }} />
+                Submitted Documents
+              </h3>
                 <RequirementsChecklist
                   enrollmentId={selectedEnrollment.id}
                   onStatusUpdated={(type, displayLabel, newStatus) =>
