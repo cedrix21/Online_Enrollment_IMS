@@ -171,8 +171,10 @@ const EnrollmentRow = memo(
           className="req-icons"
           style={{ display: "flex", gap: "8px", fontSize: "1.1rem" }}
         >
+          {/* ID Pictures */}
           <button
             title="ID Pictures (1x1 & 2x2)"
+            disabled={enrollment.id_picture_received}
             onClick={() =>
               onUpdateRequirement(
                 enrollment.id,
@@ -183,20 +185,24 @@ const EnrollmentRow = memo(
             style={{
               background: "none",
               border: "none",
-              cursor: "pointer",
+              cursor: enrollment.id_picture_received ? "default" : "pointer",
               fontSize: "1.1rem",
               padding: "4px 8px",
               borderRadius: "4px",
               backgroundColor: enrollment.id_picture_received
                 ? "#e8f5e9"
                 : "#ffebee",
+              opacity: enrollment.id_picture_received ? 0.8 : 1,
               transition: "all 0.2s",
             }}
           >
             {enrollment.id_picture_received ? "🖼️" : "⭕"}
           </button>
+
+          {/* Kid's Note App */}
           <button
             title="Kid's Note App"
+            disabled={enrollment.kids_note_installed}
             onClick={() =>
               onUpdateRequirement(
                 enrollment.id,
@@ -207,23 +213,26 @@ const EnrollmentRow = memo(
             style={{
               background: "none",
               border: "none",
-              cursor: "pointer",
+              cursor: enrollment.kids_note_installed ? "default" : "pointer",
               fontSize: "1.1rem",
               padding: "4px 8px",
               borderRadius: "4px",
               backgroundColor: enrollment.kids_note_installed
                 ? "#e8f5e9"
                 : "#ffebee",
+              opacity: enrollment.kids_note_installed ? 0.8 : 1,
               transition: "all 0.2s",
             }}
           >
             {enrollment.kids_note_installed ? "📱" : "⭕"}
           </button>
 
+          {/* PSA Birth Certificate – only for New/Transferee */}
           {(enrollment.registrationType === "New Student" ||
             enrollment.registrationType === "Transferee") && (
             <button
               title="PSA Birth Certificate"
+              disabled={enrollment.psa_received}
               onClick={() =>
                 onUpdateRequirement(
                   enrollment.id,
@@ -234,13 +243,12 @@ const EnrollmentRow = memo(
               style={{
                 background: "none",
                 border: "none",
-                cursor: "pointer",
+                cursor: enrollment.psa_received ? "default" : "pointer",
                 fontSize: "1.1rem",
                 padding: "4px 8px",
                 borderRadius: "4px",
-                backgroundColor: enrollment.psa_received
-                  ? "#e8f5e9"
-                  : "#ffebee",
+                backgroundColor: enrollment.psa_received ? "#e8f5e9" : "#ffebee",
+                opacity: enrollment.psa_received ? 0.8 : 1,
                 transition: "all 0.2s",
               }}
             >
@@ -248,10 +256,12 @@ const EnrollmentRow = memo(
             </button>
           )}
 
+          {/* Good Moral + Report Card – only for Transferee */}
           {enrollment.registrationType === "Transferee" && (
             <>
               <button
                 title="Good Moral"
+                disabled={enrollment.good_moral_received}
                 onClick={() =>
                   onUpdateRequirement(
                     enrollment.id,
@@ -262,20 +272,23 @@ const EnrollmentRow = memo(
                 style={{
                   background: "none",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: enrollment.good_moral_received ? "default" : "pointer",
                   fontSize: "1.1rem",
                   padding: "4px 8px",
                   borderRadius: "4px",
                   backgroundColor: enrollment.good_moral_received
                     ? "#e8f5e9"
                     : "#ffebee",
+                  opacity: enrollment.good_moral_received ? 0.8 : 1,
                   transition: "all 0.2s",
                 }}
               >
                 {enrollment.good_moral_received ? "⭐" : "⭕"}
               </button>
+
               <button
                 title="Report Card"
+                disabled={enrollment.report_card_received}
                 onClick={() =>
                   onUpdateRequirement(
                     enrollment.id,
@@ -286,13 +299,14 @@ const EnrollmentRow = memo(
                 style={{
                   background: "none",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: enrollment.report_card_received ? "default" : "pointer",
                   fontSize: "1.1rem",
                   padding: "4px 8px",
                   borderRadius: "4px",
                   backgroundColor: enrollment.report_card_received
                     ? "#e8f5e9"
                     : "#ffebee",
+                  opacity: enrollment.report_card_received ? 0.8 : 1,
                   transition: "all 0.2s",
                 }}
               >
