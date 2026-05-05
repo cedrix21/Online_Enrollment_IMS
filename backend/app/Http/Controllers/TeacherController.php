@@ -68,6 +68,8 @@ class TeacherController extends Controller
             'password' => Hash::make('teacher123'),
             'role'     => 'teacher'
         ]);
+        $teacher->user_id = $user->id;
+        $teacher->save();
 
         // 3. Assign section if provided
         $section = null;
@@ -155,6 +157,8 @@ class TeacherController extends Controller
                 'role'     => 'teacher'
             ]);
         }
+        $teacher->user_id = $user->id;
+       
 
         // Handle section reassignment
         if ($request->has('section_id')) {
@@ -307,5 +311,21 @@ public function getTeacherSchedule(Request $request, $teacherId)
         ->get();
 
     return response()->json($schedules);
+}
+
+
+           public function resetPassword($teacherId)
+{
+    $teacher = Teacher::with('user')->findOrFail($teacherId);
+
+    $user = $teacher->user;
+
+    if (!$user) {
+        return response()->json(['message' => 'No linked user account found.'], 404);
+    }
+
+    $user->update(['password' => Hash::make('teacher123')]);
+
+    return response()->json(['message' => 'Password reset to teacher123']);
 }
 }

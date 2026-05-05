@@ -20,6 +20,19 @@ use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Support\Facades\Artisan;
 
 
+Route::post('/sync-teacher-user-ids', function () {
+    $teachers = \App\Models\Teacher::whereNull('user_id')->get();
+    $updated = 0;
+    foreach ($teachers as $teacher) {
+        $user = \App\Models\User::where('email', $teacher->email)->first();
+        if ($user) {
+            $teacher->user_id = $user->id;
+            $teacher->save();
+            $updated++;
+        }
+    }
+    return response()->json(['message' => "Synced $updated teacher(s)."]);
+});
 
 // Temporary route for cleaning activity logs via cron job
 Route::get('/cron/clean-logs', function (Request $request) {
@@ -169,6 +182,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/teachers/{id}',                           [TeacherController::class, 'update']);
         Route::post('/teachers/{teacherId}/assign-subject',    [TeacherController::class, 'assignSubject']);
         Route::delete('/teachers/subject-assignments/{id}',    [TeacherController::class, 'removeAssignment']);
+        Route::post('/teachers/{teacher}/reset-password',      [TeacherController::class, 'resetPassword']);
 
         // Grade Management (update)
         Route::put('/admin/grades/{gradeId}',          [GradeController::class, 'updateGrade']);

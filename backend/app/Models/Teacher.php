@@ -56,4 +56,9 @@ class Teacher extends Model
 {
     return $this->hasOne(Section::class, 'teacher_id');
 }
+
+        public function user()
+        {
+            return $this->belongsTo(User::class);
+        }
 }

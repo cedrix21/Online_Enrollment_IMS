@@ -35,6 +35,8 @@ import LockedUsers from "./pages/Admin/LockedUsers";
 import Sidebar from "./components/SideBar";      
 import TopBar from "./components/TopBar";        
 
+
+
 // ── Inline Layout Component ────────────────────────────────
 function DashboardLayout() {
   return (
@@ -81,7 +83,6 @@ function App() {
         <Route path="/enroll" element={<Enrollment />} />
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
         <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
-
          <Route
             path="/teacher-advisory"
             element={

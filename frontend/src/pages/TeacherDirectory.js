@@ -818,6 +818,37 @@ export default function TeacherDirectory() {
                         </select>
                       </div>
 
+                      <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(
+                                `Reset password for ${selectedTeacher.firstName} ${selectedTeacher.lastName} to default 'teacher123'?`
+                              )) return;
+
+                              try {
+                                await API.post(`/teachers/${selectedTeacher.id}/reset-password`);
+                                setSuccessMessage("Password reset to teacher123");
+                                setTimeout(() => setSuccessMessage(""), 3000);
+                              } catch (err) {
+                                setErrorMessage("Failed to reset password");
+                                setTimeout(() => setErrorMessage(""), 3000);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: ' #b8860b',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '10px 20px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              marginBottom: '12px',
+                              width: '100%',
+                              fontWeight: '600',
+                            }}
+                          >
+                            🔑 Reset Password to Default
+                          </button>
+
                       <button type="submit" className="submit-btn" disabled={isSubmitting}>
                         {isSubmitting ? "Updating..." : "Save Changes"}
                       </button>
