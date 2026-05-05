@@ -7,6 +7,22 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import logo from "../assets/sics-logo.png";
 import { logActivity } from '../utils/activityLogger';
+import {
+  FaImage,
+  FaMobileAlt,
+  FaFileAlt,
+  FaStar,
+  FaChartBar,
+  FaRegCircle,
+  FaGraduationCap,
+  FaCreditCard,
+  FaFolderOpen,
+  FaCamera,
+  FaDownload,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaFileExcel,
+} from 'react-icons/fa';
 
 // ── Requirements Checklist Component ─────────────────────────────────────────
   const RequirementsChecklist = ({ enrollmentId, onStatusUpdated }) => {
@@ -167,155 +183,174 @@ const EnrollmentRow = memo(
       <td data-label="Grade">{enrollment.gradeLevel}</td>
 
       <td data-label="Requirements">
-        <div
-          className="req-icons"
-          style={{ display: "flex", gap: "8px", fontSize: "1.1rem" }}
-        >
-          {/* ID Pictures */}
-          <button
-            title="ID Pictures (1x1 & 2x2)"
-            disabled={enrollment.id_picture_received}
-            onClick={() =>
-              onUpdateRequirement(
-                enrollment.id,
-                "id_picture_received",
-                !enrollment.id_picture_received,
-              )
-            }
-            style={{
-              background: "none",
-              border: "none",
-              cursor: enrollment.id_picture_received ? "default" : "pointer",
-              fontSize: "1.1rem",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              backgroundColor: enrollment.id_picture_received
-                ? "#e8f5e9"
-                : "#ffebee",
-              opacity: enrollment.id_picture_received ? 0.8 : 1,
-              transition: "all 0.2s",
-            }}
+          <div
+            className="req-icons"
+            style={{ display: "flex", gap: "8px", fontSize: "1.1rem" }}
           >
-            {enrollment.id_picture_received ? "🖼️" : "⭕"}
-          </button>
-
-          {/* Kid's Note App */}
-          <button
-            title="Kid's Note App"
-            disabled={enrollment.kids_note_installed}
-            onClick={() =>
-              onUpdateRequirement(
-                enrollment.id,
-                "kids_note_installed",
-                !enrollment.kids_note_installed,
-              )
-            }
-            style={{
-              background: "none",
-              border: "none",
-              cursor: enrollment.kids_note_installed ? "default" : "pointer",
-              fontSize: "1.1rem",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              backgroundColor: enrollment.kids_note_installed
-                ? "#e8f5e9"
-                : "#ffebee",
-              opacity: enrollment.kids_note_installed ? 0.8 : 1,
-              transition: "all 0.2s",
-            }}
-          >
-            {enrollment.kids_note_installed ? "📱" : "⭕"}
-          </button>
-
-          {/* PSA Birth Certificate – only for New/Transferee */}
-          {(enrollment.registrationType === "New Student" ||
-            enrollment.registrationType === "Transferee") && (
+            {/* ID Pictures */}
             <button
-              title="PSA Birth Certificate"
-              disabled={enrollment.psa_received}
+              title="ID Pictures (1x1 & 2x2)"
+              disabled={enrollment.id_picture_received}
               onClick={() =>
                 onUpdateRequirement(
                   enrollment.id,
-                  "psa_received",
-                  !enrollment.psa_received,
+                  "id_picture_received",
+                  !enrollment.id_picture_received,
                 )
               }
               style={{
                 background: "none",
                 border: "none",
-                cursor: enrollment.psa_received ? "default" : "pointer",
+                cursor: enrollment.id_picture_received ? "default" : "pointer",
                 fontSize: "1.1rem",
                 padding: "4px 8px",
                 borderRadius: "4px",
-                backgroundColor: enrollment.psa_received ? "#e8f5e9" : "#ffebee",
-                opacity: enrollment.psa_received ? 0.8 : 1,
+                backgroundColor: enrollment.id_picture_received
+                  ? "#e8f5e9"
+                  : "#ffebee",
+                opacity: enrollment.id_picture_received ? 0.8 : 1,
                 transition: "all 0.2s",
               }}
             >
-              {enrollment.psa_received ? "📜" : "⭕"}
+              {enrollment.id_picture_received ? (
+                <FaImage style={{ color: "#2e7d32" }} />
+              ) : (
+                <FaRegCircle style={{ color: "#aaa" }} />
+              )}
             </button>
-          )}
 
-          {/* Good Moral + Report Card – only for Transferee */}
-          {enrollment.registrationType === "Transferee" && (
-            <>
+            {/* Kid's Note App */}
+            <button
+              title="Kid's Note App"
+              disabled={enrollment.kids_note_installed}
+              onClick={() =>
+                onUpdateRequirement(
+                  enrollment.id,
+                  "kids_note_installed",
+                  !enrollment.kids_note_installed,
+                )
+              }
+              style={{
+                background: "none",
+                border: "none",
+                cursor: enrollment.kids_note_installed ? "default" : "pointer",
+                fontSize: "1.1rem",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                backgroundColor: enrollment.kids_note_installed
+                  ? "#e8f5e9"
+                  : "#ffebee",
+                opacity: enrollment.kids_note_installed ? 0.8 : 1,
+                transition: "all 0.2s",
+              }}
+            >
+              {enrollment.kids_note_installed ? (
+                <FaMobileAlt style={{ color: "#2e7d32" }} />
+              ) : (
+                <FaRegCircle style={{ color: "#aaa" }} />
+              )}
+            </button>
+
+            {/* PSA Birth Certificate – only for New/Transferee */}
+            {(enrollment.registrationType === "New Student" ||
+              enrollment.registrationType === "Transferee") && (
               <button
-                title="Good Moral"
-                disabled={enrollment.good_moral_received}
+                title="PSA Birth Certificate"
+                disabled={enrollment.psa_received}
                 onClick={() =>
                   onUpdateRequirement(
                     enrollment.id,
-                    "good_moral_received",
-                    !enrollment.good_moral_received,
+                    "psa_received",
+                    !enrollment.psa_received,
                   )
                 }
                 style={{
                   background: "none",
                   border: "none",
-                  cursor: enrollment.good_moral_received ? "default" : "pointer",
+                  cursor: enrollment.psa_received ? "default" : "pointer",
                   fontSize: "1.1rem",
                   padding: "4px 8px",
                   borderRadius: "4px",
-                  backgroundColor: enrollment.good_moral_received
-                    ? "#e8f5e9"
-                    : "#ffebee",
-                  opacity: enrollment.good_moral_received ? 0.8 : 1,
+                  backgroundColor: enrollment.psa_received ? "#e8f5e9" : "#ffebee",
+                  opacity: enrollment.psa_received ? 0.8 : 1,
                   transition: "all 0.2s",
                 }}
               >
-                {enrollment.good_moral_received ? "⭐" : "⭕"}
+                {enrollment.psa_received ? (
+                  <FaFileAlt style={{ color: "#2e7d32" }} />
+                ) : (
+                  <FaRegCircle style={{ color: "#aaa" }} />
+                )}
               </button>
+            )}
 
-              <button
-                title="Report Card"
-                disabled={enrollment.report_card_received}
-                onClick={() =>
-                  onUpdateRequirement(
-                    enrollment.id,
-                    "report_card_received",
-                    !enrollment.report_card_received,
-                  )
-                }
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: enrollment.report_card_received ? "default" : "pointer",
-                  fontSize: "1.1rem",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                  backgroundColor: enrollment.report_card_received
-                    ? "#e8f5e9"
-                    : "#ffebee",
-                  opacity: enrollment.report_card_received ? 0.8 : 1,
-                  transition: "all 0.2s",
-                }}
-              >
-                {enrollment.report_card_received ? "📊" : "⭕"}
-              </button>
-            </>
-          )}
-        </div>
-      </td>
+            {/* Good Moral + Report Card – only for Transferee */}
+            {enrollment.registrationType === "Transferee" && (
+              <>
+                <button
+                  title="Good Moral"
+                  disabled={enrollment.good_moral_received}
+                  onClick={() =>
+                    onUpdateRequirement(
+                      enrollment.id,
+                      "good_moral_received",
+                      !enrollment.good_moral_received,
+                    )
+                  }
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: enrollment.good_moral_received ? "default" : "pointer",
+                    fontSize: "1.1rem",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: enrollment.good_moral_received
+                      ? "#e8f5e9"
+                      : "#ffebee",
+                    opacity: enrollment.good_moral_received ? 0.8 : 1,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {enrollment.good_moral_received ? (
+                    <FaStar style={{ color: "#2e7d32" }} />
+                  ) : (
+                    <FaRegCircle style={{ color: "#aaa" }} />
+                  )}
+                </button>
+                <button
+                  title="Report Card"
+                  disabled={enrollment.report_card_received}
+                  onClick={() =>
+                    onUpdateRequirement(
+                      enrollment.id,
+                      "report_card_received",
+                      !enrollment.report_card_received,
+                    )
+                  }
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: enrollment.report_card_received ? "default" : "pointer",
+                    fontSize: "1.1rem",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: enrollment.report_card_received
+                      ? "#e8f5e9"
+                      : "#ffebee",
+                    opacity: enrollment.report_card_received ? 0.8 : 1,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {enrollment.report_card_received ? (
+                    <FaChartBar style={{ color: "#2e7d32" }} />
+                  ) : (
+                    <FaRegCircle style={{ color: "#aaa" }} />
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </td>
 
       <td data-label="Status">
         <span className={`status-pill ${enrollment.status}`}>
@@ -990,7 +1025,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   className="enrollment-btn-excel"
                   onClick={exportToExcel}
                 >
-                  📊 Export to Excel
+                  <FaFileExcel style={{ marginRight: '6px' }} />
+                    Export to Excel
                 </button>
                 <button
                   className="enrollment-btn-qr"
@@ -1122,7 +1158,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                         paddingBottom: "5px",
                       }}
                     >
-                      🎓 Official Enrollment Details
+                       <FaGraduationCap style={{ marginRight: '8px', fontSize: '1.1rem' }} />
+                        Official Enrollment Details
                     </h4>
                     <div
                       style={{
@@ -1171,7 +1208,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   border: "1px solid #ddd",
                 }}
               >
-                <h3>💳 Payment Information</h3>
+                <FaCreditCard style={{ marginRight: '8px', fontSize: '1.1rem' }} />
+                    Payment Information
                 <div
                   className="details-grid"
                   style={{
@@ -1231,7 +1269,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                           fontWeight: "bold",
                         }}
                       >
-                        ✅ Down payment is processed{" "}
+                        <FaCheckCircle style={{ marginRight: '6px', fontSize: '0.9rem' }} />
+                          Down payment is processed{' '}
                         {selectedEnrollment.payments?.[0]?.paymentMethod ===
                         "Cash"
                           ? "(Cash)"
@@ -1248,7 +1287,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                           fontWeight: "bold",
                         }}
                       >
-                        ⚠️ WALK-IN: Await physical payment at Registrar
+                        <FaExclamationTriangle style={{ marginRight: '6px', fontSize: '0.9rem' }} />
+                           WALK-IN: Await physical payment at Registrar
                       </span>
                     ) : (
                       <span
@@ -1296,7 +1336,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                         />
                       </a>
                       <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
-                        📸 Click image to view full receipt
+                         <FaCamera style={{ marginRight: '6px' }} />
+                              Click image to view full receipt
                       </p>
                     </div>
                   </div>
@@ -1313,7 +1354,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   border: "1px solid #ddd",
                 }}
               >
-                <h3>📁 Submitted Documents</h3>
+               <FaFolderOpen style={{ marginRight: '8px', fontSize: '1.1rem' }} />
+                  Submitted Documents
                 <RequirementsChecklist
                   enrollmentId={selectedEnrollment.id}
                   onStatusUpdated={(type, displayLabel, newStatus) =>
@@ -1361,7 +1403,8 @@ const handleViewEnrollment = useCallback(async (enrollment) => {
                   cursor: "pointer",
                 }}
               >
-                📥 Download PDF Record
+                 <FaDownload style={{ marginRight: '8px' }} />
+                     Download PDF Record
               </button>
               <button
                 onClick={closeModal}
