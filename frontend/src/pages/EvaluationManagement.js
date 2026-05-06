@@ -412,30 +412,30 @@ const EvaluationManagement = () => {
     }
   };
 
-  // ── Re‑fetch on filter change ──
-  useEffect(() => {
-    if (!selectedSchoolYear) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await API.get("/admin/grades", { params: { school_year: selectedSchoolYear } });
-        if (!cancelled) {
-          setAllGrades(res.data.data || []);
-          setFilterSection("all");
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Error fetching grades:", err);
-          setError("Failed to fetch grades");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [selectedSchoolYear, selectedGradeLevel]);
+  // // ── Re‑fetch on filter change ──
+  // useEffect(() => {
+  //   if (!selectedSchoolYear) return;
+  //   let cancelled = false;
+  //   const load = async () => {
+  //     setLoading(true);
+  //     try {
+  //       const res = await API.get("/admin/grades", { params: { school_year: selectedSchoolYear } });
+  //       if (!cancelled) {
+  //         setAllGrades(res.data.data || []);
+  //         setFilterSection("all");
+  //       }
+  //     } catch (err) {
+  //       if (!cancelled) {
+  //         console.error("Error fetching grades:", err);
+  //         setError("Failed to fetch grades");
+  //       }
+  //     } finally {
+  //       if (!cancelled) setLoading(false);
+  //     }
+  //   };
+  //   load();
+  //   return () => { cancelled = true; };
+  // }, [selectedSchoolYear, selectedGradeLevel]);
 
   const handleRefresh = () => fetchAllGrades(true);
 
