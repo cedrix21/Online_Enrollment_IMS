@@ -12,9 +12,22 @@ class TuitionFeeSeeder extends Seeder
     {
         $schoolYear = '2025-2026';
 
+        $bookFees = [
+            'Nursery'        => 1579,
+            'Kindergarten 1' => 2241,
+            'Kindergarten 2' => 1642,
+            'Grade 1'        => 4629,
+            'Grade 2'        => 4879,
+            'Grade 3'        => 4859,
+            'Grade 4'        => 5488,
+            'Grade 5'        => 5488,
+            'Grade 6'        => 5488,
+        ];
+
         $data = [
             'Nursery' => [
                 'tuition_fee' => 26288, 'korean_fee' => 0,
+                'book_fee' => $bookFees['Nursery'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 680],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -24,6 +37,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Kindergarten 1' => [
                 'tuition_fee' => 26838, 'korean_fee' => 0,
+                'book_fee' => $bookFees['Kindergarten 1'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 680],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -33,6 +47,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Kindergarten 2' => [
                 'tuition_fee' => 26988, 'korean_fee' => 0,
+                'book_fee' => $bookFees['Kindergarten 2'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 680],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -43,6 +58,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 1' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 1'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -53,6 +69,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 2' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 2'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -63,6 +80,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 3' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 3'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -73,6 +91,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 4' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 4'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -84,6 +103,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 5' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 5'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -95,6 +115,7 @@ class TuitionFeeSeeder extends Seeder
             ],
             'Grade 6' => [
                 'tuition_fee' => 30582, 'korean_fee' => 1500,
+                'book_fee' => $bookFees['Grade 6'],
                 'misc' => [
                     ['Registration Fee', 500], ['Instructional Materials Fee', 480],
                     ['Library Fee', 350], ['Energy Fee', 1490], ['School I.D', 205],
@@ -116,10 +137,12 @@ class TuitionFeeSeeder extends Seeder
                 [
                     'tuition_fee'   => $info['tuition_fee'],
                     'korean_fee'    => $info['korean_fee'],
+                    'book_fee'      => $info['book_fee'],   // ← added
                     'down_payment'  => 5000,
-                'monthly_terms' => 10,
-                'is_active'     => true,
-            ]);
+                    'monthly_terms' => 10,
+                    'is_active'     => true,
+                ]
+            );
 
             foreach ($info['misc'] as $i => [$label, $amount]) {
                 MiscFeeItem::updateOrCreate(
@@ -130,7 +153,8 @@ class TuitionFeeSeeder extends Seeder
                     [
                         'amount'     => $amount,
                         'sort_order' => $i,
-                ]);
+                    ]
+                );
             }
         }
     }

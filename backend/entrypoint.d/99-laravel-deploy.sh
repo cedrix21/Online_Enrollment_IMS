@@ -10,6 +10,6 @@ echo "=== [2/3] Running migrations... ==="
 php artisan migrate --force
 
 echo "=== [3/3] Seeding database... ==="
-php artisan db:seed --force
+php artisan db:seed --class=TuitionFeeSeeder --force
 
 echo "=== Done! Starting server... ==="
