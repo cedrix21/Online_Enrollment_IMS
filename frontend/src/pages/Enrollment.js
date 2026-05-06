@@ -351,6 +351,11 @@ const verifyStudentId = async () => {
   return <div className="loading-spinner">Loading school year...</div>;
 }
 
+const handleNumericChange = (fieldName, rawValue) => {
+  const numericOnly = rawValue.replace(/\D/g, '');   // remove non-digits
+  setFormData(prev => ({ ...prev, [fieldName]: numericOnly }));
+};
+
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -505,34 +510,41 @@ const verifyStudentId = async () => {
 
                     {/* Row 2: Grade Level (full width) */}
                     <div style={{ marginTop: '15px' }}>
-                      <label>Enrolling For (Grade Level)</label>
-                      <select 
-                        name="gradeLevel" 
-                        value={formData.gradeLevel}
-                        onChange={handleChange} 
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #ccc',
-                          borderRadius: '6px',
-                          backgroundColor: '#fff'
-                        }}
-                      >
-                        <option value="">Select Grade</option>
-                        <option value="Nursery">Nursery</option>
-                        <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
-                        <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
-                        {[1,2,3,4,5,6].map(n =>
-                          <option key={n} value={`Grade ${n}`}>Grade {n}</option>
-                        )}
-                      </select>
-                      {formData.registrationType === 'Continuing' && studentIdValid === true && (
-                        <small style={{ color: '#2e7d32', marginTop: '4px', display: 'block' }}>
-                          ℹ️ Select the grade level for the upcoming school year.
-                        </small>
+                    <label>Enrolling For (Grade Level)</label>
+                    <select 
+                      name="gradeLevel" 
+                      value={formData.gradeLevel}
+                      onChange={handleChange} 
+                      required
+                      disabled={formData.registrationType === 'Continuing' && studentIdValid === true}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #ccc',
+                        borderRadius: '6px',
+                        backgroundColor: (formData.registrationType === 'Continuing' && studentIdValid === true) ? '#f8f9fa' : '#fff'
+                      }}
+                    >
+                      <option value="">Select Grade</option>
+                      <option value="Nursery">Nursery</option>
+                      <option value="Kindergarten 1">K1 (4 - 5 yrs)</option>
+                      <option value="Kindergarten 2">K2 (5 - 6 yrs)</option>
+                      {[1,2,3,4,5,6].map(n =>
+                        <option key={n} value={`Grade ${n}`}>Grade {n}</option>
                       )}
-                    </div>
+                    </select>
+
+                    {/* Hidden field to ensure the gradeLevel is submitted when select is disabled */}
+                    {formData.registrationType === 'Continuing' && studentIdValid === true && (
+                      <input type="hidden" name="gradeLevel" value={formData.gradeLevel} />
+                    )}
+
+                    {formData.registrationType === 'Continuing' && studentIdValid === true && (
+                      <small style={{ color: '#2e7d32', marginTop: '4px', display: 'block' }}>
+                        ℹ️ Grade level automatically set to the next school year.
+                      </small>
+                    )}
+                  </div>
                     
 
                     {/* Additional helper text (optional) */}
@@ -853,7 +865,9 @@ const verifyStudentId = async () => {
                     <input name="fatherName" placeholder="Full Name" value={formData.fatherName}
                       onChange={handleChange} required />
                     <input name="fatherContact" placeholder="Contact #" value={formData.fatherContact}
-                      onChange={handleChange} required />
+                     onChange={(e) => handleNumericChange('fatherContact', e.target.value)}
+                      required 
+                       inputMode="numeric"  />
                     <input name="fatherOccupation" placeholder="Occupation" value={formData.fatherOccupation}
                       onChange={handleChange} />
                     <input name="fatherEmail" placeholder="Email Address" value={formData.fatherEmail}
@@ -872,7 +886,9 @@ const verifyStudentId = async () => {
                     <input name="motherName" placeholder="Full Name" value={formData.motherName}
                       onChange={handleChange} required />
                     <input name="motherContact" placeholder="Contact #" value={formData.motherContact}
-                      onChange={handleChange} required />
+                      onChange={(e) => handleNumericChange('motherContact', e.target.value)}
+                      required  
+                      inputMode="numeric"  />
                     <input name="motherOccupation" placeholder="Occupation" value={formData.motherOccupation}
                       onChange={handleChange} />
                     <input name="motherEmail" placeholder="Email Address" value={formData.motherEmail}
