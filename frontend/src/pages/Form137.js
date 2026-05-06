@@ -226,6 +226,7 @@ export default function Form137() {
   try {
     // 1. Fetch all enrollments
     const enrollRes = await API.get(`/students/${s.id}/enrollments`);
+    console.log('Enrollments:', enrollRes.data);
     const enrollments = enrollRes.data;
 
     // 2. Fetch all grades
@@ -281,8 +282,10 @@ export default function Form137() {
       });
 
       const gradesForThisEnrollment = uniqueGrades.filter(grade => {
-        return grade.subject?.school_year === enrollment.school_year;
-      });
+      const key = `${enrollment.school_year}|${enrollment.gradeLevel}`;
+      const yearSubjects = subjectsByYearAndGrade[key] || [];
+      return yearSubjects.some(s => s.id === grade.subject_id);
+    });
 
       gradesForThisEnrollment.forEach(grade => {
         const subjName = grade.subject?.subjectName;

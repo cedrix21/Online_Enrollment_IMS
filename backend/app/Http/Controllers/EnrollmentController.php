@@ -315,7 +315,7 @@ class EnrollmentController extends Controller
 }
 
 
-  public function updateStatus(Request $request, $id)
+ public function updateStatus(Request $request, $id)
 {
     $request->validate([
         'status'     => 'required|in:approved,rejected',
@@ -369,6 +369,7 @@ class EnrollmentController extends Controller
         $studentId = Schema::hasColumn('enrollments', 'student_id') ? $enrollment->student_id : null;
 
         if ($studentId) {
+            // Reuse existing linked student
             $student = Student::findOrFail($studentId);
             $student->update([
                 'section_id'  => $section->id,
@@ -378,28 +379,52 @@ class EnrollmentController extends Controller
             ]);
             $formattedId = $student->studentId;
         } else {
-            $year = date('Y');
-            $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
-            $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
-            $studentData = [
-                'studentId'   => $formattedId,
-                'firstName'   => $this->toTitleCase($enrollment->firstName),
-                'lastName'    => $this->toTitleCase($enrollment->lastName),
-                'middleName'  => $this->toTitleCase($enrollment->middleName),
-                'nickname'    => $this->toTitleCase($enrollment->nickname),
-                'email'       => $enrollment->email,
-                'gradeLevel'  => $enrollment->gradeLevel,
-                'gender'      => $enrollment->gender,
-                'dateOfBirth' => $enrollment->dateOfBirth,
-                'section_id'  => $section->id,
-                'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
-                'status'      => 'active',
-            ];
-            if (Schema::hasColumn('students', 'enrollment_id')) $studentData['enrollment_id'] = $enrollment->id;
-            $student = Student::create($studentData);
-            if (Schema::hasColumn('enrollments', 'student_id')) {
-                $enrollment->student_id = $student->id;
-                $enrollment->save();
+            // No student_id link – try to find an existing student by email to avoid duplicates
+            $existingStudent = Student::where('email', $enrollment->email)->first();
+
+            if ($existingStudent) {
+                // Update existing student instead of creating a new one
+                $student = $existingStudent;
+                $student->update([
+                    'section_id'  => $section->id,
+                    'gradeLevel'  => $enrollment->gradeLevel,
+                    'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
+                    'status'      => 'active',
+                ]);
+                $formattedId = $student->studentId;
+
+                // Link this enrollment to the existing student
+                if (Schema::hasColumn('enrollments', 'student_id')) {
+                    $enrollment->student_id = $student->id;
+                    $enrollment->save();
+                }
+            } else {
+                // Truly new student – create
+                $year = date('Y');
+                $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
+                $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+                $studentData = [
+                    'studentId'   => $formattedId,
+                    'firstName'   => $this->toTitleCase($enrollment->firstName),
+                    'lastName'    => $this->toTitleCase($enrollment->lastName),
+                    'middleName'  => $this->toTitleCase($enrollment->middleName),
+                    'nickname'    => $this->toTitleCase($enrollment->nickname),
+                    'email'       => $enrollment->email,
+                    'gradeLevel'  => $enrollment->gradeLevel,
+                    'gender'      => $enrollment->gender,
+                    'dateOfBirth' => $enrollment->dateOfBirth,
+                    'section_id'  => $section->id,
+                    'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
+                    'status'      => 'active',
+                ];
+                if (Schema::hasColumn('students', 'enrollment_id')) $studentData['enrollment_id'] = $enrollment->id;
+                $student = Student::create($studentData);
+
+                if (Schema::hasColumn('enrollments', 'student_id')) {
+                    $enrollment->student_id = $student->id;
+                    $enrollment->save();
+                }
             }
         }
 
@@ -409,7 +434,6 @@ class EnrollmentController extends Controller
         ]);
         $section->increment('students_count');
 
-        // ✅ Only now log the approval with safe student name
         activity()
             ->performedOn($enrollment)
             ->causedBy(Auth::user())

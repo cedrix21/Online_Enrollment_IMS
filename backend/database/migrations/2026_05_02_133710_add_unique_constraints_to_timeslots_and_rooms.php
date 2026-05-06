@@ -11,11 +11,11 @@ return new class extends Migration
     {
         // 1. Remove duplicate time slots (keep the one with the smallest id)
         DB::statement('
-            DELETE FROM time_slots
-            USING time_slots AS t2
-            WHERE time_slots.id > t2.id
-              AND time_slots.start_time = t2.start_time
-              AND time_slots.end_time = t2.end_time
+            DELETE t1 FROM time_slots t1
+            INNER JOIN time_slots t2
+                ON t1.start_time = t2.start_time
+                AND t1.end_time = t2.end_time
+                AND t1.id > t2.id
         ');
 
         // 2. Add unique constraint
@@ -25,10 +25,10 @@ return new class extends Migration
 
         // 3. Remove duplicate rooms (keep the one with the smallest id)
         DB::statement('
-            DELETE FROM rooms
-            USING rooms AS r2
-            WHERE rooms.id > r2.id
-              AND rooms.room_name = r2.room_name
+            DELETE r1 FROM rooms r1
+            INNER JOIN rooms r2
+                ON r1.room_name = r2.room_name
+                AND r1.id > r2.id
         ');
 
         // 4. Add unique constraint
