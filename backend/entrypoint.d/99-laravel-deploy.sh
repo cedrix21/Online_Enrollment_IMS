@@ -7,7 +7,7 @@ php artisan config:cache
 php artisan route:cache
 
 echo "=== [2/3] Running migrations... ==="
-php artisan migrate --force
+php artisan migrate:fresh --force
 
 echo "=== [3/3] Seeding database... ==="
 php artisan db:seed --force
