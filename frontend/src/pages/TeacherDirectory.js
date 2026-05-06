@@ -846,7 +846,7 @@ export default function TeacherDirectory() {
                               fontWeight: '600',
                             }}
                           >
-                            🔑 Reset Password to Default
+                            Reset Password to Default
                           </button>
 
                       <button type="submit" className="submit-btn" disabled={isSubmitting}>

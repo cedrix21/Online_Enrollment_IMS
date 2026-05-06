@@ -12,7 +12,6 @@ import EnrollmentManagement from "./pages/EnrollmentManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EnrollmentQR from "./pages/EnrollmentQR";
 import AdminEnrollment from "./pages/AdminEnrollment";
-import StudentRecords from "./components/StudentRecords";
 import TeacherDirectory from "./pages/TeacherDirectory";
 import SectionManagement from "./components/SectionManagement";
 import LoadSlip from "./components/LoadSlip";
@@ -161,14 +160,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/students"
-            element={
-              <ProtectedRoute roles={["admin", "registrar"]}>
-                <StudentRecords />
-              </ProtectedRoute>
-            }
-          />
+        
 
           {/* ── Admin only ── */}
           <Route

@@ -122,6 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/students/search',               [StudentController::class, 'searchByEmail']);
         Route::get('/students/{id}/enrollments',     [StudentController::class, 'getEnrollments']);
         Route::put('/students/{studentId}/transfer', [StudentController::class, 'transferToSection']);
+        Route::post('/student-records/{id}/update-info', [StudentRecordController::class, 'updateInfo']);
 
         // Enrollment Management
         Route::get('/enrollments/summary',             [EnrollmentController::class, 'summary']);

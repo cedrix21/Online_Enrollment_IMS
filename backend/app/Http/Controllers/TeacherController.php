@@ -315,17 +315,18 @@ public function getTeacherSchedule(Request $request, $teacherId)
 
 
            public function resetPassword($teacherId)
-{
-    $teacher = Teacher::with('user')->findOrFail($teacherId);
+        {
+            $teacher = Teacher::with('user')->findOrFail($teacherId);
+            $user = $teacher->user;
 
-    $user = $teacher->user;
+            if (!$user) {
+                return response()->json(['message' => 'No linked user account found.'], 404);
+            }
 
-    if (!$user) {
-        return response()->json(['message' => 'No linked user account found.'], 404);
-    }
+            $user->password = Hash::make('teacher123');
+            $user->password_changed = false;   // ← force change on next login
+            $user->save();
 
-    $user->update(['password' => Hash::make('teacher123')]);
-
-    return response()->json(['message' => 'Password reset to teacher123']);
-}
+            return response()->json(['message' => 'Password reset to teacher123']);
+        }
 }

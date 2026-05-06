@@ -105,7 +105,8 @@ public function getCurrentYearList(Request $request)
     $mapEnrollment = function ($enrollment) {
         $student = $enrollment->student;
         return [
-            'id'            => $enrollment->id,               // use enrollment id for uniqueness
+            'id'            => $enrollment->id,     
+            'student_id'    => $student->id ?? null,             // use enrollment id for uniqueness
             'firstName'     => $student->firstName ?? '',
             'lastName'      => $student->lastName ?? '',
             'studentId'     => $student->studentId ?? '',

@@ -238,7 +238,7 @@ const EnrolledStudents = () => {
     e.preventDefault();
     if (!selectedStudent) return;
     try {
-      await API.post(`/students/${selectedStudent.id}/update-info`, {
+      await API.post(`/students/${selectedStudent.student_id}/update-info`, {
         lrn: lrnInput,
         contactNumber: contactInput,
       });

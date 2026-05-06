@@ -38,6 +38,20 @@ class StudentRecordController extends Controller
         return response()->json($record, 201);
     }
 
+    public function updateInfo(Request $request, $id)
+{
+    $record = StudentRecord::findOrFail($id);
+    $validated = $request->validate([
+        'lrn'           => 'nullable|string|max:50',
+        'contactNumber' => 'nullable|string|max:20',
+    ]);
+    $record->update([
+        'lrn'            => $validated['lrn'],
+        'contact_number' => $validated['contactNumber'],
+    ]);
+    return response()->json(['message' => 'Record updated successfully']);
+}
+
     public function destroy($id)
     {
         $record = StudentRecord::findOrFail($id);
