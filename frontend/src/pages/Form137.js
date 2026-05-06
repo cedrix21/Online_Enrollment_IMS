@@ -270,6 +270,12 @@ export default function Form137() {
       }])
     );
 
+    // Step 4.5 – Populate global subjects for all historical years
+    const allSubjects = Object.values(subjectsByYearAndGrade).flat();
+    const uniqueSubjectsMap = new Map();
+    allSubjects.forEach(sub => uniqueSubjectsMap.set(sub.id, sub));
+    setSubjects(Array.from(uniqueSubjectsMap.values()));
+
     enrollments.forEach(enrollment => {
       const roman = gradeToRoman[enrollment.gradeLevel];
       if (!roman) return;
@@ -881,6 +887,12 @@ ${buildObsTable(['I','II','III'])}
                         } else {
                           regular.push({ subjectName: name, ...subjectMeta });
                         }
+                      });
+                      regular.sort((a, b) => (a.subjectName || '').localeCompare(b.subjectName || ''));
+                      mapeh.sort((a, b) => {
+                        const codeA = a.subjectCode || '';
+                        const codeB = b.subjectCode || '';
+                        return getMapehSortIndex(codeA) - getMapehSortIndex(codeB);
                       });
 
                       // Calculate per‑quarter averages for MAPEH components
