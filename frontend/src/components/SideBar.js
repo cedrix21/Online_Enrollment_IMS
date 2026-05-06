@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import logo from "../assets/sics-logo.png";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FaFileInvoiceDollar,
   FaLayerGroup,
@@ -13,13 +13,15 @@ import {
   FaChevronRight,
   FaBars,
   FaTimes,
+  FaSignOutAlt,   // ← new icon for logout
 } from "react-icons/fa";
+import API from "../api/api";   // ← make sure API is imported
 import "./SideBar.css";
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // ── 1. Safely get user FIRST ──────────────────────────
   let user = null;
   try {
     const raw = localStorage.getItem("user");
@@ -30,23 +32,19 @@ export default function Sidebar() {
     user = null;
   }
 
-  // ── 2. Derive everything from the safe user ──────────
   const isAdmin = user?.role === "admin";
   const isRegistrar = user?.role === "registrar";
   const isAdminOrRegistrar = isAdmin || isRegistrar;
-
-  // These are optional, you can keep them for future use
   const userName = user?.name || "Guest";
   const userRole = user?.role || "guest";
 
-  // ── Mobile toggle … ──
+  // Mobile toggle
   const [isOpen, setIsOpen] = useState(false);
-
   useEffect(() => {
-    setIsOpen(false);  // close sidebar when route changes
+    setIsOpen(false);
   }, [location.pathname]);
 
-  // Path arrays – defined once, used everywhere
+  // Path arrays
   const enrollmentPaths = ["/admin/enroll", "/enrollment-management", "/enrolled-students"];
   const academicPaths = ["/load-slips", "/form137"];
   if (isAdmin) academicPaths.push("/admin/evaluation");
@@ -74,6 +72,16 @@ export default function Sidebar() {
   }, [location.pathname, isAdmin]);
 
   const toggleMenu = (menu) => setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+
+  // ── Logout handler ──
+  const handleLogout = async () => {
+    try {
+      await API.post("/logout");
+    } catch {}
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   return (
     <>
@@ -189,6 +197,27 @@ export default function Sidebar() {
               )}
             </div>
           )}
+
+          {/* ─────── LOGOUT ─────── */}
+          <button
+            className="sidebar-logout-btn"
+            onClick={handleLogout}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              color: '#d32f2f',
+              fontSize: '0.9rem',
+              padding: '10px 15px',
+              marginTop: '10px',
+            }}
+          >
+            <FaSignOutAlt />
+            <span>Logout</span>
+          </button>
         </nav>
       </aside>
     </>

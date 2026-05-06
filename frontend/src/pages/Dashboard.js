@@ -141,18 +141,7 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [user, navigate, isAdminOrRegistrar, isAdmin]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await API.post("/logout");
-    } catch {}
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    // Clear dashboard cache
-    localStorage.removeItem(CACHE_KEYS.SUMMARY);
-    localStorage.removeItem(CACHE_KEYS.TEACHERS);
-    localStorage.removeItem(`${CACHE_KEYS.SUMMARY}_time`);
-    navigate("/login");
-  }, [navigate]);
+ 
 
   if (!user) return <LoadingScreen />;
 
@@ -186,9 +175,7 @@ export default function Dashboard() {
         <DashboardCards role={user.role} />
       </Suspense>
 
-      <button className="logout-button" onClick={handleLogout}>
-        Logout
-      </button>
+     
     </div>
   );
 }

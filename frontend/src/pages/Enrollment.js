@@ -885,7 +885,10 @@ const verifyStudentId = async () => {
 
               {/* ── Siblings ── */}
               <div className="form-section">
-                <h3>List of Enrolled Siblings at SICS</h3>
+                <h3>List of Enrolled Siblings at SICS <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 'normal' }}>
+                    (Optional)
+                  </span></h3>
+                
                 <div className="input-group">
                   {formData.siblings.map((sibling, index) => (
                     <div key={index} className="input-grid-2" style={{ marginBottom: '10px' }}>
