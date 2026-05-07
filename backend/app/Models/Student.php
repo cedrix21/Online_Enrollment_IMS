@@ -24,6 +24,7 @@ class Student extends Model
     'school_year',
     'lrn',
     'contact_number',
+    'discount_percent',
 ];
 
     protected $casts = [

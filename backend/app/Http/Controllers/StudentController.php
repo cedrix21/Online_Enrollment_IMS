@@ -300,4 +300,20 @@ public function transferToSection(Request $request, $studentId)
 }
 
 
+    public function updateDiscount(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'discount_percent' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $student = Student::findOrFail($id);
+        $student->update(['discount_percent' => $validated['discount_percent']]);
+
+        return response()->json([
+            'message' => 'Discount updated successfully.',
+            'discount_percent' => $student->discount_percent,
+        ]);
+    }
+
+
 }

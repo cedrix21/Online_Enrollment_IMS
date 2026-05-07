@@ -21,38 +21,15 @@ use Illuminate\Support\Facades\Artisan;
 use App\Models\Setting;
 
 
-// Temporary – remove after use
-Route::post('/sync-teacher-user-ids', function () {
-    $teachers = \App\Models\Teacher::whereNull('user_id')->get();
-    $updated = 0;
-
-    foreach ($teachers as $teacher) {
-        $user = \App\Models\User::where('email', $teacher->email)->first();
-        if ($user) {
-            $teacher->user_id = $user->id;
-            $teacher->save();
-            $updated++;
-        }
-    }
-
-    $remaining = \App\Models\Teacher::whereNull('user_id')->count();
-
-    return response()->json([
-        'message'   => "Synced $updated teacher(s).",
-        'remaining' => $remaining,
-    ]);
-});
-
-
-// Temporary route for cleaning activity logs via cron job
-Route::get('/cron/clean-logs', function (Request $request) {
-    $secret = config('app.cron_secret');
-    if ($request->query('token') !== $secret) {
-        return response('Unauthorized', 401);
-    }
-    Artisan::call('activity-log:clean');
-    return response(Artisan::output());
-});
+// // Temporary route for cleaning activity logs via cron job
+// Route::get('/cron/clean-logs', function (Request $request) {
+//     $secret = config('app.cron_secret');
+//     if ($request->query('token') !== $secret) {
+//         return response('Unauthorized', 401);
+//     }
+//     Artisan::call('activity-log:clean');
+//     return response(Artisan::output());
+// });
 
 
 
@@ -124,6 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/students/{id}/enrollments',     [StudentController::class, 'getEnrollments']);
         Route::put('/students/{studentId}/transfer', [StudentController::class, 'transferToSection']);
         Route::post('/student-records/{id}/update-info', [StudentRecordController::class, 'updateInfo']);
+        Route::put('/students/{id}/discount', [StudentController::class, 'updateDiscount']);
 
         // Enrollment Management
         Route::get('/enrollments/summary',             [EnrollmentController::class, 'summary']);
@@ -160,6 +138,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/billing/student/{studentId}/pay', [BillingController::class, 'addPayment']);
         Route::put('/admin/billing/payment/{id}',           [BillingController::class, 'updatePayment']);
         Route::get('/admin/payments',                       [BillingController::class, 'index']);
+        
 
         // Grades (read-only for registrar)
         Route::get('/admin/grades',                    [GradeController::class, 'getAllGrades']);

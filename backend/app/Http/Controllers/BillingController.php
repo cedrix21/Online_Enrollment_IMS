@@ -62,6 +62,10 @@ class BillingController extends Controller
             ];
             
             $totalTuition = $rates[$student->gradeLevel] ?? 31540;
+            $discountPercent = $student->discount_percent ?? 0;
+            if ($discountPercent > 0) {
+                $totalTuition = round($totalTuition * (1 - $discountPercent / 100), 2);
+            }
             $totalPaid = $student->payments->sum('amount_paid') + $validated['amount_paid'];
             $balance = $totalTuition - $totalPaid;
 
@@ -130,6 +134,14 @@ class BillingController extends Controller
     ];
         
         $totalTuition = $rates[$student->gradeLevel] ?? 31540;
+        $baseTotal = $totalTuition;   // Full price before discount
+        $discountPercent = $student->discount_percent ?? 0;
+        $discountAmount = 0;
+
+        if ($discountPercent > 0) {
+            $totalTuition = round($totalTuition * (1 - $discountPercent / 100), 2);
+            $discountAmount = round($baseTotal * ($discountPercent / 100), 2);
+        }
         $totalPaid = $student->payments->sum('amount_paid');
         $balance = $totalTuition - $totalPaid;
         
@@ -159,10 +171,13 @@ class BillingController extends Controller
         'school_year' => $schoolYear,
         'ledger' => $student->payments,
         'summary' => [
-            'total_tuition' => $totalTuition,
-            'total_paid' => $totalPaid,
-            'balance' => $balance,
-            'status' => $accountStatus,
+            'total_tuition'   => $totalTuition,       // discounted total
+            'original_total'  => $baseTotal,           // full price
+            'discount_percent'=> $student->discount_percent,
+            'discount_amount' => $discountAmount,      // amount deducted
+            'total_paid'      => $totalPaid,
+            'balance'         => $balance,
+            'status'          => $accountStatus,
             'books' => [
                 'total'   => $bookFee,
                 'paid'    => $booksPaid,

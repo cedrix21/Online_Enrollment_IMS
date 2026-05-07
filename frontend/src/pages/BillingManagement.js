@@ -22,7 +22,11 @@ const BillingManagement = ({ user }) => {
     const [filterPaymentStatus, setFilterPaymentStatus] = useState(
         location.state?.paymentFilter || 'all'
     );
-
+    const [discountPercent, setDiscountPercent] = useState(0);
+    const [savingDiscount, setSavingDiscount] = useState(false);
+    const [originalTotal, setOriginalTotal] = useState(0);
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [errorMessage, setErrorMessage] = useState('');
     // Define tuition rates (used for search filtering only)
     const rates = {
         'Kindergarten 1': 20000,
@@ -114,7 +118,10 @@ const BillingManagement = ({ user }) => {
             });
             setPayments(res.data.ledger || []);
             setTotalTuition(res.data.summary.total_tuition);
+            setOriginalTotal(res.data.summary.original_total || res.data.summary.total_tuition);
+            setDiscountAmount(res.data.summary.discount_amount || 0);
             setBooksSummary(res.data.summary.books);
+            setDiscountPercent(student.discount_percent || 0);
 
             await logActivity('view_billing_ledger', {
                 student_id: student.id,
@@ -146,6 +153,31 @@ const BillingManagement = ({ user }) => {
             console.error("Error refreshing ledger", err);
         }
     };
+    const handleSaveDiscount = async () => {
+    if (!selectedStudent) return;
+    setSavingDiscount(true);
+    try {
+        await API.put(`/students/${selectedStudent.id}/discount`, {
+            discount_percent: parseFloat(discountPercent),
+        });
+        // Refresh ledger to show new totals
+        const res = await API.get(`/admin/billing/student/${selectedStudent.id}`, {
+            params: { school_year: selectedSchoolYear }
+        });
+        setPayments(res.data.ledger || []);
+        setTotalTuition(res.data.summary.total_tuition);
+        setOriginalTotal(res.data.summary.original_total || res.data.summary.total_tuition);
+        setDiscountAmount(res.data.summary.discount_amount || 0);
+        setBooksSummary(res.data.summary.books);
+        } catch (err) {
+            console.error('Failed to update discount', err);
+            setErrorMessage('Failed to update discount');
+            setTimeout(() => setErrorMessage(''), 3000);
+        } finally {
+            setSavingDiscount(false);
+        }
+    };
+
 
     const filteredStudents = students.filter(s => {
         const search = searchTerm.toLowerCase();
@@ -165,14 +197,21 @@ const BillingManagement = ({ user }) => {
         return matchesSearch;
     });
 
+    
     return (
         <div className="billing-content-body">
+            {errorMessage && (
+            <div className="message-toast" style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px', marginBottom: '16px', borderRadius: '8px' }}>
+                ❌ {errorMessage}
+            </div>
+            )}
             {yearLoading || !selectedSchoolYear ? (
                 <div className="loading-school-year">Loading school year...</div>
             ) : (
                 <div className="billing-grid">
                     {/* Student List Column */}
                     <div className="student-list-card">
+                        
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                             <h3>Enrolled Students</h3>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -252,6 +291,38 @@ const BillingManagement = ({ user }) => {
                                         Student ID: {selectedStudent.studentId} | {selectedStudent.gradeLevel}
                                     </p>
                                 </div>
+                                {originalTotal > 0 && discountAmount > 0 && (
+                                <div style={{ color: '#2e7d32', fontSize: '0.9rem', marginBottom: '8px' }}>
+                                    <span style={{ fontWeight: 600 }}>Discount Applied:</span> ₱{discountAmount.toLocaleString()} ({discountPercent}% off)
+                                </div>
+                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                    <label style={{ fontWeight: 600 }}>Discount (%):</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        value={discountPercent}
+                                        onChange={(e) => setDiscountPercent(e.target.value)}
+                                        style={{ width: '70px', padding: '4px', borderRadius: '6px', border: '1px solid #ccc' }}
+                                    />
+                                    <button
+                                        onClick={handleSaveDiscount}
+                                        disabled={savingDiscount}
+                                        style={{
+                                        padding: '6px 14px',
+                                        backgroundColor: '#b8860b',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontWeight: '600',
+                                        }}
+                                    >
+                                        {savingDiscount ? 'Saving...' : 'Apply Discount'}
+                                    </button>
+                                    </div>
 
                                 {/* ⚠️ Late Payment / Outstanding Balance Notice */}
                                 {!ledgerLoading && hasOutstandingBalance && (
