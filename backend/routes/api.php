@@ -18,6 +18,7 @@ use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
 use App\Http\Controllers\Admin\UserManagementController;   
 use Illuminate\Support\Facades\Artisan;
+use App\Models\Setting;
 
 
 // Temporary – remove after use
@@ -205,6 +206,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/admin/locked-users',              [UserManagementController::class, 'lockedUsers']);
         Route::post('/admin/unlock-user/{id}',         [UserManagementController::class, 'unlockUser']);
+
+        Route::post('/admin/school-year', function (Request $request) {
+        $request->validate([
+            'school_year' => 'required|string|regex:/^\d{4}-\d{4}$/',
+        ]);
+
+        Setting::updateOrCreate(
+            ['key' => 'current_school_year'],
+            ['value' => $request->school_year]
+        );
+
+        return response()->json(['message' => 'School year updated.']);
+    });
     });
 
 
@@ -220,5 +234,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ->paginate(50);
         return response()->json($logs);
     });
+  
+
+
+
     Route::middleware('auth:sanctum')->post('/activity-logs', [App\Http\Controllers\Api\ActivityLogController::class, 'store']);
 });

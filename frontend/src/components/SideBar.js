@@ -67,8 +67,7 @@ export default function Sidebar() {
       academics: prev.academics || academicPaths.some(p => path.includes(p)),
       billing: prev.billing || billingPaths.some(p => path.includes(p)),
       management: prev.management || ["/teachers", "/section-management", "/subject-management"].some(p => path.includes(p)),
-      system: prev.system || ["/admin/activity-logs", "/admin/locked-users"].some(p => path.includes(p)),
-    }));
+      system: prev.system || ["/admin/activity-logs", "/admin/locked-users", "/admin/school-year"].some(p => path.includes(p)),    }));
   }, [location.pathname, isAdmin]);
 
   const toggleMenu = (menu) => setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
@@ -193,8 +192,10 @@ export default function Sidebar() {
                 <div className="dropdown-menu">
                   <Link to="/admin/activity-logs" className={location.pathname.includes("/admin/activity-logs") ? "active" : ""}>Activity Logs</Link>
                   <Link to="/admin/locked-users" className={location.pathname.includes("/admin/locked-users") ? "active" : ""}>Locked Users</Link>
+                  <Link to="/admin/school-year" className={location.pathname.includes("/admin/school-year") ? "active" : ""}>School Year</Link>
                 </div>
               )}
+              
             </div>
           )}
 

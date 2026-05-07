@@ -652,65 +652,53 @@ useEffect(() => {
   // Sync requirement status from modal to table row
  const handleRequirementStatusChange = useCallback(
   (enrollmentId, type, displayLabel, status) => {
-    if (!type) {
-      return;
+    if (!type) return;
+
+    const isVerified = status === 'verified';
+    const typeLower = type.toLowerCase();
+
+    // Map the requirement type to the corresponding enrollment field
+    let field = null;
+    if (
+      typeLower.includes('picture') ||
+      typeLower.includes('photo') ||
+      typeLower.includes('1x1') ||
+      typeLower.includes('2x2') ||
+      typeLower === 'id_picture'
+    ) {
+      field = 'id_picture_received';
+    } else if (
+      typeLower.includes('kids_note') ||
+      typeLower.includes('kid_note') ||
+      typeLower.includes('app') ||
+      typeLower === 'kids_note_installed'
+    ) {
+      field = 'kids_note_installed';
+    } else if (
+      typeLower.includes('psa') ||
+      typeLower.includes('birth') ||
+      typeLower === 'psa_birth_certificate'
+    ) {
+      field = 'psa_received';
+    } else if (
+      typeLower.includes('good_moral') ||
+      typeLower === 'good_moral'
+    ) {
+      field = 'good_moral_received';
+    } else if (
+      typeLower.includes('report_card') ||
+      typeLower.includes('form138') ||
+      typeLower === 'report_card'
+    ) {
+      field = 'report_card_received';
     }
-    setEnrollments(prev =>
-      prev.map(e => {
-        if (e.id !== enrollmentId) return e;
-        const updated = { ...e };
-        const isVerified = status === 'verified';
-        const typeLower = type.toLowerCase();
 
-        // Picture requirement (1x1, 2x2, or combined)
-        if (
-          typeLower.includes('picture') ||
-          typeLower.includes('photo') ||
-          typeLower.includes('1x1') ||
-          typeLower.includes('2x2') ||
-          typeLower === 'id_picture'
-        ) {
-          updated.id_picture_received = isVerified;
-        }
-        // Kid's Note App
-        else if (
-          typeLower.includes('kids_note') ||
-          typeLower.includes('kid_note') ||
-          typeLower.includes('app') ||
-          typeLower === 'kids_note_installed'
-        ) {
-          updated.kids_note_installed = isVerified;
-        }
-        // PSA Birth Certificate
-        else if (
-          typeLower.includes('psa') ||
-          typeLower.includes('birth') ||
-          typeLower === 'psa_birth_certificate'
-        ) {
-          updated.psa_received = isVerified;
-        }
-        // Good Moral
-        else if (
-          typeLower.includes('good_moral') ||
-          typeLower === 'good_moral'
-        ) {
-          updated.good_moral_received = isVerified;
-        }
-        // Report Card
-        else if (
-          typeLower.includes('report_card') ||
-          typeLower.includes('form138') ||
-          typeLower === 'report_card'
-        ) {
-          updated.report_card_received = isVerified;
-        }
-        
-
-        return updated;
-      })
-    );
+    // Persist the change via API (this also updates the local state)
+    if (field) {
+      handleUpdateRequirement(enrollmentId, field, isVerified);
+    }
   },
-  []
+  [handleUpdateRequirement]   // depends on the stable update function
 );
 
   const isRequirementsComplete = useCallback((enrollment) => {

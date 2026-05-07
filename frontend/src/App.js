@@ -33,6 +33,8 @@ import ActivityLogs from "./pages/ActivityLogs";
 import LockedUsers from "./pages/Admin/LockedUsers";
 import Sidebar from "./components/SideBar";      
 import TopBar from "./components/TopBar";        
+import AdminSchoolYear from "./pages/AdminSchoolYear";
+
 
 
 
@@ -219,6 +221,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin/school-year" element={
+          <ProtectedRoute roles={["admin"]}>
+            <AdminSchoolYear />
+          </ProtectedRoute>
+        } />
         </Route>
 
         {/* ── 404 ── */}
