@@ -835,7 +835,7 @@ export default function TeacherDirectory() {
                               }
                             }}
                             style={{
-                              backgroundColor: ' #b8860b',
+                              backgroundColor: ' #e74c3c',
                               color: '#fff',
                               border: 'none',
                               padding: '10px 20px',
