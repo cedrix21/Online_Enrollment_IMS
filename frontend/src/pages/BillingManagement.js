@@ -169,6 +169,13 @@ const BillingManagement = ({ user }) => {
         setOriginalTotal(res.data.summary.original_total || res.data.summary.total_tuition);
         setDiscountAmount(res.data.summary.discount_amount || 0);
         setBooksSummary(res.data.summary.books);
+        setStudents(prev =>
+        prev.map(s =>
+            s.id === selectedStudent.id
+            ? { ...s, discount_percent: parseFloat(discountPercent) }
+            : s
+        )
+        );
         } catch (err) {
             console.error('Failed to update discount', err);
             setErrorMessage('Failed to update discount');
