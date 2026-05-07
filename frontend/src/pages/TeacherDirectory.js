@@ -319,9 +319,18 @@ export default function TeacherDirectory() {
       setIsSubmitting(true);
       try {
         const payload = { ...editTeacherForm, school_year: selectedSchoolYear };
-        await API.put(`/teachers/${selectedTeacher.id}`, payload);
+        const updateRes = await API.put(`/teachers/${selectedTeacher.id}`, payload);
+        const updatedTeacher = updateRes.data.teacher;   // the backend returns the full teacher object with advisory_section
+
+        // Immediately update the teacher in the local list
+        setTeachers(prev =>
+          sortTeachersByAdvisory(
+            prev.map(t => (t.id === selectedTeacher.id ? updatedTeacher : t))
+          )
+        );
+
         invalidateCache();
-        await fetchData(true);
+        fetchData(true);
         closeDetail();
         setSuccessMessage("✅ Teacher updated successfully!");
         setTimeout(() => setSuccessMessage(""), 3000);
