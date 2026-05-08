@@ -19,26 +19,28 @@ export default function AdminSchoolYear() {
   }, [currentYear, selectedYear]);
 
     const handleSave = async () => {
-    setSaving(true);
-    try {
-      await API.post("/admin/school-year", { school_year: selectedYear });
+  setSaving(true);
+  try {
+    await API.post("/admin/school-year", { school_year: selectedYear });
 
-      // remove cached data that depends on the old school year
-      [
-        "teacher_directory_data",
-        "teacher_directory_data_time",
-        "dashboard_summary",
-        "dashboard_summary_time",
-        "dashboard_teachers",
-        "dashboard_teachers_time",
-      ].forEach(key => localStorage.removeItem(key));
+    // Clear the school‑year cache so the next load fetches the new value
+    localStorage.removeItem("current_school_year");
+    localStorage.removeItem("current_school_year_time");
 
-      window.location.reload(); // restart the app with fresh data
-    } catch (err) {
-      setMessage("❌ Failed to update school year.");
-      setSaving(false);
-    }
-  };
+    // Clear other dependent caches (already present)
+    localStorage.removeItem("teacher_directory_data");
+    localStorage.removeItem("teacher_directory_data_time");
+    localStorage.removeItem("dashboard_summary");
+    localStorage.removeItem("dashboard_summary_time");
+    localStorage.removeItem("dashboard_teachers");
+    localStorage.removeItem("dashboard_teachers_time");
+
+    window.location.reload();
+  } catch (err) {
+    setMessage("❌ Failed to update school year.");
+    setSaving(false);
+  }
+};
 
   if (yearLoading) return <div>Loading...</div>;
 
