@@ -795,6 +795,27 @@ export default function TeacherDirectory() {
 
                       <div className="form-group">
                         <label>Advisory Section</label>
+                        <button
+                          onClick={() => {
+                            invalidateCache();
+                            fetchData(true);
+                            setSuccessMessage("Teacher list refreshed.");
+                            setTimeout(() => setSuccessMessage(''), 3000);
+                          }}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            border: "1px solid #b8860b",
+                            background: "#fff",
+                            fontSize: "0.9rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <FaSyncAlt /> Refresh
+                        </button>
                         <select
                           value={editTeacherForm.section_id || ""}
                           onChange={(e) => setEditTeacherForm({ ...editTeacherForm, section_id: e.target.value })}

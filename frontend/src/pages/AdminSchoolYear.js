@@ -18,11 +18,22 @@ export default function AdminSchoolYear() {
     if (currentYear && !selectedYear) setSelectedYear(currentYear);
   }, [currentYear, selectedYear]);
 
-  const handleSave = async () => {
+    const handleSave = async () => {
     setSaving(true);
     try {
       await API.post("/admin/school-year", { school_year: selectedYear });
-      window.location.reload(); // refresh entire app to apply
+
+      // remove cached data that depends on the old school year
+      [
+        "teacher_directory_data",
+        "teacher_directory_data_time",
+        "dashboard_summary",
+        "dashboard_summary_time",
+        "dashboard_teachers",
+        "dashboard_teachers_time",
+      ].forEach(key => localStorage.removeItem(key));
+
+      window.location.reload(); // restart the app with fresh data
     } catch (err) {
       setMessage("❌ Failed to update school year.");
       setSaving(false);
