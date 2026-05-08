@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa";
 import "./TeacherAdvisory.css";
 import { useNavigate } from "react-router-dom";
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear';
 
 // Cache keys & duration
 const CACHE_KEY = "teacher_dashboard_cache";
@@ -43,6 +44,7 @@ export default function TeacherAdvisory() {
   const [dashboardData, setDashboardData] = useState(null);
   const [filterSection, setFilterSection] = useState("all");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const { schoolYear: currentSchoolYear } = useCurrentSchoolYear();
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -569,9 +571,7 @@ export default function TeacherAdvisory() {
         {showScheduleModal && teacherInfo && (
           <TeacherScheduleModal
             teacher={teacherInfo}
-            schoolYear={new Date().getMonth() >= 6
-              ? `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
-              : `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`}
+            schoolYear={currentSchoolYear}
             onClose={() => setShowScheduleModal(false)}
           />
         )}
