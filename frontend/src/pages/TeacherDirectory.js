@@ -795,7 +795,7 @@ export default function TeacherDirectory() {
 
                       <div className="form-group">
                         <label>Advisory Section</label>
-                        <button
+                        {/* <button
                           onClick={() => {
                             invalidateCache();
                             fetchData(true);
@@ -815,7 +815,7 @@ export default function TeacherDirectory() {
                           }}
                         >
                           <FaSyncAlt /> Refresh
-                        </button>
+                        </button> */}
                         <select
                           value={editTeacherForm.section_id || ""}
                           onChange={(e) => setEditTeacherForm({ ...editTeacherForm, section_id: e.target.value })}
