@@ -379,27 +379,8 @@ class EnrollmentController extends Controller
             ]);
             $formattedId = $student->studentId;
         } else {
-            // No student_id link – try to find an existing student by email to avoid duplicates
-            $existingStudent = Student::where('email', $enrollment->email)->first();
-
-            if ($existingStudent) {
-                // Update existing student instead of creating a new one
-                $student = $existingStudent;
-                $student->update([
-                    'section_id'  => $section->id,
-                    'gradeLevel'  => $enrollment->gradeLevel,
-                    'school_year' => Schema::hasColumn('enrollments', 'school_year') ? $enrollment->school_year : $this->getCurrentSchoolYear(),
-                    'status'      => 'active',
-                ]);
-                $formattedId = $student->studentId;
-
-                // Link this enrollment to the existing student
-                if (Schema::hasColumn('enrollments', 'student_id')) {
-                    $enrollment->student_id = $student->id;
-                    $enrollment->save();
-                }
-            } else {
-                // Truly new student – create
+                // For all non‑continuing types, always create a new student.
+                // Do NOT search by email – siblings can share the same parent email.
                 $year = date('Y');
                 $count = Student::where('studentId', 'like', "SICS-$year-%")->count() + 1;
                 $formattedId = 'SICS-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
@@ -426,7 +407,6 @@ class EnrollmentController extends Controller
                     $enrollment->save();
                 }
             }
-        }
 
         $enrollment->payments()->update([
             'student_id'      => $student->id,
@@ -749,9 +729,11 @@ class EnrollmentController extends Controller
             }
 
             Log::info('Sending mail...');
-            Mail::to($enrollment->email)
-                ->cc('ravelocedrix@gmail.com')
-                ->send(new EnrollmentApproved($enrollment, $pdfOutput));
+           $mail = Mail::to($enrollment->email);
+            if ($enrollment->email !== 'ravelocedrix@gmail.com') {
+                $mail->cc('ravelocedrix@gmail.com');
+            }
+            $mail->send(new EnrollmentApproved($enrollment, $pdfOutput));
 
             Log::info('=== EMAIL SENT SUCCESSFULLY ===');
             return "and Loadslip sent to parent email.";
@@ -793,4 +775,4 @@ private function findStudentByStudentId($studentId)
 {
     return Student::where('studentId', $studentId)->first();
 }
-};
+}
