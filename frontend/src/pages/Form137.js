@@ -80,7 +80,7 @@ const Field = ({ label, value, onChange, placeholder = '', className = '', type 
   </div>
 );
 
-const GradeRatingInput = ({ value, onChange, isObserved = false }) => {
+const GradeRatingInput = ({ value, onChange, isObserved = false, disabled = false }) => {
   let displayValue = value || '';
   if (!isObserved && value && !isNaN(parseFloat(value))) {
     displayValue = Math.round(parseFloat(value));
@@ -93,6 +93,7 @@ const GradeRatingInput = ({ value, onChange, isObserved = false }) => {
       onChange={e => onChange(e.target.value)}
       className="rating-input"
       placeholder="—"
+       disabled={disabled}  
     />
   );
 };
@@ -101,6 +102,17 @@ const GradeRatingInput = ({ value, onChange, isObserved = false }) => {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function Form137() {
+  const [user] = useState(() => {
+  try {
+    const raw = localStorage.getItem("user");
+    if (raw && raw !== "undefined" && raw !== "null") {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return null;
+});
+
+const isAdmin = user?.role === "admin";
   const [searchQuery,   setSearchQuery]   = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showDropdown,  setShowDropdown]  = useState(false);
@@ -972,11 +984,11 @@ ${buildObsTable(['I','II','III'])}
                                     <td style={styles.td}>{sub.subjectName}</td>
                                     {quarters.map(q => (
                                       <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)} />
+                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)}   disabled={!isAdmin}  />
                                       </td>
                                     ))}
                                     <td style={styles.td}>
-                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—" />
+                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—"  disabled={!isAdmin} />
                                     </td>
                                   </tr>
                                 );
@@ -1005,11 +1017,11 @@ ${buildObsTable(['I','II','III'])}
                                     </td>
                                     {quarters.map(q => (
                                       <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)} />
+                                        <GradeRatingInput value={sd[q]} onChange={v => setSubjectGrade(g, sub.subjectName, q, v)} disabled={!isAdmin}  />
                                       </td>
                                     ))}
                                     <td style={styles.td}>
-                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—" />
+                                      <input type="text" value={sd.remarks || ''} onChange={e => setSubjectRemarks(g, sub.subjectName, e.target.value)} style={styles.remarksInput} placeholder="—"  disabled={!isAdmin} />
                                     </td>
                                   </tr>
                                 );
@@ -1059,7 +1071,7 @@ ${buildObsTable(['I','II','III'])}
                       <td style={{ ...styles.td, fontSize: '0.82rem', color: '#475569' }}>{cv.statement}</td>
                       {['q1','q2','q3','q4'].map(q => (
                         <td key={q} style={{ ...styles.td, textAlign: 'center' }}>
-                          <GradeRatingInput isObserved={true} value={d[q]} onChange={v => setObsField(activeGrade, cv.key, q, v)} />
+                          <GradeRatingInput isObserved={true} value={d[q]} onChange={v => setObsField(activeGrade, cv.key, q, v)}  disabled={!isAdmin} />
                         </td>
                       ))}
                     </tr>
@@ -1099,6 +1111,7 @@ ${buildObsTable(['I','II','III'])}
                             value={a[f]}
                             onChange={e => setAttField(g, f, e.target.value)}
                             style={styles.attInput}
+                            disabled={!isAdmin} 
                           />
                         </td>
                       ))}
