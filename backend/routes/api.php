@@ -146,8 +146,11 @@ Route::middleware('auth:sanctum')->group(function () {
         
 
         // Grades (read-only for registrar)
-        Route::get('/admin/grades',                    [GradeController::class, 'getAllGrades']);
-        Route::get('/admin/grades/statistics',         [GradeController::class, 'getGradeStatistics']);
+        Route::get('/admin/grades',                          [GradeController::class, 'getAllGrades']);
+        Route::get('/admin/grades/statistics',               [GradeController::class, 'getGradeStatistics']);
+
+        Route::get('/students/{id}/attendance',              [StudentController::class, 'attendance']);
+        Route::get('/students/{id}/observed-values',         [StudentController::class, 'observedValues']);
     });
 
     /*

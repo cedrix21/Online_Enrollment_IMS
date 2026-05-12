@@ -8,6 +8,8 @@ use App\Models\StudentRecord;
 use App\Models\Enrollment;
 use App\Models\Section;
 use App\Traits\SchoolYearTrait; 
+use App\Models\Attendance;
+use App\Models\ObservedValue;   
 
 class StudentController extends Controller
 {
@@ -314,6 +316,46 @@ public function transferToSection(Request $request, $studentId)
             'discount_percent' => $student->discount_percent,
         ]);
     }
+
+
+    public function attendance($studentId)
+{
+    $records = Attendance::where('student_id', $studentId)
+        ->orderBy('school_year')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'grade'       => $item->grade,   // already stored as 'I', 'II', etc.
+                'school_days' => $item->school_days,
+                'absent'      => $item->absent,
+                'cause1'      => $item->cause1,
+                'tardy'       => $item->tardy,
+                'cause2'      => $item->cause2,
+                'present'     => $item->present,
+            ];
+        });
+
+    return response()->json($records);
+}
+
+public function observedValues($studentId)
+{
+    $records = ObservedValue::where('student_id', $studentId)
+        ->orderBy('school_year')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'grade'          => $item->grade,
+                'core_value_key' => $item->core_value_key,
+                'q1'             => $item->q1,
+                'q2'             => $item->q2,
+                'q3'             => $item->q3,
+                'q4'             => $item->q4,
+            ];
+        });
+
+    return response()->json($records);
+}
 
 
 }

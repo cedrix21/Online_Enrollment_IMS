@@ -311,6 +311,43 @@ export default function Form137() {
       };
     });
 
+    const [attRes, obsRes] = await Promise.all([
+  API.get(`/students/${s.id}/attendance`),
+  API.get(`/students/${s.id}/observed-values`),
+]);
+
+// 7. Transform attendance data into { I: {...}, II: {...}, ... }
+const newAttendance = makeAttendance(); // initial empty
+attRes.data.forEach((a) => {
+  const g = a.grade; // e.g., 'I'
+  if (GRADES.includes(g)) {
+    newAttendance[g] = {
+      schoolDays: a.school_days ?? '',
+      absent: a.absent ?? '',
+      cause1: a.cause1 ?? '',
+      tardy: a.tardy ?? '',
+      cause2: a.cause2 ?? '',
+      present: a.present ?? '',
+    };
+  }
+});
+setAttendance(newAttendance);
+
+// 8. Transform observed values into { I: { makaDiyos: {...}, ... }, II: {...} }
+const newObserved = makeObserved(); // initial empty
+obsRes.data.forEach((o) => {
+  const g = o.grade;
+  if (GRADES.includes(g) && CORE_VALUES.some(cv => cv.key === o.core_value_key)) {
+    newObserved[g][o.core_value_key] = {
+      q1: o.q1 ?? '',
+      q2: o.q2 ?? '',
+      q3: o.q3 ?? '',
+      q4: o.q4 ?? '',
+    };
+  }
+});
+setObserved(newObserved);
+
     if (!mountedRef.current) return;
 
     setGradeData(newGradeData);
