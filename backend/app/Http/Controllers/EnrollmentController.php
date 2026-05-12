@@ -408,6 +408,20 @@ class EnrollmentController extends Controller
                 }
             }
 
+            EnrollmentRequirement::where('enrollment_id', $enrollment->id)
+    ->update(['status' => 'verified']);
+
+            // Update the enrollment's boolean fields based on which requirements exist
+            $requirementTypes = EnrollmentRequirement::where('enrollment_id', $enrollment->id)
+                ->pluck('type')
+                ->unique();
+
+            $enrollment->update([
+                'psa_received'      => $requirementTypes->contains('psa'),
+                'good_moral_received' => $requirementTypes->contains('good_moral'),
+                'report_card_received' => $requirementTypes->contains('report_card'),
+                'id_picture_received'  => $requirementTypes->filter(fn($t) => str_contains($t, 'picture'))->isNotEmpty(),
+            ]);
         $enrollment->payments()->update([
             'student_id'      => $student->id,
             'payment_status'  => 'completed',
@@ -616,6 +630,21 @@ class EnrollmentController extends Controller
 
             $enrollment = Enrollment::create($enrollmentData);
 
+            // Auto-verify all uploaded requirements
+            EnrollmentRequirement::where('enrollment_id', $enrollment->id)
+                ->update(['status' => 'verified']);
+
+            // Update enrollment boolean fields based on actual requirement types
+            $requirementTypes = EnrollmentRequirement::where('enrollment_id', $enrollment->id)
+                ->pluck('type')
+                ->unique();
+
+            $enrollment->update([
+                'psa_received'          => $request->psaReceived ?? $requirementTypes->contains('psa'),
+                'good_moral_received'   => $request->goodMoralReceived ?? $requirementTypes->contains('good_moral'),
+                'report_card_received'  => $request->reportCardReceived ?? $requirementTypes->contains('report_card'),
+                'id_picture_received'   => $request->idPictureReceived ?? $requirementTypes->filter(fn($t) => str_contains($t, 'picture'))->isNotEmpty(),
+            ]);
             // Siblings (unchanged)
             if (!empty($validated['siblings'])) {
                 foreach ($validated['siblings'] as $sib) {

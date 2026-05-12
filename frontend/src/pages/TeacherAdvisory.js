@@ -1004,13 +1004,17 @@ const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
                 </td>
                 {['q1','q2','q3','q4'].map(q => (
                   <td key={q} style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '8px' }}>
-                    <input
-                      type="text"
+                    <select
                       value={values[i]?.[q] || ''}
                       onChange={(e) => handleChange(i, q, e.target.value)}
-                      style={{ width: '50px' }}
-                      placeholder="—"
-                    />
+                      style={{ width: '55px', padding: '2px', fontSize: '0.85rem' }}
+                    >
+                      <option value="">—</option>
+                      <option value="AO">AO</option>
+                      <option value="SO">SO</option>
+                      <option value="RO">RO</option>
+                      <option value="NO">NO</option>
+                    </select>
                   </td>
                 ))}
               </tr>
