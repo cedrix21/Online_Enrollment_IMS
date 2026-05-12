@@ -61,6 +61,7 @@ private function isMapehSubject($subjectId)
             'days'                  => 'required|array',
             'time_slot_id'          => 'required|exists:time_slots,id',
             'room_id'               => 'required|exists:rooms,id',
+            'school_year'            => 'nullable|string|regex:/^\d{4}-\d{4}$/',
         ]);
 
         $timeSlotId          = $request->time_slot_id;
@@ -71,7 +72,7 @@ private function isMapehSubject($subjectId)
         $subjectAssignmentId = $request->subject_assignment_id;
         $gradeLevel          = Section::find($sectionId)->gradeLevel;
         $sectionsCount       = Section::where('gradeLevel', $gradeLevel)->count();
-        $schoolYear          = $this->getCurrentSchoolYear();
+        $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
 
         // ── Basic duplicate checks (unchanged) ──────────────────
         if ($sectionsCount === 1) {

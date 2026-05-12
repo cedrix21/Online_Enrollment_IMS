@@ -17,9 +17,9 @@ use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TuitionFeeController;
 use App\Http\Controllers\EnrollmentRequirementController;
 use App\Http\Controllers\Admin\UserManagementController;   
-use Illuminate\Support\Facades\Artisan;
 use App\Models\Setting;
-
+use App\Http\Controllers\TeacherAttendanceController;
+use App\Http\Controllers\TeacherObservedValueController;
 
 // // Temporary route for cleaning activity logs via cron job
 // Route::get('/cron/clean-logs', function (Request $request) {
@@ -77,6 +77,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/teacher/grades',                        [GradeController::class, 'submitGrade']);
         Route::get('/teacher/dashboard',                      [TeacherPortalController::class, 'getDashboardData']);
         Route::post('/teacher/grades/bulk',                   [TeacherPortalController::class, 'bulkSaveGrades']);
+        Route::get('/teacher/attendance/{studentId}',         [TeacherAttendanceController::class, 'show']);
+        Route::post('/teacher/attendance',                    [TeacherAttendanceController::class, 'store']);
+
+        Route::get('/teacher/observed-values/{studentId}',    [TeacherObservedValueController::class, 'show']);
+        Route::post('/teacher/observed-values',               [TeacherObservedValueController::class, 'store']);
     });
 
     /*

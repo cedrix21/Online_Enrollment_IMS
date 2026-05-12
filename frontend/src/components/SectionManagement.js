@@ -728,6 +728,7 @@ export default function SectionManagement() {
         days: selectedDays,
         time_slot_id: resolvedTimeSlotId,
         room_id: newSchedule.room_id,
+        school_year: selectedSchoolYear,   
       });
 
       // 2. If MAPEH, auto‑schedule the remaining components
@@ -756,6 +757,7 @@ export default function SectionManagement() {
               days: selectedDays,
               time_slot_id: resolvedTimeSlotId,
               room_id: newSchedule.room_id,
+               school_year: selectedSchoolYear, 
             })
           );
           await Promise.all(mapehPromises);

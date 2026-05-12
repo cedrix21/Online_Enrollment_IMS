@@ -64,6 +64,36 @@ export default function TeacherAdvisory() {
   const [mandatoryLoading, setMandatoryLoading] = useState(false);
   const [mandatoryError, setMandatoryError] = useState("");
 
+  const [activeRightTab, setActiveRightTab] = useState('grades'); // 'grades' | 'attendance' | 'observed'
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [observedData, setObservedData] = useState({});
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [savingObserved, setSavingObserved] = useState(false);
+
+  const fetchAttendance = async (studentId) => {
+  try {
+    const res = await API.get(`/teacher/attendance/${studentId}`);
+    setAttendanceData(res.data);
+  } catch (err) {
+    console.error('Error fetching attendance', err);
+  }
+};
+
+const fetchObservedValues = async (studentId) => {
+  try {
+    const res = await API.get(`/teacher/observed-values/${studentId}`);
+    setObservedData(res.data || {});
+  } catch (err) {
+    console.error('Error fetching observed values', err);
+  }
+};
+
+useEffect(() => {
+  if (selectedStudent) {
+    if (activeRightTab === 'attendance') fetchAttendance(selectedStudent.id);
+    if (activeRightTab === 'observed') fetchObservedValues(selectedStudent.id);
+  }
+}, [selectedStudent, activeRightTab]);
   
   // Safe user retrieval helper
   const getUser = () => {
@@ -512,11 +542,38 @@ export default function TeacherAdvisory() {
           </div>
         </div>
 
-        {/* RIGHT SIDE: Subjects & Grades */}
-        <div className="grades-panel">
-          {selectedStudent ? (
-            <>
-              <div className="panel-header">{selectedStudent.lastName}, {selectedStudent.firstName}</div>
+  
+        {/* RIGHT SIDE: Dynamic content based on activeRightTab */}
+          <div className="grades-panel">
+            {selectedStudent ? (
+              <>
+                <div className="panel-header">
+                  {selectedStudent.lastName}, {selectedStudent.firstName}
+                </div>
+
+                {/* Tab bar for Grades / Attendance / Observed Values */}
+                <div className="sub-tabs" style={{ display: 'flex', gap: '10px', margin: '10px 0' }}>
+                  {['grades', 'attendance', 'observed'].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveRightTab(tab)}
+                      style={{
+                        padding: '8px 16px',
+                        background: activeRightTab === tab ? '#b8860b' : '#f0f0f0',
+                        color: activeRightTab === tab ? '#fff' : '#333',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ─── GRADES TAB ─── (existing code) ─── */}
+                {activeRightTab === 'grades' && (
               <div className="subjects-list">
                 {getSubjectsForStudent(selectedStudent).length > 0 ? (
                   <>
@@ -539,14 +596,71 @@ export default function TeacherAdvisory() {
                       ))}
                     </div>
                     <div className="grades-panel-footer">
-                      <button onClick={handleSubmitAllGrades} className="submit-all-btn"><FaSave /> Save All for {selectedQuarter}</button>
+                      <button onClick={handleSubmitAllGrades} className="submit-all-btn">
+                        <FaSave /> Save All for {selectedQuarter}
+                      </button>
                     </div>
                   </>
-                ) : <div className="no-subjects">No subjects assigned for this grade level</div>}
+                ) : (
+                  <div className="no-subjects">No subjects assigned for this grade level</div>
+                )}
               </div>
-            </>
-          ) : <div className="panel-empty"><p>Select a student to view and enter grades</p></div>}
-        </div>
+            )}
+
+                {/* ─── ATTENDANCE TAB ─── */}
+                {activeRightTab === 'attendance' && (
+                  
+                  <AttendanceForm
+                    student={selectedStudent}
+                    data={attendanceData}
+                    onSave={async (formData) => {
+                      setSavingAttendance(true);
+                      try {
+                        await API.post('/teacher/attendance', {
+                          student_id: selectedStudent.id,
+                          ...formData,
+                        });
+                        setSuccess('Attendance saved!');
+                        setTimeout(() => setSuccess(''), 3000);
+                      } catch (err) {
+                        setError('Failed to save attendance');
+                      } finally {
+                        setSavingAttendance(false);
+                      }
+                    }}
+                    saving={savingAttendance}
+                  />
+                  
+                )}
+
+                {/* ─── OBSERVED VALUES TAB ─── */}
+                {activeRightTab === 'observed' && (
+                  <ObservedValuesForm
+                    student={selectedStudent}
+                    data={observedData}
+                    onSave={async (values) => {
+                      setSavingObserved(true);
+                      try {
+                        await API.post('/teacher/observed-values', {
+                          student_id: selectedStudent.id,
+                          values: values,
+                        });
+                        setSuccess('Observed values saved!');
+                        setTimeout(() => setSuccess(''), 3000);
+                      } catch (err) {
+                        setError('Failed to save observed values');
+                      } finally {
+                        setSavingObserved(false);
+                      }
+                    }}
+                    saving={savingObserved}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="panel-empty"><p>Select a student to view details</p></div>
+            )}
+          </div>
       </div>
 
       {/* Settings Modal */}
@@ -770,3 +884,152 @@ const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
     </div>
   );
 });
+
+const CORE_VALUES = [
+  { key: 'makaDiyos',      label: '1. Maka-Diyos',    statement: "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others" },
+  { key: 'makatao',        label: '2. Makatao',        statement: 'Shows adherence to ethical principles by upholding truth' },
+  { key: 'makakalikasan',  label: '3. Maka-kalikasan', statement: 'Cares for the environment and utilizes resources wisely, judiciously, and economically' },
+  { key: 'makabansa1',     label: '4. Makabansa',      statement: 'Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.' },
+  { key: 'makabansa2',     label: '',                  statement: 'Demonstrates appropriate behavior in carrying out activities in the school, community, and country' },
+];
+
+const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
+  const initialValues = CORE_VALUES.map(cv => ({
+    core_value_key: cv.key,
+    q1: data?.[cv.key]?.q1 || '',
+    q2: data?.[cv.key]?.q2 || '',
+    q3: data?.[cv.key]?.q3 || '',
+    q4: data?.[cv.key]?.q4 || '',
+  }));
+
+  const [values, setValues] = useState(initialValues);
+
+  useEffect(() => {
+    if (data) {
+      const updated = CORE_VALUES.map(cv => ({
+        core_value_key: cv.key,
+        q1: data?.[cv.key]?.q1 || '',
+        q2: data?.[cv.key]?.q2 || '',
+        q3: data?.[cv.key]?.q3 || '',
+        q4: data?.[cv.key]?.q4 || '',
+      }));
+      setValues(updated);
+    }
+  }, [data]);
+
+  const handleChange = (index, quarter, value) => {
+    const newValues = [...values];
+    newValues[index][quarter] = value;
+    setValues(newValues);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(values);
+  };
+
+  return (
+    <div style={{ padding: '10px' }}>
+      <h4>Observed Values for {student.gradeLevel}</h4>
+      <form onSubmit={handleSubmit}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th>Core Value</th><th>Behavior Statement</th>
+              <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CORE_VALUES.map((cv, i) => (
+              <tr key={cv.key}>
+                <td>{cv.label}</td>
+                <td style={{ fontSize: '0.85rem' }}>{cv.statement}</td>
+                {['q1','q2','q3','q4'].map(q => (
+                  <td key={q}>
+                    <input
+                      type="text"
+                      value={values[i]?.[q] || ''}
+                      onChange={(e) => handleChange(i, q, e.target.value)}
+                      style={{ width: '50px' }}
+                      placeholder="—"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button type="submit" disabled={saving} className="save-btn" style={{ marginTop: '15px' }}>
+          {saving ? 'Saving...' : 'Save Observed Values'}
+        </button>
+      </form>
+    </div>
+  );
+});
+ObservedValuesForm.displayName = 'ObservedValuesForm';
+
+const Field2 = ({ label, name, value, onChange }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
+    <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>{label}</label>
+    <input
+      type="text"
+      name={name}
+      value={value}
+      onChange={onChange}
+      style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+    />
+  </div>
+);
+
+const AttendanceForm = memo(({ student, data, onSave, saving }) => {
+  const [form, setForm] = useState({
+    school_days: '',
+    absent: '',
+    cause1: '',
+    tardy: '',
+    cause2: '',
+    present: '',
+  });
+
+  useEffect(() => {
+    if (data) {
+      setForm({
+        school_days: data.school_days ?? '',
+        absent: data.absent ?? '',
+        cause1: data.cause1 ?? '',
+        tardy: data.tardy ?? '',
+        cause2: data.cause2 ?? '',
+        present: data.present ?? '',
+      });
+    }
+  }, [data]);
+
+  const handleChange = (e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(form);
+  };
+
+  return (
+    <div style={{ padding: '10px' }}>
+      <h4>Attendance Record for {student.gradeLevel}</h4>
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <Field2 label="School Days" name="school_days" value={form.school_days} onChange={handleChange} />
+          <Field2 label="Absent" name="absent" value={form.absent} onChange={handleChange} />
+          <Field2 label="Cause (Absence)" name="cause1" value={form.cause1} onChange={handleChange} />
+          <Field2 label="Tardy" name="tardy" value={form.tardy} onChange={handleChange} />
+          <Field2 label="Cause (Tardy)" name="cause2" value={form.cause2} onChange={handleChange} />
+          <Field2 label="Present" name="present" value={form.present} onChange={handleChange} />
+        </div>
+        <button type="submit" disabled={saving} className="save-btn" style={{ marginTop: '15px' }}>
+          {saving ? 'Saving...' : 'Save Attendance'}
+        </button>
+      </form>
+    </div>
+  );
+});
+AttendanceForm.displayName = 'AttendanceForm';
