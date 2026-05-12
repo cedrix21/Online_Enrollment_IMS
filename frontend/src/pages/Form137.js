@@ -48,6 +48,18 @@ const makeObserved = () =>
     GRADES.map(g => [g, Object.fromEntries(CORE_VALUES.map(cv => [cv.key, { q1: '', q2: '', q3: '', q4: '' }]))])
   );
 
+  const aggregateMonthly = (monthlyRecords, gradeRoman, schoolYear) => {
+  let totalSchoolDays = 0, totalPresent = 0, totalAbsent = 0;
+  (monthlyRecords || []).forEach(m => {
+    if (m.grade === gradeRoman && m.school_year === schoolYear) {
+      totalSchoolDays += parseInt(m.school_days) || 0;
+      totalPresent   += parseInt(m.present) || 0;
+      totalAbsent    += parseInt(m.absent) || 0;
+    }
+  });
+  return { schoolDays: totalSchoolDays, present: totalPresent, absent: totalAbsent };
+};
+
 const gradeLabel = (g) => ({ I: 'Grade I', II: 'Grade II', III: 'Grade III', IV: 'Grade IV', V: 'Grade V', VI: 'Grade VI' }[g]);
 
 // ─── Helper to detect MAPEH components (based on subject code) ─────────────
@@ -323,26 +335,40 @@ const isAdmin = user?.role === "admin";
       };
     });
 
-    const [attRes, obsRes] = await Promise.all([
+    const [attRes, obsRes, monthlyAttRes] = await Promise.all([
   API.get(`/students/${s.id}/attendance`),
   API.get(`/students/${s.id}/observed-values`),
+  API.get(`/students/${s.id}/attendance-months`),   // ← new
 ]);
-
-// 7. Transform attendance data into { I: {...}, II: {...}, ... }
-const newAttendance = makeAttendance(); // initial empty
+// Build base attendance from old data (to pre‑fill Cause, Tardy, etc.)
+const newAttendance = makeAttendance();
 attRes.data.forEach((a) => {
-  const g = a.grade; // e.g., 'I'
+  const g = a.grade;
   if (GRADES.includes(g)) {
     newAttendance[g] = {
       schoolDays: a.school_days ?? '',
-      absent: a.absent ?? '',
-      cause1: a.cause1 ?? '',
-      tardy: a.tardy ?? '',
-      cause2: a.cause2 ?? '',
-      present: a.present ?? '',
+      absent:     a.absent ?? '',
+      cause1:     a.cause1 ?? '',
+      tardy:      a.tardy ?? '',
+      cause2:     a.cause2 ?? '',
+      present:    a.present ?? '',
     };
   }
 });
+
+// Override number fields with aggregated monthly data for each grade
+const monthlyAll = monthlyAttRes.data || [];
+GRADES.forEach(g => {
+  const sy = newGradeData[g]?.schoolYear || '';   // use the grade‑data we just built
+  const totals = aggregateMonthly(monthlyAll, g, sy);
+  // If monthly data exists, overwrite the numeric fields; keep cause/tardy from old data
+  if (totals.schoolDays > 0 || totals.present > 0 || totals.absent > 0) {
+    newAttendance[g].schoolDays = String(totals.schoolDays);
+    newAttendance[g].present    = String(totals.present);
+    newAttendance[g].absent     = String(totals.absent);
+  }
+});
+
 setAttendance(newAttendance);
 
 // 8. Transform observed values into { I: { makaDiyos: {...}, ... }, II: {...} }

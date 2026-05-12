@@ -151,6 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/students/{id}/attendance',              [StudentController::class, 'attendance']);
         Route::get('/students/{id}/observed-values',         [StudentController::class, 'observedValues']);
+        Route::get('/students/{id}/attendance-months', [StudentController::class, 'attendanceMonths']);
     });
 
     /*

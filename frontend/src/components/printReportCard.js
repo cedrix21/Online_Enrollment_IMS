@@ -41,7 +41,9 @@ const printReportCard = ({
   principalName = 'GERRY C. DAYON',
   schoolYear    = '2025-2026',
   gradesData = null,
-  subjects = []
+  subjects = [],
+  attendanceMonths = [], 
+  observedValues = [],
 }) => {
   if (!student) {
     console.error('[printReportCard] No student data provided.');
@@ -217,48 +219,75 @@ const printReportCard = ({
 };
 
   // ─── Core values table (DepEd standard) ───────────────────────────────────
-  const buildCoreValuesRows = () => {
-    const coreValues = [
-      { label: '1. Maka-Diyos', statements: [
-        "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others.",
-        "Shows adherence to ethical principles by upholding truth."
-      ]},
-      { label: '2. Makatao', statements: [
-        "Is sensitive to individual, social and cultural differences.",
-        "Demonstrates contributions toward solidarity."
-      ]},
-      { label: '3. Maka-kalikasan', statements: [
-        "Cares for the environment and utilizes resources wisely, judiciously, and economically."
-      ]},
-      { label: '4. Makabansa', statements: [
-        "Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.",
-        "Demonstrates appropriate behavior in carrying out activities in the school, community, and country."
-      ]}
-    ];
+      const buildCoreValuesRows = () => {
+        const coreValues = [
+          { label: '1. Maka-Diyos', statements: [
+            "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others.",
+            "Shows adherence to ethical principles by upholding truth."
+          ]},
+          { label: '2. Makatao', statements: [
+            "Is sensitive to individual, social and cultural differences.",
+            "Demonstrates contributions toward solidarity."
+          ]},
+          { label: '3. Maka-kalikasan', statements: [
+            "Cares for the environment and utilizes resources wisely, judiciously, and economically."
+          ]},
+          { label: '4. Makabansa', statements: [
+            "Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.",
+            "Demonstrates appropriate behavior in carrying out activities in the school, community, and country."
+          ]}
+        ];
 
-    let rows = '';
-    coreValues.forEach(cv => {
-      const firstStmt = cv.statements[0];
-      rows += `<tr>
-        <td rowspan="${cv.statements.length}" class="core-label">${cv.label}</td>
-        <td class="stmt">${firstStmt}</td>
-        <td class="center"> </td>
-        <td class="center"> </td>
-        <td class="center"> </td>
-        <td class="center"> </td>
-      </tr>`;
-      for (let i = 1; i < cv.statements.length; i++) {
-        rows += `<tr>
-          <td class="stmt">${cv.statements[i]}</td>
-          <td class="center"> </td>
-          <td class="center"> </td>
-          <td class="center"> </td>
-          <td class="center"> </td>
-        </tr>`;
-      }
-    });
-    return rows;
-  };
+        // New mapping – each core value now has a single rating
+        const keyToRow = {
+          'makaDiyos':     0,
+          'makatao':       1,
+          'makakalikasan': 2,
+          'makabansa':     3,
+        };
+
+        // Pre‑fill quarters with empty strings
+        const quarterValues = Array(coreValues.length).fill(null).map(() => ({
+          q1: '', q2: '', q3: '', q4: ''
+        }));
+
+        // Merge observed data into the correct slots
+        observedValues.forEach(o => {
+          const row = keyToRow[o.core_value_key];
+          if (row !== undefined) {
+            quarterValues[row].q1 = o.q1 ?? '';
+            quarterValues[row].q2 = o.q2 ?? '';
+            quarterValues[row].q3 = o.q3 ?? '';
+            quarterValues[row].q4 = o.q4 ?? '';
+          }
+        });
+
+        let rows = '';
+        coreValues.forEach((cv, idx) => {
+          const vals = quarterValues[idx];
+          const firstStmt = cv.statements[0];
+          // First statement row (with rowspan if multiple)
+          rows += `<tr>
+            <td rowspan="${cv.statements.length}" class="core-label">${cv.label}</td>
+            <td class="stmt">${firstStmt}</td>
+            <td class="center">${vals.q1}</td>
+            <td class="center">${vals.q2}</td>
+            <td class="center">${vals.q3}</td>
+            <td class="center">${vals.q4}</td>
+          </tr>`;
+          // Subsequent statements – show the same quarter values
+          for (let i = 1; i < cv.statements.length; i++) {
+            rows += `<tr>
+              <td class="stmt">${cv.statements[i]}</td>
+              <td class="center">${vals.q1}</td>
+              <td class="center">${vals.q2}</td>
+              <td class="center">${vals.q3}</td>
+              <td class="center">${vals.q4}</td>
+            </tr>`;
+          }
+        });
+        return rows;
+      };
 
   // ─── HTML Template (two pages) ────────────────────────────────────────────
   const html = `<!DOCTYPE html>
@@ -309,7 +338,7 @@ const printReportCard = ({
 .col-total { width: 26px; }
 .vertical-text { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; white-space: nowrap; font-size: 7.5pt; }
 .row-label { text-align: left; padding: 2px 3px; font-size: 7pt; }
-.sig-section { margin-top: 10mm; }
+.sig-section { margin-top: 40mm; margin-bottom: 0; }
 .sig-heading { text-align: center; font-size: 10pt; font-weight: bold; margin-bottom: 6mm; }
 .sig-row { display: flex; align-items: flex-end; gap: 4px; margin-bottom: 5mm; font-size: 10pt; white-space: nowrap; }
 .sig-line { flex: 1; border-bottom: 1px solid #000; height: 14px; }
@@ -481,23 +510,42 @@ const printReportCard = ({
   <div class="left-col">
     <div class="att-title">Report on Attendance</div>
     <table class="att-table">
-      <colgroup>
-        <col class="col-label">
-        ${Array(10).fill('<col class="col-month">').join('')}
-        <col class="col-total">
-      </colgroup>
-      <thead>
-        <tr><th></th>
+    <colgroup>
+      <col class="col-label">
+      ${Array(10).fill('<col class="col-month">').join('')}
+      <col class="col-total">
+    </colgroup>
+    <thead>
+      <tr>
+        <th></th>
         ${['July','August','September','October','November','December','January','February','March','April'].map(m => `<th><span class="vertical-text">${m}</span></th>`).join('')}
         <th style="font-size:7pt;">Total</th>
       </tr>
-      </thead>
-      <tbody>
-        <tr><td class="row-label">No. of<br>School<br>days</td>${Array(10).fill('<td> </td>').join('')}<td> </td></tr>
-        <tr><td class="row-label">No. of<br>days<br>present</td>${Array(10).fill('<td> </td>').join('')}<td> </td></tr>
-        <tr><td class="row-label">No. of<br>days<br>absent</td>${Array(10).fill('<td> </td>').join('')}<td> </td></tr>
-      </tbody>
-    </table>
+    </thead>
+    <tbody>
+      <tr><td class="row-label">No. of School Days</td>
+        ${['July','August','September','October','November','December','January','February','March','April'].map(month => {
+          const m = attendanceMonths.find(a => a.month === month) || {};
+          return `<td>${m.school_days ?? ''}</td>`;
+        }).join('')}
+        <td>${attendanceMonths.reduce((sum, a) => sum + (parseInt(a.school_days)||0), 0)}</td>
+      </tr>
+      <tr><td class="row-label">No. of Days Present</td>
+        ${['July','August','September','October','November','December','January','February','March','April'].map(month => {
+          const m = attendanceMonths.find(a => a.month === month) || {};
+          return `<td>${m.present ?? ''}</td>`;
+        }).join('')}
+        <td>${attendanceMonths.reduce((sum, a) => sum + (parseInt(a.present)||0), 0)}</td>
+      </tr>
+      <tr><td class="row-label">No. of Days Absent</td>
+        ${['July','August','September','October','November','December','January','February','March','April'].map(month => {
+          const m = attendanceMonths.find(a => a.month === month) || {};
+          return `<td>${m.absent ?? ''}</td>`;
+        }).join('')}
+        <td>${attendanceMonths.reduce((sum, a) => sum + (parseInt(a.absent)||0), 0)}</td>
+      </tr>
+    </tbody>
+  </table>
     <div class="sig-section">
       <div class="sig-heading">PARENT'S / GUARDIAN'S SIGNATURE</div>
       <div class="sig-row">1<sup>st</sup>&nbsp;Quarter<div class="sig-line"></div></div>

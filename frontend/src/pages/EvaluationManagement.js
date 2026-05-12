@@ -302,7 +302,8 @@ const EvaluationManagement = () => {
   const navigate = useNavigate();
   const { schoolYear: currentSchoolYear, loading: yearLoading } = useCurrentSchoolYear();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null);
-
+  const [attendanceMonths, setAttendanceMonths] = useState([]);
+  const [observedValues, setObservedValues] = useState([]);
   const [allGrades, setAllGrades] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -499,11 +500,19 @@ const EvaluationManagement = () => {
     setGradesLoading(true);
     setEditingGradeId(null);
     setEditData({});
+   
 
     try {
       const existingGrades = allGrades.filter(g => g.student?.id === student.id);
       const quarters = ["Q1", "Q2", "Q3", "Q4"];
       const completeGradesByQuarter = {};
+      const gradeMap = {
+      'Grade 1': 'I', 'Grade 2': 'II', 'Grade 3': 'III',
+      'Grade 4': 'IV', 'Grade 5': 'V', 'Grade 6': 'VI',
+    };
+    const gradeRoman = gradeMap[student.gradeLevel] || 'I';
+    fetchAttendanceMonths(student.id, gradeRoman,selectedSchoolYear);
+    fetchObservedValues(student.id, gradeRoman, selectedSchoolYear);
 
       // Try to fetch section subjects first
       try {
@@ -597,6 +606,53 @@ const EvaluationManagement = () => {
     }
   };
 
+  const fetchAttendanceMonths = async (studentId, gradeRoman, schoolYear) => {
+  try {
+    const { data } = await API.get(`/students/${studentId}/attendance-months`, {
+      params: { school_year: schoolYear },
+    });
+    // Still filter by grade, but now the server only returns that school year
+    setAttendanceMonths(data.filter(m => m.grade === gradeRoman));
+  } catch (err) {
+    console.error('Could not fetch attendance months:', err);
+    setAttendanceMonths([]);
+  }
+};
+
+const fetchObservedValues = async (studentId, gradeRoman, schoolYear) => {
+  try {
+    const { data } = await API.get(`/students/${studentId}/observed-values`);
+    // 1. Keep only the correct grade and school year
+    const filtered = data.filter(
+      o => o.grade === gradeRoman && o.school_year === schoolYear
+    );
+
+    // 2. Merge old keys (makabansa1, makabansa2) into 'makabansa'
+    const merged = {};
+    filtered.forEach(o => {
+      let newKey = o.core_value_key;
+      if (newKey === 'makabansa1' || newKey === 'makabansa2') newKey = 'makabansa';
+      if (!merged[newKey]) merged[newKey] = { q1: '', q2: '', q3: '', q4: '' };
+      const target = merged[newKey];
+      // For each quarter, take the first non‑empty value found
+      target.q1 = target.q1 || o.q1 || '';
+      target.q2 = target.q2 || o.q2 || '';
+      target.q3 = target.q3 || o.q3 || '';
+      target.q4 = target.q4 || o.q4 || '';
+    });
+
+    // 3. Convert to array of { core_value_key, q1, q2, q3, q4 }
+    const result = Object.keys(merged).map(key => ({
+      core_value_key: key,
+      ...merged[key]
+    }));
+    setObservedValues(result);
+  } catch (err) {
+    console.error('Could not fetch observed values:', err);
+    setObservedValues([]);
+  }
+};
+
   const handlePrintReportCard = () => {
     printReportCard({
       student: selectedStudent,
@@ -604,7 +660,9 @@ const EvaluationManagement = () => {
       principalName: "GERRY C. DAYON",
       schoolYear: selectedStudent?.school_year || selectedSchoolYear,
       gradesData: studentGrades,
-      subjects: allSubjects
+      subjects: allSubjects,
+      attendanceMonths,   
+      observedValues,  
     });
   };
 

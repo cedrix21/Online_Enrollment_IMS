@@ -10,7 +10,7 @@ use App\Models\Section;
 use App\Traits\SchoolYearTrait; 
 use App\Models\Attendance;
 use App\Models\ObservedValue;   
-
+use App\Models\AttendanceMonth;
 class StudentController extends Controller
 {
     use SchoolYearTrait;
@@ -346,6 +346,7 @@ public function observedValues($studentId)
         ->map(function ($item) {
             return [
                 'grade'          => $item->grade,
+                'school_year'    => $item->school_year,
                 'core_value_key' => $item->core_value_key,
                 'q1'             => $item->q1,
                 'q2'             => $item->q2,
@@ -357,5 +358,26 @@ public function observedValues($studentId)
     return response()->json($records);
 }
 
+public function attendanceMonths(Request $request, $studentId)
+{
+    $records = AttendanceMonth::where('student_id', $studentId)
+        ->when($request->filled('school_year'), function ($query) use ($request) {
+            $query->where('school_year', $request->school_year);
+        })
+        ->orderBy('school_year')
+        ->orderBy('month')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'grade'       => $item->grade,
+                'school_year' => $item->school_year, 
+                'month'       => $item->month,
+                'school_days' => $item->school_days,
+                'present'     => $item->present,
+                'absent'      => $item->absent,
+            ];
+        });
 
+    return response()->json($records);
+}
 }

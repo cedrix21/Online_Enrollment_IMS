@@ -82,7 +82,28 @@ export default function TeacherAdvisory() {
 const fetchObservedValues = async (studentId) => {
   try {
     const res = await API.get(`/teacher/observed-values/${studentId}`);
-    setObservedData(res.data || {});
+    const raw = res.data || {};
+    // raw is an object keyed by core_value_key (e.g., { makaDiyos: {...}, makabansa1: {...}, ... })
+    const grouped = {
+      makaDiyos: {},
+      makatao: {},
+      makakalikasan: {},
+      makabansa: {}
+    };
+    // Merge old keys into the new grouped keys
+    Object.keys(raw).forEach(key => {
+      let newKey = key;
+      if (key === 'makabansa1' || key === 'makabansa2') newKey = 'makabansa';
+      if (grouped.hasOwnProperty(newKey)) {
+        // take the first non‑empty quarter from the old data (if both old rows exist, pick the one with data)
+        const item = raw[key];
+        if (!grouped[newKey].q1 && item.q1) grouped[newKey].q1 = item.q1;
+        if (!grouped[newKey].q2 && item.q2) grouped[newKey].q2 = item.q2;
+        if (!grouped[newKey].q3 && item.q3) grouped[newKey].q3 = item.q3;
+        if (!grouped[newKey].q4 && item.q4) grouped[newKey].q4 = item.q4;
+      }
+    });
+    setObservedData(grouped);
   } catch (err) {
     console.error('Error fetching observed values', err);
   }
@@ -618,7 +639,7 @@ useEffect(() => {
                       try {
                         await API.post('/teacher/attendance', {
                           student_id: selectedStudent.id,
-                          ...formData,
+                           months: formData,  
                         });
                         setSuccess('Attendance saved!');
                         setTimeout(() => setSuccess(''), 3000);
@@ -635,6 +656,7 @@ useEffect(() => {
 
                 {/* ─── OBSERVED VALUES TAB ─── */}
                 {activeRightTab === 'observed' && (
+                   <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
                   <ObservedValuesForm
                     student={selectedStudent}
                     data={observedData}
@@ -655,6 +677,7 @@ useEffect(() => {
                     }}
                     saving={savingObserved}
                   />
+                  </div>
                 )}
               </>
             ) : (
@@ -885,16 +908,43 @@ const TeacherScheduleModal = memo(({ teacher, onClose, schoolYear }) => {
   );
 });
 
-const CORE_VALUES = [
-  { key: 'makaDiyos',      label: '1. Maka-Diyos',    statement: "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others" },
-  { key: 'makatao',        label: '2. Makatao',        statement: 'Shows adherence to ethical principles by upholding truth' },
-  { key: 'makakalikasan',  label: '3. Maka-kalikasan', statement: 'Cares for the environment and utilizes resources wisely, judiciously, and economically' },
-  { key: 'makabansa1',     label: '4. Makabansa',      statement: 'Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.' },
-  { key: 'makabansa2',     label: '',                  statement: 'Demonstrates appropriate behavior in carrying out activities in the school, community, and country' },
+const CORE_VALUES_GROUPED = [
+  {
+    key: 'makaDiyos',
+    label: '1. Maka-Diyos',
+    statements: [
+      "Expresses one's spiritual beliefs while respecting the spiritual beliefs of others.",
+      "Shows adherence to ethical principles by upholding truth."
+    ]
+  },
+  {
+    key: 'makatao',
+    label: '2. Makatao',
+    statements: [
+      "Is sensitive to individual, social and cultural differences.",
+      "Demonstrates contributions toward solidarity."
+    ]
+  },
+  {
+    key: 'makakalikasan',
+    label: '3. Maka-kalikasan',
+    statements: [
+      "Cares for the environment and utilizes resources wisely, judiciously, and economically."
+    ]
+  },
+  {
+    key: 'makabansa',
+    label: '4. Makabansa',
+    statements: [
+      "Demonstrates pride in being a Filipino; exercises the rights and responsibilities of a Filipino citizen.",
+      "Demonstrates appropriate behavior in carrying out activities in the school, community, and country."
+    ]
+  }
 ];
 
 const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
-  const initialValues = CORE_VALUES.map(cv => ({
+  // data is now expected as an object keyed by core value key, e.g. { makaDiyos: { q1: 'SO', ... }, ... }
+  const initialValues = CORE_VALUES_GROUPED.map(cv => ({
     core_value_key: cv.key,
     q1: data?.[cv.key]?.q1 || '',
     q2: data?.[cv.key]?.q2 || '',
@@ -906,7 +956,7 @@ const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
 
   useEffect(() => {
     if (data) {
-      const updated = CORE_VALUES.map(cv => ({
+      const updated = CORE_VALUES_GROUPED.map(cv => ({
         core_value_key: cv.key,
         q1: data?.[cv.key]?.q1 || '',
         q2: data?.[cv.key]?.q2 || '',
@@ -935,17 +985,25 @@ const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th>Core Value</th><th>Behavior Statement</th>
-              <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th>
+              <th style={{ width: '15%' }}>Core Value</th>
+              <th style={{ width: '45%' }}>Behavior Statements</th>
+              <th style={{ width: '10%' }}>Q1</th>
+              <th style={{ width: '10%' }}>Q2</th>
+              <th style={{ width: '10%' }}>Q3</th>
+              <th style={{ width: '10%' }}>Q4</th>
             </tr>
           </thead>
           <tbody>
-            {CORE_VALUES.map((cv, i) => (
+            {CORE_VALUES_GROUPED.map((cv, i) => (
               <tr key={cv.key}>
-                <td>{cv.label}</td>
-                <td style={{ fontSize: '0.85rem' }}>{cv.statement}</td>
+                <td style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: '8px' }}>{cv.label}</td>
+                <td style={{ fontSize: '0.85rem', verticalAlign: 'top', paddingTop: '8px' }}>
+                  {cv.statements.map((stmt, idx) => (
+                    <div key={idx} style={{ marginBottom: idx < cv.statements.length - 1 ? '6px' : 0 }}>{stmt}</div>
+                  ))}
+                </td>
                 {['q1','q2','q3','q4'].map(q => (
-                  <td key={q}>
+                  <td key={q} style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '8px' }}>
                     <input
                       type="text"
                       value={values[i]?.[q] || ''}
@@ -968,6 +1026,7 @@ const ObservedValuesForm = memo(({ student, data, onSave, saving }) => {
 });
 ObservedValuesForm.displayName = 'ObservedValuesForm';
 
+
 const Field2 = ({ label, name, value, onChange }) => (
   <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
     <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>{label}</label>
@@ -981,52 +1040,119 @@ const Field2 = ({ label, name, value, onChange }) => (
   </div>
 );
 
+const MONTHS = ['July','August','September','October','November','December',
+                'January','February','March','April'];
+
 const AttendanceForm = memo(({ student, data, onSave, saving }) => {
-  const [form, setForm] = useState({
-    school_days: '',
-    absent: '',
-    cause1: '',
-    tardy: '',
-    cause2: '',
-    present: '',
-  });
+  // Build a flat state object: { July: { school_days, present, absent }, ... }
+  const emptyMonths = MONTHS.reduce((acc, m) => {
+    acc[m] = { school_days: '', present: '', absent: '' };
+    return acc;
+  }, {});
+
+  const buildFromData = (arr) => {
+    const result = { ...emptyMonths };
+    (arr || []).forEach(({ month, school_days, present, absent }) => {
+      if (result[month]) {
+        result[month] = {
+          school_days: school_days ?? '',
+          present: present ?? '',
+          absent: absent ?? '',
+        };
+      }
+    });
+    return result;
+  };
+
+  const [formValues, setFormValues] = useState(() => buildFromData(data));
 
   useEffect(() => {
-    if (data) {
-      setForm({
-        school_days: data.school_days ?? '',
-        absent: data.absent ?? '',
-        cause1: data.cause1 ?? '',
-        tardy: data.tardy ?? '',
-        cause2: data.cause2 ?? '',
-        present: data.present ?? '',
-      });
-    }
+    if (data) setFormValues(buildFromData(data));
   }, [data]);
 
-  const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (month, field, value) => {
+    setFormValues(prev => ({
+      ...prev,
+      [month]: { ...prev[month], [field]: value }
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(form);
+    // Convert back to array of objects
+    const monthsArray = MONTHS.map(month => ({
+      month,
+      school_days: formValues[month].school_days,
+      present:     formValues[month].present,
+      absent:      formValues[month].absent,
+    }));
+    onSave(monthsArray);
   };
 
   return (
     <div style={{ padding: '10px' }}>
-      <h4>Attendance Record for {student.gradeLevel}</h4>
+      <h4>Monthly Attendance for {student.gradeLevel}</h4>
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-          <Field2 label="School Days" name="school_days" value={form.school_days} onChange={handleChange} />
-          <Field2 label="Absent" name="absent" value={form.absent} onChange={handleChange} />
-          <Field2 label="Cause (Absence)" name="cause1" value={form.cause1} onChange={handleChange} />
-          <Field2 label="Tardy" name="tardy" value={form.tardy} onChange={handleChange} />
-          <Field2 label="Cause (Tardy)" name="cause2" value={form.cause2} onChange={handleChange} />
-          <Field2 label="Present" name="present" value={form.present} onChange={handleChange} />
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '0.85rem', width: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ minWidth: '80px', textAlign: 'left' }}></th>
+                {MONTHS.map(month => (
+                  <th key={month} style={{ minWidth: '60px', textAlign: 'center' }}>
+                    {month.substring(0,3)} {/* Shortened month label */}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* School Days row */}
+              <tr>
+                <td style={{ fontWeight: 600, textAlign: 'left' }}>School Days</td>
+                {MONTHS.map(month => (
+                  <td key={month} style={{ textAlign: 'center' }}>
+                    <input
+                      type="number" min="0"
+                      value={formValues[month].school_days}
+                      onChange={e => handleChange(month, 'school_days', e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
+                    />
+                  </td>
+                ))}
+              </tr>
+              {/* Present row */}
+              <tr>
+                <td style={{ fontWeight: 600, textAlign: 'left' }}>Present</td>
+                {MONTHS.map(month => (
+                  <td key={month} style={{ textAlign: 'center' }}>
+                    <input
+                      type="number" min="0"
+                      value={formValues[month].present}
+                      onChange={e => handleChange(month, 'present', e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
+                    />
+                  </td>
+                ))}
+              </tr>
+              {/* Absent row */}
+              <tr>
+                <td style={{ fontWeight: 600, textAlign: 'left' }}>Absent</td>
+                {MONTHS.map(month => (
+                  <td key={month} style={{ textAlign: 'center' }}>
+                    <input
+                      type="number" min="0"
+                      value={formValues[month].absent}
+                      onChange={e => handleChange(month, 'absent', e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
+                    />
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
         </div>
         <button type="submit" disabled={saving} className="save-btn" style={{ marginTop: '15px' }}>
-          {saving ? 'Saving...' : 'Save Attendance'}
+          {saving ? 'Saving...' : 'Save Monthly Attendance'}
         </button>
       </form>
     </div>
