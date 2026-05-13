@@ -61,6 +61,8 @@ Route::get('/parent/verify-set-password', function (Request $request) {
     return response()->json(['email' => $request->email]);
 })->name('parent.verify-set-password');
 
+
+
 // Set the actual password
 Route::post('/parent/set-password', function (Request $request) {
     if (!$request->hasValidSignature()) {
@@ -81,30 +83,72 @@ Route::post('/parent/set-password', function (Request $request) {
     return response()->json(['message' => 'Password set successfully. You can now log in.']);
 })->name('parent.set-password');
 
+
+
+// Request OTP
 Route::post('/forgot-password', function (Request $request) {
     $request->validate(['email' => 'required|email']);
 
     $user = \App\Models\User::where('email', $request->email)->first();
 
-    // Always return success to prevent email enumeration
     if ($user) {
-        $signedUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
-            'parent.set-password',   // reuse the same named route
-            now()->addHours(24),
-            ['email' => $user->email]
+        // Generate 6‑digit OTP valid for 10 minutes
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->otp = $otp;
+        $user->otp_expires_at = now()->addMinutes(10);
+        $user->save();
+
+        // Send OTP email (reuse the same mailable but with a custom view? Or create a new simple mailable)
+        // We'll use a basic mail for OTP – you can create a new mailable or just inline it.
+        \Illuminate\Support\Facades\Mail::raw(
+            "Your OTP for password reset is: $otp\n\nThis code expires in 10 minutes.",
+            function ($message) use ($user) {
+                $message->to($user->email)
+                    ->subject('Your OTP for Password Reset');
+            }
         );
 
-        $frontendUrl = env('APP_URL_FRONTEND') . '/parent/set-password?token=' . urlencode($signedUrl);
-
-        \Illuminate\Support\Facades\Mail::to($user->email)
-            ->send(new \App\Mail\ParentSetPassword($frontendUrl, $user->name, true)); // true = reset
-
-        \Illuminate\Support\Facades\Log::info("Password reset email sent to {$request->email}");
+        \Illuminate\Support\Facades\Log::info("OTP sent to {$request->email}: $otp");
     } else {
-        \Illuminate\Support\Facades\Log::info("Password reset email requested for unknown email: {$request->email}");
+        \Illuminate\Support\Facades\Log::info("OTP requested for unknown email: {$request->email}");
     }
 
-    return response()->json(['message' => 'If the email is associated with an account, a reset link has been sent.']);
+    return response()->json(['message' => 'If the email is associated with an account, an OTP has been sent.']);
+});
+
+// Verify OTP and send reset link
+Route::post('/verify-otp', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'otp'   => 'required|string|size:6',
+    ]);
+
+    $user = \App\Models\User::where('email', $request->email)->first();
+
+    if (!$user || !$user->otp || $user->otp_expires_at < now() || $user->otp !== $request->otp) {
+        return response()->json(['message' => 'Invalid or expired OTP.'], 422);
+    }
+
+    // Clear OTP
+    $user->otp = null;
+    $user->otp_expires_at = null;
+    $user->save();
+
+    // Generate signed reset link (reuse same logic)
+    $signedUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        'parent.set-password',
+        now()->addHours(24),
+        ['email' => $user->email]
+    );
+    $frontendUrl = env('APP_URL_FRONTEND') . '/parent/set-password?token=' . urlencode($signedUrl);
+
+    // Send the actual reset link email
+    \Illuminate\Support\Facades\Mail::to($user->email)
+        ->send(new \App\Mail\ParentSetPassword($frontendUrl, $user->name, true));
+
+    \Illuminate\Support\Facades\Log::info("Password reset link sent to {$request->email} after OTP verification");
+
+    return response()->json(['message' => 'OTP verified. A reset link has been sent to your email.']);
 });
 /*
 |--------------------------------------------------------------------------
@@ -273,7 +317,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // Activity Logs – Admin 
-    Route::middleware(\App\Http\Middleware\RoleMiddleware::class . ':admin')->get('/admin/activity-logs', function (Request $request) {
+    Route::middleware(RoleMiddleware::class . ':admin')->get('/admin/activity-logs', function (Request $request) {
         $logs = Spatie\Activitylog\Models\Activity::with('causer')
             ->when($request->user_id, fn($q) => $q->where('causer_id', $request->user_id))
             ->when($request->action, fn($q) => $q->where('description', 'like', "%{$request->action}%"))
