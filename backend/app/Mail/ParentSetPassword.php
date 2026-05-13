@@ -14,11 +14,13 @@ class ParentSetPassword extends Mailable
 
     public $url;
     public $parentName;
+    public $isReset;
 
-    public function __construct($url, $parentName)
+    public function __construct($url, $parentName,$isReset = false)
     {
         $this->url = $url;
         $this->parentName = $parentName;
+        $this->isReset = $isReset;
     }
 
     public function envelope(): Envelope

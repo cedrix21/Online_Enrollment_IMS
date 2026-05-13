@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import { useNavigate } from 'react-router-dom';
-import { FaUserCircle, FaMoneyBill, FaFileInvoice, FaGraduationCap } from 'react-icons/fa';
+import { FaUserCircle, FaMoneyBill, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import './ParentDashboard.css';   // we'll provide the CSS next
 
 export default function ParentDashboard() {
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedChild, setSelectedChild] = useState(null);
-  const [ledger, setLedger] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);   // track which card is open
+  const [profiles, setProfiles] = useState({});          // cached profiles by primary key
+  const [ledgers, setLedgers] = useState({});            // cached ledgers by primary key
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,21 +33,33 @@ export default function ParentDashboard() {
     }
   };
 
-  const handleViewProfile = async (child) => {
-    setSelectedChild(child);
-    // Fetch full profile
-    try {
-      const profileRes = await API.get(`/parent/children/${child.student_id}/profile`);
-      setSelectedChild(prev => ({ ...prev, ...profileRes.data }));
-    } catch (err) {
-      console.error(err);
+  // Toggle a child card – fetch data on first expand
+  const toggleChild = async (child) => {
+    const childId = child.id;                // primary key
+    if (expandedId === childId) {
+      setExpandedId(null);                   // collapse
+      return;
     }
-    // Fetch ledger
-    try {
-      const ledgerRes = await API.get(`/parent/children/${child.student_id}/ledger`);
-      setLedger(ledgerRes.data);
-    } catch (err) {
-      setLedger(null);
+    setExpandedId(childId);
+
+    // Fetch profile if not yet cached
+    if (!profiles[childId]) {
+      try {
+        const profileRes = await API.get(`/parent/children/${child.student_id}/profile`);
+        setProfiles(prev => ({ ...prev, [childId]: profileRes.data }));
+      } catch (err) {
+        console.error('Error fetching profile', err);
+      }
+    }
+
+    // Fetch ledger if not yet cached
+    if (!ledgers[childId]) {
+      try {
+        const ledgerRes = await API.get(`/parent/children/${childId}/ledger`);
+        setLedgers(prev => ({ ...prev, [childId]: ledgerRes.data }));
+      } catch (err) {
+        console.error('Error fetching ledger', err);
+      }
     }
   };
 
@@ -59,103 +73,98 @@ export default function ParentDashboard() {
 
   return (
     <div className="parent-dashboard">
-      <header style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', background: '#b8860b', color: 'white' }}>
+      <header className="dashboard-header">
         <h1>Parent Dashboard</h1>
-        <button onClick={handleLogout} className="btn-logout" style={{ background: '#fff', color: '#b8860b', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Logout</button>
+        <button onClick={handleLogout} className="btn-logout">Logout</button>
       </header>
 
-      <div style={{ padding: '20px' }}>
+      <div className="dashboard-content">
         <h2>Your Children</h2>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
         {children.length === 0 ? (
-          <p>No linked students found. If you believe this is an error, please contact the registrar.</p>
+          <p className="no-students">No linked students found. Please contact the registrar if this is unexpected.</p>
         ) : (
-          <div className="children-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
-            {children.map(child => (
-              <div key={child.id} className="child-card" style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '16px', cursor: 'pointer' }} onClick={() => handleViewProfile(child)}>
-                <h3>{child.last_name}, {child.first_name}</h3>
-                <p>Grade: {child.grade_level}</p>
-                <p>Section: {child.section}</p>
-                <p>School Year: {child.school_year}</p>
-              </div>
-            ))}
+          <div className="children-grid">
+            {children.map(child => {
+              const isOpen = expandedId === child.id;
+              const profile = profiles[child.id] || {};
+              const ledger = ledgers[child.id];
+
+              return (
+                <div key={child.id} className={`child-card ${isOpen ? 'expanded' : ''}`}>
+                  {/* Summary (always visible) */}
+                  <div className="card-summary" onClick={() => toggleChild(child)}>
+                    <div className="summary-text">
+                      <h3>{child.last_name}, {child.first_name}</h3>
+                      <p>{child.grade_level} · {child.section}</p>
+                      <p className="school-year">{child.school_year}</p>
+                    </div>
+                    <button className="expand-btn">
+                      {isOpen ? <FaChevronUp /> : <FaChevronDown />}
+                    </button>
+                  </div>
+
+                  {/* Expanded details (peekaboo) */}
+                  {isOpen && (
+                    <div className="card-details">
+                      <div className="detail-section profile-section">
+                        <h3><FaUserCircle /> Student Profile</h3>
+                        <p><strong>Student ID:</strong> {profile.studentId ?? child.student_id}</p>
+                        <p><strong>Name:</strong> {profile.lastName ?? child.last_name}, {profile.firstName ?? child.first_name} {profile.middleName || ''}</p>
+                        <p><strong>Grade:</strong> {profile.gradeLevel ?? child.grade_level}</p>
+                        <p><strong>Section:</strong> {profile.section ?? child.section}</p>
+                        <p><strong>Gender:</strong> {profile.gender}</p>
+                        <p><strong>Date of Birth:</strong> {profile.dateOfBirth}</p>
+                        <p><strong>LRN:</strong> {profile.lrn || '—'}</p>
+                      </div>
+                      <div className="detail-section ledger-section">
+                        <h3><FaMoneyBill /> Payment Ledger</h3>
+                        {ledger && ledger.summary ? (
+                          <table className="ledger-table">
+                            <thead>
+                              <tr><th>Description</th><th>Amount</th></tr>
+                            </thead>
+                            <tbody>
+                              <tr><td><strong>Total Tuition</strong></td><td>₱{(ledger.summary.total_tuition || 0).toLocaleString()}</td></tr>
+                              {ledger.summary.discount_percent > 0 && (
+                                <tr><td>Discount ({ledger.summary.discount_percent}%)</td><td>-₱{(ledger.summary.discount_amount || 0).toLocaleString()}</td></tr>
+                              )}
+                              <tr><td>Total Paid</td><td>₱{(ledger.summary.total_paid || 0).toLocaleString()}</td></tr>
+                              <tr className="total-row"><td>Remaining Balance</td><td style={{ color: ledger.summary.balance > 0 ? 'red' : 'green' }}>₱{(ledger.summary.balance || 0).toLocaleString()}</td></tr>
+                            </tbody>
+                          </table>
+                        ) : ledger === null ? (
+                          <p>No ledger data available or failed to load.</p>
+                        ) : (
+                          <p>Loading ledger...</p>
+                        )}
+                        {ledger?.summary?.books && (
+                          <div className="books-section">
+                            <strong>📚 Books</strong>
+                            <table className="ledger-table">
+                              <tbody>
+                                <tr><td>Book Fee</td><td>₱{(ledger.summary.books.total || 0).toLocaleString()}</td></tr>
+                                <tr><td>Books Paid</td><td>₱{(ledger.summary.books.paid || 0).toLocaleString()}</td></tr>
+                                <tr className="total-row"><td>Book Balance</td><td style={{ color: ledger.summary.books.balance > 0 ? 'red' : 'green' }}>₱{(ledger.summary.books.balance || 0).toLocaleString()}</td></tr>
+                              </tbody>
+                            </table>
+                            <p className="status-text">Status: {ledger.summary.books.status}</p>
+                          </div>
+                        )}
+                        {ledger?.summary && (
+                          <p className="overall-status">Overall Status: <strong>{ledger.summary.status}</strong></p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* Detail modal/section */}
-      {selectedChild && (
-        <div className="child-detail" style={{ padding: '20px', background: '#f8fafc', marginTop: '20px' }}>
-          <h2>{selectedChild.last_name}, {selectedChild.first_name} - Details</h2>
-          <button onClick={() => { setSelectedChild(null); setLedger(null); }} style={{ marginBottom: '10px', background: '#ccc', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <h3><FaUserCircle /> Student Profile</h3>
-                <p><strong>Student ID:</strong> {selectedChild.studentId ?? selectedChild.student_id}</p>
-                <p><strong>Name:</strong> {selectedChild.lastName}, {selectedChild.firstName} {selectedChild.middleName || ''}</p>
-                <p><strong>Grade:</strong> {selectedChild.gradeLevel}</p>
-                <p><strong>Section:</strong> {selectedChild.section}</p>
-                <p><strong>Gender:</strong> {selectedChild.gender}</p>
-                <p><strong>Date of Birth:</strong> {selectedChild.dateOfBirth}</p>
-                <p><strong>LRN:</strong> {selectedChild.lrn || '—'}</p>
-            </div>
-            <div>
-                <h3><FaMoneyBill /> Payment Ledger</h3>
-                {ledger && ledger.summary ? (
-                    <>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                        <tr><th>Description</th><th>Amount</th></tr>
-                        </thead>
-                        <tbody>
-                        <tr>
-                            <td><strong>Total Tuition</strong></td>
-                            <td>₱{(ledger.summary.total_tuition || 0).toLocaleString()}</td>
-                        </tr>
-                        {ledger.summary.discount_percent > 0 && (
-                            <tr>
-                            <td>Discount ({ledger.summary.discount_percent}%)</td>
-                            <td>-₱{(ledger.summary.discount_amount || 0).toLocaleString()}</td>
-                            </tr>
-                        )}
-                        <tr>
-                            <td>Total Paid</td>
-                            <td>₱{(ledger.summary.total_paid || 0).toLocaleString()}</td>
-                        </tr>
-                        <tr style={{ fontWeight: 'bold', borderTop: '2px solid #ccc' }}>
-                            <td>Remaining Balance</td>
-                            <td style={{ color: ledger.summary.balance > 0 ? 'red' : 'green' }}>
-                            ₱{(ledger.summary.balance || 0).toLocaleString()}
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                    {ledger.summary.books && (
-                        <div style={{ marginTop: '15px' }}>
-                        <strong>📚 Books</strong>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '5px' }}>
-                            <tbody>
-                            <tr><td>Book Fee</td><td>₱{(ledger.summary.books.total || 0).toLocaleString()}</td></tr>
-                            <tr><td>Books Paid</td><td>₱{(ledger.summary.books.paid || 0).toLocaleString()}</td></tr>
-                            <tr style={{ fontWeight: 'bold' }}><td>Book Balance</td><td style={{ color: ledger.summary.books.balance > 0 ? 'red' : 'green' }}>₱{(ledger.summary.books.balance || 0).toLocaleString()}</td></tr>
-                            </tbody>
-                        </table>
-                        <p style={{ fontSize: '0.85rem', color: '#666' }}>Status: {ledger.summary.books.status}</p>
-                        </div>
-                    )}
-
-                    <p style={{ marginTop: '10px', fontSize: '0.9rem' }}>
-                        Overall Status: <strong>{ledger.summary.status}</strong>
-                    </p>
-                    </>
-                ) : (
-                    <p>No ledger data available or failed to load.</p>
-                )}
-                </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

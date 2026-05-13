@@ -11,11 +11,15 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">Welcome to Siloam International Christian School!</div>
-        <p>Dear {{ $parentName }},</p>
-
-        <p>Your child's enrollment has been approved. To access your parent portal where you can view your child's profile, payment balance, and load slip, please set up your password by clicking the button below.</p>
-
+        @if($isReset)
+            <div class="header">Reset Your Password</div>
+            <p>Dear {{ $parentName }},</p>
+            <p>You requested to reset your password for your parent account. Click the button below to set a new password.</p>
+        @else
+            <div class="header">Welcome to Siloam International Christian School!</div>
+            <p>Dear {{ $parentName }},</p>
+            <p>Your child's enrollment has been approved. To access your parent portal where you can view your child's profile, payment balance, and load slip, please set up your password by clicking the button below.</p>
+        @endif
         <a href="{{ $url }}" class="button">Set Your Password</a>
 
         <p><small>This link will expire in 24 hours. If you did not expect this email, please disregard it.</small></p>

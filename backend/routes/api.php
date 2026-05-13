@@ -81,7 +81,31 @@ Route::post('/parent/set-password', function (Request $request) {
     return response()->json(['message' => 'Password set successfully. You can now log in.']);
 })->name('parent.set-password');
 
+Route::post('/forgot-password', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
 
+    $user = \App\Models\User::where('email', $request->email)->first();
+
+    // Always return success to prevent email enumeration
+    if ($user) {
+        $signedUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'parent.set-password',   // reuse the same named route
+            now()->addHours(24),
+            ['email' => $user->email]
+        );
+
+        $frontendUrl = env('APP_URL_FRONTEND') . '/parent/set-password?token=' . urlencode($signedUrl);
+
+        \Illuminate\Support\Facades\Mail::to($user->email)
+            ->send(new \App\Mail\ParentSetPassword($frontendUrl, $user->name, true)); // true = reset
+
+        \Illuminate\Support\Facades\Log::info("Password reset email sent to {$request->email}");
+    } else {
+        \Illuminate\Support\Facades\Log::info("Password reset email requested for unknown email: {$request->email}");
+    }
+
+    return response()->json(['message' => 'If the email is associated with an account, a reset link has been sent.']);
+});
 /*
 |--------------------------------------------------------------------------
 | Protected Routes — All authenticated users
