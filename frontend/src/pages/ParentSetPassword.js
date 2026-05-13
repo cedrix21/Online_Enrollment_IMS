@@ -7,6 +7,7 @@ export default function ParentSetPassword() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [status, setStatus] = useState('valid'); // valid, success, error
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);   // ← toggle
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,7 +80,7 @@ export default function ParentSetPassword() {
       {errorMsg && <div style={{ color: 'red', marginBottom: '10px' }}>{errorMsg}</div>}
       <form onSubmit={handleSubmit}>
         <input
-          type="password"
+          type={showPassword ? 'text' : 'password'}        // ← controlled type
           placeholder="New Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
@@ -89,7 +90,7 @@ export default function ParentSetPassword() {
           style={{ width: '100%', padding: '8px', margin: '5px 0' }}
         />
         <input
-          type="password"
+          type={showPassword ? 'text' : 'password'}        // ← controlled type
           placeholder="Confirm Password"
           value={passwordConfirmation}
           onChange={e => setPasswordConfirmation(e.target.value)}
@@ -97,6 +98,16 @@ export default function ParentSetPassword() {
           className="form-input"
           style={{ width: '100%', padding: '8px', margin: '5px 0' }}
         />
+        {/* Show Password toggle */}
+        <label style={{ display: 'flex', alignItems: 'center', margin: '8px 0', cursor: 'pointer', fontSize: '0.9rem' }}>
+          <input
+            type="checkbox"
+            checked={showPassword}
+            onChange={() => setShowPassword(!showPassword)}
+            style={{ marginRight: '8px' }}
+          />
+          Show Password
+        </label>
         <button type="submit" className="btn-submit" style={{ width: '100%', padding: '10px' }}>
           Set Password
         </button>

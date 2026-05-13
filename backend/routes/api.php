@@ -265,11 +265,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     });
 
-    Route::middleware('auth:sanctum', RoleMiddleware::class.':parent')->group(function () {
-    Route::get('/parent/children', [ParentController::class, 'children']);
-    Route::get('/parent/children/{id}/profile', [StudentController::class, 'findByStudentId']);
-    Route::get('/parent/children/{id}/ledger', [BillingController::class, 'getStudentLedger']);
-});
+    Route::middleware(RoleMiddleware::class . ':parent')->group(function () {
+        Route::get('/parent/children', [ParentController::class, 'children']);
+        Route::get('/parent/children/{id}/profile', [StudentController::class, 'findByStudentId']);
+        Route::get('/parent/children/{id}/ledger', [BillingController::class, 'getStudentLedger']);
+    });
 
 
     // Activity Logs – Admin 
