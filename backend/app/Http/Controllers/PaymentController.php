@@ -13,6 +13,7 @@ use App\Models\EnrollmentRequirement;
 use Spatie\Activitylog\Facades\Activity;                
 use GuzzleHttp\Exception\ConnectException;             
 use GuzzleHttp\Exception\RequestException;
+use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
@@ -61,7 +62,7 @@ class PaymentController extends Controller
 
     // Wrap the transaction in a try-catch to handle any exception (including Guzzle errors)
     try {
-        return DB::transaction(function () use ($request) {
+        $result = DB::transaction(function () use ($request) {
             // Validate all fields (including optional)
             $validated = $request->validate([
                 'firstName'        => 'required|string',
@@ -173,15 +174,19 @@ class PaymentController extends Controller
             if ($attachResponse->failed()) {
                 throw new \Exception('Attach Error: ' . $attachResponse->body());
             }
-
             $checkoutUrl = $attachResponse->json()['data']['attributes']['next_action']['redirect']['url'];
 
-            return response()->json([
-                'success'       => true,
-                'checkout_url'  => $checkoutUrl,
-                'enrollment_id' => $enrollment->id,
-            ]);
-        }); // end DB::transaction
+            return ['enrollment' => $enrollment, 'checkout_url' => $checkoutUrl];
+        });
+
+         $this->sendPendingConfirmation($result['enrollment'], 'GCash');
+
+        return response()->json([
+            'success'       => true,
+            'checkout_url'  => $result['checkout_url'],
+            'enrollment_id' => $result['enrollment']->id,
+        ]);
+
     } catch (ConnectException $e) {
         $errorMessage = $e->getMessage();
         Activity::withProperties([
@@ -243,7 +248,7 @@ class PaymentController extends Controller
 
     // Wrap the transaction in a try-catch to handle any exception (including Guzzle errors)
     try {
-        return DB::transaction(function () use ($request) {
+          $result = DB::transaction(function () use ($request) {
             // Validate all enrollment fields (including optional)
             $validated = $request->validate([
                 'firstName'        => 'required|string',
@@ -340,12 +345,20 @@ class PaymentController extends Controller
                 'status'          => 'pending',
             ]);
 
-            return response()->json([
-                'success'       => true,
-                'checkout_url'  => $checkoutUrl,
-                'enrollment_id' => $enrollment->id,
-            ]);
-        }); // end DB::transaction
+           
+        return ['enrollment' => $enrollment, 'checkout_url' => $checkoutUrl];
+        });
+
+        $this->sendPendingConfirmation($result['enrollment'], 'Bank Transfer');
+
+        return response()->json([
+            'success'       => true,
+            'checkout_url'  => $result['checkout_url'],
+            'enrollment_id' => $result['enrollment']->id,
+        ]);
+
+
+
     } catch (ConnectException $e) {
         $errorMessage = $e->getMessage();
         Activity::withProperties([
@@ -441,6 +454,19 @@ class PaymentController extends Controller
             'original_name' => $request->file($field)->getClientOriginalName(),
             'file_path'     => $path,
             'status'        => 'pending',
+        ]);
+    }
+}
+
+private function sendPendingConfirmation($enrollment, $paymentMethod)
+{
+    try {
+        $enrollment->load('payments');
+        Mail::to($enrollment->email)->send(new \App\Mail\EnrollmentPending($enrollment, $paymentMethod));
+        Log::info("Pending confirmation email sent to {$enrollment->email}");
+    } catch (\Exception $e) {
+        Log::error("Pending email failed: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
         ]);
     }
 }

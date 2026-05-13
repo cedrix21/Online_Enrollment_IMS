@@ -14,11 +14,11 @@
         <div class="header">Enrollment Submitted!</div>
         <p>Dear Parent/Guardian of <strong>{{ $enrollment->firstName }}</strong>,</p>
 
-        <p>We have received your child's enrollment application for Grade {{ $enrollment->gradeLevel }}. Your application is now <strong>pending review</strong>. Our registrar will process it shortly.</p>
+        <p>We have received your child's enrollment application for {{ $enrollment->gradeLevel }}. Your application is now <strong>pending review</strong>. Our registrar will process it shortly.</p>
 
         @if($paymentMethod === 'Cash')
         <div class="reminder">
-            <strong>⚠️ Payment Reminder</strong><br>
+            <strong>Payment Reminder</strong><br>
             You have selected <strong>Walk-in (Cash)</strong> as your payment method. Please visit the school Registrar's office to settle the downpayment to complete your child's enrollment. Bring a copy of this email or your child's name for reference.
         </div>
         @else
