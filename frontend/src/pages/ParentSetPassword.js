@@ -1,37 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/api';
 
 export default function ParentSetPassword() {
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [status, setStatus] = useState('loading'); // loading, valid, invalid, success, error
+  const [status, setStatus] = useState('valid'); // valid, success, error
   const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Extract token from query string
+  // Extract the full token from the URL query
   const query = new URLSearchParams(location.search);
   const token = query.get('token');
 
-  useEffect(() => {
-    if (!token) {
-      setStatus('invalid');
-      setErrorMsg('No token provided. This link is invalid.');
-      return;
-    }
-    // Verify the signed token with the backend
-    API.get(`/parent/verify-set-password?${token.split('?')[1] || token}`)
-      .then(res => {
-        setEmail(res.data.email);
-        setStatus('valid');
-      })
-      .catch(err => {
-        setStatus('invalid');
-        setErrorMsg(err.response?.data?.message || 'Invalid or expired link.');
-      });
-  }, [token]);
+  // Extract just the query string part (everything after '?')
+  const tokenQuery = token ? (token.split('?')[1] || token) : '';
+
+  // Parse email from the token's query parameters
+  const emailFromToken = tokenQuery
+    ? new URLSearchParams(tokenQuery).get('email') || ''
+    : '';
+
+  // If token is missing entirely, show invalid
+  if (!token) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
+        <h2>Invalid or Missing Link</h2>
+        <p>No token provided. This link is invalid.</p>
+        <p>Please contact the school registrar for assistance.</p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,33 +40,17 @@ export default function ParentSetPassword() {
       return;
     }
     try {
-      // The POST request must include the original signed parameters
-      // We'll send the full token as query string
-      await API.post(`/parent/set-password?${token.split('?')[1] || token}`, {
-        email: email,
+      await API.post(`/parent/set-password?${tokenQuery}`, {
+        email: emailFromToken,
         password: password,
         password_confirmation: passwordConfirmation,
       });
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err.response?.data?.message || 'Failed to set password. Please try again.');
+      setErrorMsg(err.response?.data?.message || 'Invalid or expired link. Please request a new one.');
     }
   };
-
-  if (status === 'loading') {
-    return <div style={{ textAlign: 'center', padding: '2rem' }}>Verifying your link...</div>;
-  }
-
-  if (status === 'invalid') {
-    return (
-      <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
-        <h2>Invalid or Expired Link</h2>
-        <p>{errorMsg}</p>
-        <p>Please contact the school registrar for assistance.</p>
-      </div>
-    );
-  }
 
   if (status === 'success') {
     return (
@@ -78,10 +62,20 @@ export default function ParentSetPassword() {
     );
   }
 
+  if (status === 'error') {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
+        <h2>Invalid or Expired Link</h2>
+        <p>{errorMsg}</p>
+        <p>Please contact the school registrar for assistance.</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '20px' }}>
       <h2>Set Your Password</h2>
-      <p>Email: {email}</p>
+      <p>Email: <strong>{emailFromToken}</strong></p>
       {errorMsg && <div style={{ color: 'red', marginBottom: '10px' }}>{errorMsg}</div>}
       <form onSubmit={handleSubmit}>
         <input
