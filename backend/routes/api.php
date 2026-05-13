@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Models\Setting;
 use App\Http\Controllers\TeacherAttendanceController;
 use App\Http\Controllers\TeacherObservedValueController;
+use App\Http\Middleware\RoleMiddleware;
+use App\Http\Controllers\ParentController;
 
 // // Temporary route for cleaning activity logs via cron job
 // Route::get('/cron/clean-logs', function (Request $request) {
@@ -49,6 +51,36 @@ Route::get('/current-school-year', [App\Http\Controllers\SchoolYearController::c
 Route::post('/payment/initialize-gcash-enrollment', [PaymentController::class, 'initializeGcashEnrollment']);
 Route::post('/payment/initialize-bank-transfer', [PaymentController::class, 'initializeBankTransfer']);
 Route::post('/webhooks/paymongo', [PaymentController::class, 'handleWebhook']);
+
+
+// Verify signed token – returns email if valid
+Route::get('/parent/verify-set-password', function (Request $request) {
+    if (!$request->hasValidSignature()) {
+        return response()->json(['message' => 'Invalid or expired link.'], 403);
+    }
+    return response()->json(['email' => $request->email]);
+})->name('parent.set-password');
+
+// Set the actual password
+Route::post('/parent/set-password', function (Request $request) {
+    if (!$request->hasValidSignature()) {
+        return response()->json(['message' => 'Invalid or expired link.'], 403);
+    }
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
+    $user = \App\Models\User::where('email', $request->email)
+                ->where('role', 'parent')
+                ->first();
+    if (!$user) {
+        return response()->json(['message' => 'Parent account not found.'], 404);
+    }
+    $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+    $user->save();
+    return response()->json(['message' => 'Password set successfully. You can now log in.']);
+})->name('parent.set-password');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -208,6 +240,12 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['message' => 'School year updated.']);
     });
     });
+
+    Route::middleware('auth:sanctum', RoleMiddleware::class.':parent')->group(function () {
+    Route::get('/parent/children', [ParentController::class, 'children']);
+    Route::get('/parent/children/{id}/profile', [StudentController::class, 'findByStudentId']);
+    Route::get('/parent/children/{id}/ledger', [BillingController::class, 'getStudentLedger']);
+});
 
 
     // Activity Logs – Admin 

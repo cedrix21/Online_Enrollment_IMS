@@ -1,12 +1,14 @@
 import { useState } from "react";
 import API from "../api/api";
 import "./Login.css";
+import { useNavigate } from "react-router-dom"; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -25,11 +27,13 @@ export default function Login() {
 
       API.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
-      if (user.role === "teacher") {
-        window.location.href = "/teacher-advisory";
-      } else {
-        window.location.href = "/dashboard";
-      }
+     if (user.role === "parent") {
+      navigate('/parent-dashboard');
+    } else if (user.role === "teacher") {
+      navigate('/teacher-advisory');
+    } else {
+      navigate('/dashboard');   // admin / registrar
+    }
     } catch (err) {
       if (err.response) {
         const status = err.response.status;
@@ -55,6 +59,7 @@ export default function Login() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="login-container">

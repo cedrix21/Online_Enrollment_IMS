@@ -16,6 +16,11 @@ use App\Models\EnrollmentRequirement;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\SchoolYearTrait;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
+
 
 class EnrollmentController extends Controller
 {
@@ -424,6 +429,62 @@ class EnrollmentController extends Controller
             'payment_status'  => 'completed',
         ]);
         $section->increment('students_count');
+
+                // -------------------- AUTO-CREATE PARENT USER --------------------
+        $isNewParent = false;
+        $parentEmail = $enrollment->email; // we use the enrollment's contact email
+
+        // Check if a parent user with this email already exists
+        $parentUser = User::where('email', $parentEmail)->where('role', 'parent')->first();
+
+        if (!$parentUser) {
+            // Create a new parent user
+            $parentUser = new User();
+            $parentUser->name     = $enrollment->fatherName ?: $enrollment->motherName ?: 'Parent';
+            $parentUser->email    = $parentEmail;
+            $parentUser->role     = 'parent';
+            // Generate a random password – the parent will set a real one later
+            $parentUser->password = Hash::make(Str::random(16));
+            $parentUser->save();
+            $isNewParent = true;
+
+            if ($isNewParent) {
+                // Generate signed URL valid for 24 hours
+                $signedUrl = URL::temporarySignedRoute(
+                    'parent.set-password',   // named route – we'll define it in the next step
+                    now()->addHours(24),
+                    ['email' => $parentUser->email]
+                );
+
+                // Prepend the frontend URL so the link opens the React app
+                $frontendUrl = env('APP_URL_FRONTEND') . '/parent/set-password?token='
+                                . urlencode($signedUrl);
+
+                // Send the email
+                Mail::to($parentUser->email)
+                    ->send(new \App\Mail\ParentSetPassword($frontendUrl, $parentUser->name));
+
+                Log::info("Set-password email sent to {$parentUser->email}");
+            }
+        }
+
+        // Attach the student to this parent (if the relation doesn't already exist)
+        $existingLink = DB::table('parent_student')
+            ->where('user_id', $parentUser->id)
+            ->where('student_id', $student->id)
+            ->first();
+
+        if (!$existingLink) {
+            DB::table('parent_student')->insert([
+                'user_id'    => $parentUser->id,
+                'student_id' => $student->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Optional: log the action
+        Log::info("Parent user {$parentUser->email} linked to student {$student->id}" . ($isNewParent ? " (new user created)" : ""));
 
         activity()
             ->performedOn($enrollment)

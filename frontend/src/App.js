@@ -34,8 +34,8 @@ import LockedUsers from "./pages/Admin/LockedUsers";
 import Sidebar from "./components/SideBar";      
 import TopBar from "./components/TopBar";        
 import AdminSchoolYear from "./pages/AdminSchoolYear";
-
-
+import ParentSetPassword from "./pages/ParentSetPassword";
+import ParentDashboard from "./pages/ParentDashboard";
 
 
 // ── Inline Layout Component ────────────────────────────────
@@ -84,6 +84,8 @@ function App() {
         <Route path="/enroll" element={<Enrollment />} />
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
         <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
+        <Route path="/parent/set-password" element={<ParentSetPassword />} />
+        <Route path="/parent-dashboard" element={<ParentDashboard />} />
          <Route
             path="/teacher-advisory"
             element={
