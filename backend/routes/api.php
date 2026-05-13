@@ -68,6 +68,19 @@ Route::post('/parent/set-password', function (Request $request) {
     if (!$request->hasValidSignature()) {
         return response()->json(['message' => 'Invalid or expired link.'], 403);
     }
+     // ✅ Prevent reuse: check if the link was already used
+    $createdAt = $request->input('created_at');
+    if (empty($createdAt)) {
+        return response()->json(['message' => 'Invalid link.'], 403);
+    }
+
+    $user = \App\Models\User::where('email', $request->email)
+                ->where('role', 'parent')
+                ->first();
+
+    if ($user && $user->password_set_at && $user->password_set_at->timestamp > (int) $createdAt) {
+        return response()->json(['message' => 'This link has already been used. Please request a new one.'], 403);
+    }
     $request->validate([
         'email'    => 'required|email',
         'password' => 'required|string|min:6|confirmed',
@@ -78,8 +91,12 @@ Route::post('/parent/set-password', function (Request $request) {
     if (!$user) {
         return response()->json(['message' => 'Parent account not found.'], 404);
     }
+    // ✅ After saving the new password, set password_set_at
     $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+    $user->password_set_at = now();
     $user->save();
+
+
     return response()->json(['message' => 'Password set successfully. You can now log in.']);
 })->name('parent.set-password');
 
@@ -136,9 +153,9 @@ Route::post('/verify-otp', function (Request $request) {
 
     // Generate signed reset link (reuse same logic)
     $signedUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
-        'parent.set-password',
-        now()->addHours(24),
-        ['email' => $user->email]
+    'parent.set-password',
+    now()->addHours(24),
+        ['email' => $user->email, 'created_at' => now()->timestamp]
     );
     $frontendUrl = env('APP_URL_FRONTEND') . '/parent/set-password?token=' . urlencode($signedUrl);
 

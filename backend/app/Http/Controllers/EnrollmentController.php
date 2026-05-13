@@ -451,9 +451,9 @@ class EnrollmentController extends Controller
             if ($isNewParent) {
                 // Generate signed URL valid for 24 hours
                 $signedUrl = URL::temporarySignedRoute(
-                    'parent.set-password',   // named route – we'll define it in the next step
+                    'parent.set-password',
                     now()->addHours(24),
-                    ['email' => $parentUser->email]
+                    ['email' => $parentUser->email, 'created_at' => now()->timestamp]
                 );
 
                 // Prepend the frontend URL so the link opens the React app
