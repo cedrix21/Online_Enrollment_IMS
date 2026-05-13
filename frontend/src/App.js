@@ -85,7 +85,14 @@ function App() {
         <Route path="/enrollment-qr" element={<EnrollmentQR />} />
         <Route path="/enrollment/payment-success" element={<PaymentSuccess />} />
         <Route path="/parent/set-password" element={<ParentSetPassword />} />
-        <Route path="/parent-dashboard" element={<ParentDashboard />} />
+        <Route
+          path="/parent-dashboard"
+          element={
+            <ProtectedRoute roles={["parent"]}>
+              <ParentDashboard />
+            </ProtectedRoute>
+          }
+        />
          <Route
             path="/teacher-advisory"
             element={
