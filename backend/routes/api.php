@@ -59,7 +59,7 @@ Route::get('/parent/verify-set-password', function (Request $request) {
         return response()->json(['message' => 'Invalid or expired link.'], 403);
     }
     return response()->json(['email' => $request->email]);
-})->name('parent.set-password');
+})->name('parent.verify-set-password');
 
 // Set the actual password
 Route::post('/parent/set-password', function (Request $request) {
