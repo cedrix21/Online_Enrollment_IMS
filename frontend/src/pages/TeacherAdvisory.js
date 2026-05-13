@@ -1058,10 +1058,13 @@ const AttendanceForm = memo(({ student, data, onSave, saving }) => {
     const result = { ...emptyMonths };
     (arr || []).forEach(({ month, school_days, present, absent }) => {
       if (result[month]) {
+        const sd = parseInt(school_days) || 0;
+        const p = parseInt(present) || 0;
+        const calculatedAbsent = Math.max(sd - p, 0);
         result[month] = {
           school_days: school_days ?? '',
           present: present ?? '',
-          absent: absent ?? '',
+          absent: String(calculatedAbsent),
         };
       }
     });
@@ -1075,10 +1078,16 @@ const AttendanceForm = memo(({ student, data, onSave, saving }) => {
   }, [data]);
 
   const handleChange = (month, field, value) => {
-    setFormValues(prev => ({
-      ...prev,
-      [month]: { ...prev[month], [field]: value }
-    }));
+    setFormValues(prev => {
+      const updated = { ...prev, [month]: { ...prev[month], [field]: value } };
+      // Recalculate absent if school_days or present changed
+      if (field === 'school_days' || field === 'present') {
+        const sd = parseInt(updated[month].school_days) || 0;
+        const p = parseInt(updated[month].present) || 0;
+        updated[month].absent = String(Math.max(sd - p, 0));
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -1104,7 +1113,7 @@ const AttendanceForm = memo(({ student, data, onSave, saving }) => {
                 <th style={{ minWidth: '80px', textAlign: 'left' }}></th>
                 {MONTHS.map(month => (
                   <th key={month} style={{ minWidth: '60px', textAlign: 'center' }}>
-                    {month.substring(0,3)} {/* Shortened month label */}
+                    {month.substring(0,3)}
                   </th>
                 ))}
               </tr>
@@ -1138,7 +1147,7 @@ const AttendanceForm = memo(({ student, data, onSave, saving }) => {
                   </td>
                 ))}
               </tr>
-              {/* Absent row */}
+              {/* Absent row – auto‑calculated */}
               <tr>
                 <td style={{ fontWeight: 600, textAlign: 'left' }}>Absent</td>
                 {MONTHS.map(month => (
@@ -1146,8 +1155,14 @@ const AttendanceForm = memo(({ student, data, onSave, saving }) => {
                     <input
                       type="number" min="0"
                       value={formValues[month].absent}
-                      onChange={e => handleChange(month, 'absent', e.target.value)}
-                      style={{ width: '100%', boxSizing: 'border-box', textAlign: 'center' }}
+                      disabled
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        textAlign: 'center',
+                        backgroundColor: '#f0f0f0',
+                        border: '1px solid #ccc',
+                      }}
                     />
                   </td>
                 ))}
