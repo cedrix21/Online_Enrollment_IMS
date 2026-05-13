@@ -14,6 +14,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('email');  
+  const [forgotSuccess, setForgotSuccess] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -71,6 +72,7 @@ export default function Login() {
       <div className="login-card">
         <h2 className="login-title">Login</h2>
         {error && <p className="error-message">{error}</p>}
+        {forgotSuccess && <p style={{ color: '#2e7d32', background: '#e8f5e9', padding: '8px', borderRadius: '6px', marginBottom: '10px' }}>{forgotSuccess}</p>}
         <form onSubmit={handleLogin}>
           <div className="input-group">
             <label>Email:</label>
@@ -142,7 +144,11 @@ export default function Login() {
                 setShowForgot(false);
                 setForgotMsg('');
                 setOtp('');
-                alert('A password reset link has been sent to your email.');
+                setForgotSuccess('A password reset link has been sent to your email.');
+                setShowForgot(false);
+                setStep('email');
+                setOtp('');
+                setForgotMsg('');
               } catch (err) {
                 setForgotMsg(err.response?.data?.message || 'Invalid OTP. Please try again.');
               }
