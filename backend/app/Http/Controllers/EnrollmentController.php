@@ -165,17 +165,8 @@ class EnrollmentController extends Controller
     $validated = $request->validate($rules);
 
     try {
-    return DB::transaction(function () use ($request, $validated) {
-        // Handle receipt upload (existing logic)
-
-        // $receiptPath = null;
-        // if ($request->hasFile('receipt_image')) {
-        //     $file = $request->file('receipt_image');
-        //     $fileName = time() . '_' . $file->getClientOriginalName();
-        //     $path = $file->storeAs('receipts', $fileName, 'public');
-        //     $receiptPath = $path;
-        // }
-
+    $enrollment = DB::transaction(function () use ($request, $validated) {
+    
         // Upload to Supabase instead of local storage
         $receiptPath = null;
         if ($request->hasFile('receipt_image')) {
@@ -287,11 +278,17 @@ class EnrollmentController extends Controller
             }
         }
 
-        return response()->json([
-            'message'  => 'Enrollment submitted successfully!',
-            'enrollment' => $enrollment->load('siblings'),
-                ], 201);
-            });
+        return $enrollment;
+    });
+
+       $this->sendPendingConfirmation($enrollment, $validated['paymentMethod'] ?? 'Cash');
+
+    return response()->json([
+        'message'  => 'Enrollment submitted successfully!',
+        'enrollment' => $enrollment->load('siblings'),
+    ], 201);
+
+            
          } catch (\Exception $e) {
         // Log the failure with full context
         activity()
@@ -803,5 +800,21 @@ private function toTitleCase(?string $value): ?string
 private function findStudentByStudentId($studentId)
 {
     return Student::where('studentId', $studentId)->first();
+}
+
+
+private function sendPendingConfirmation($enrollment, $paymentMethod)
+{
+    try {
+        // Ensure payments relation is loaded
+        $enrollment->load('payments');
+        Mail::to($enrollment->email)->send(new \App\Mail\EnrollmentPending($enrollment, $paymentMethod));
+        Log::info("Pending confirmation email sent to {$enrollment->email}");
+    } catch (\Exception $e) {
+        Log::error("Pending email failed: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        // Do not throw – we don't want the whole submission to fail because of email
+    }
 }
 }
