@@ -107,7 +107,7 @@ export default function Login() {
         placeholder="Enter your email"
         value={forgotEmail}
           onChange={e => setForgotEmail(e.target.value)}
-          style={{ width: '100%', padding: '8px', margin: '5px 0' }}
+          style={{ width: '90%', padding: '8px', margin: '5px 0' }}
         />
         <button type="button" onClick={async () => {
           try {
