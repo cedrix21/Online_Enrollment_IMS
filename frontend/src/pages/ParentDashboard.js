@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/api';
 import { useNavigate } from 'react-router-dom';
-import { FaUserCircle, FaMoneyBill, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaUserCircle, FaMoneyBill, FaChevronDown, FaChevronUp, FaCalendarAlt  } from 'react-icons/fa';
 import './ParentDashboard.css';   // we'll provide the CSS next
 
 export default function ParentDashboard() {
@@ -12,6 +12,7 @@ export default function ParentDashboard() {
   const [profiles, setProfiles] = useState({});          // cached profiles by primary key
   const [ledgers, setLedgers] = useState({});            // cached ledgers by primary key
   const navigate = useNavigate();
+  const [schedules, setSchedules] = useState({});   // cache schedules by child primary key
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -59,6 +60,16 @@ export default function ParentDashboard() {
         setLedgers(prev => ({ ...prev, [childId]: ledgerRes.data }));
       } catch (err) {
         console.error('Error fetching ledger', err);
+      }
+    }
+
+    // Fetch schedule if not yet cached
+    if (!schedules[childId]) {
+      try {
+        const scheduleRes = await API.get(`/parent/children/${childId}/schedule`);
+        setSchedules(prev => ({ ...prev, [childId]: scheduleRes.data }));
+      } catch (err) {
+        console.error('Error fetching schedule', err);
       }
     }
   };
@@ -187,6 +198,36 @@ export default function ParentDashboard() {
                               </tbody>
                             </table>
                           </div>
+                        )}
+                      </div>
+
+                      {/* ── Schedule Section ── */}
+                      <div className="detail-section schedule-section">
+                        <h3><FaCalendarAlt /> Class Schedule</h3>
+                        {schedules[child.id] && schedules[child.id].length > 0 ? (
+                          <table className="ledger-table">
+                            <thead>
+                              <tr><th>Subject</th><th>Days</th><th>Time</th><th>Room</th></tr>
+                            </thead>
+                            <tbody>
+                              {schedules[child.id].map((s, idx) => (
+                                <tr key={idx}>
+                                  <td><strong>{s.subject}</strong></td>
+                                  <td>
+                                    {s.days.length <= 2
+                                      ? s.days.join(', ')
+                                      : s.days.map(d => d.substring(0,3)).join(', ')}
+                                  </td>
+                                  <td>{s.time}</td>
+                                  <td>{s.room}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : schedules[child.id] === undefined ? (
+                          <p>Loading schedule...</p>
+                        ) : (
+                          <p>No schedule available for this section.</p>
                         )}
                       </div>
                     </div>

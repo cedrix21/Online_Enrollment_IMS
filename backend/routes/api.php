@@ -330,6 +330,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/parent/children', [ParentController::class, 'children']);
         Route::get('/parent/children/{id}/profile', [StudentController::class, 'findByStudentId']);
         Route::get('/parent/children/{id}/ledger', [BillingController::class, 'getStudentLedger']);
+        Route::get('/parent/children/{id}/schedule', [ParentController::class, 'schedule']);
     });
 
 
