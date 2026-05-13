@@ -20,7 +20,8 @@ class SectionController extends Controller
         $query = Section::with([
             'advisor',
             'students' => function ($query) use ($schoolYear) {
-                $query->where('school_year', $schoolYear);
+                $query->where('school_year', $schoolYear)
+                 ->select('id', 'studentId', 'firstName', 'lastName', 'lrn', 'section_id');
             },
             'schedules.subject',
             'schedules.room',

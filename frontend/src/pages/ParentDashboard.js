@@ -156,6 +156,38 @@ export default function ParentDashboard() {
                         {ledger?.summary && (
                           <p className="overall-status">Overall Status: <strong>{ledger.summary.status}</strong></p>
                         )}
+
+                        {/* ── Transaction History ── */}
+                        {ledger && ledger.ledger && ledger.ledger.length > 0 && (
+                          <div className="history-section" style={{ marginTop: '20px' }}>
+                            <h4 style={{ marginBottom: '10px', color: '#b8860b' }}>📋 Payment History</h4>
+                            <table className="ledger-table">
+                              <thead>
+                                <tr>
+                                  <th>Date</th>
+                                  <th>Method</th>
+                                  <th>Amount</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {ledger.ledger
+                                  .filter(p => p.payment_status !== 'pending')   // optional: show only completed/paid
+                                  .map(payment => (
+                                    <tr key={payment.id}>
+                                      <td>{payment.payment_date?.split('T')[0] || '—'}</td>
+                                      <td>{payment.paymentMethod || '—'}</td>
+                                      <td>₱{(payment.amount_paid || 0).toLocaleString()}</td>
+                                      <td style={{ color: payment.payment_status === 'paid' ? 'green' : 'orange' }}>
+                                        {payment.payment_status}
+                                      </td>
+                                    </tr>
+                                  ))
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

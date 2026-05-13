@@ -85,6 +85,10 @@ const StudentToken = memo(({ student, isSelected, onClick }) => (
   </button>
 ));
 
+
+
+
+
 // --- Main Component ---
 export default function LoadSlip() {
   const [user] = useState(() => {
@@ -101,7 +105,7 @@ export default function LoadSlip() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [studentSearch, setStudentSearch] = useState("");
-
+  const [studentDetails, setStudentDetails] = useState(null);
   const printRef = useRef();
   const DAYS_ORDER = useMemo(() => ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], []);
 
@@ -197,9 +201,16 @@ export default function LoadSlip() {
     setStudentSearch("");
   }, []);
 
-  const handleStudentClick = useCallback((student) => {
-    setSelectedStudent(student);
-  }, []);
+  const handleStudentClick = useCallback(async (student) => {
+  setSelectedStudent(student);
+  setStudentDetails(null); // clear previous details while loading
+  try {
+    const res = await API.get(`/students/by-id/${student.studentId}`);
+    setStudentDetails(res.data);
+  } catch (err) {
+    console.error("Could not fetch student details", err);
+  }
+}, []);
 
   return (
     <>
@@ -344,6 +355,7 @@ export default function LoadSlip() {
                     <div className="info-col">
                       <p><strong>Student Name:</strong> <span className="uppercase-name">{selectedStudent.lastName}, {selectedStudent.firstName}</span></p>
                       <p><strong>Student ID:</strong> {selectedStudent.studentId}</p>
+                       <p><strong>LRN:</strong> {selectedStudent?.lrn || '—'}</p>
                       <p><strong>Section:</strong> {selectedSection.name}</p>
                     </div>
                     <div className="info-col text-right">
