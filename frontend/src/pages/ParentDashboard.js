@@ -14,6 +14,42 @@ export default function ParentDashboard() {
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState({});   // cache schedules by child primary key
 
+      useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        // If a child card was open, refresh its data without collapsing
+        if (expandedId) {
+          const child = children.find(c => c.id === expandedId);
+          if (child) {
+            try {
+              // Refetch profile, ledger, schedule for this child only
+              const [profileRes, ledgerRes, scheduleRes] = await Promise.all([
+                API.get(`/parent/children/${child.student_id}/profile`),
+                API.get(`/parent/children/${expandedId}/ledger`),
+                API.get(`/parent/children/${expandedId}/schedule`)
+              ]);
+              setProfiles(prev => ({ ...prev, [expandedId]: profileRes.data }));
+              setLedgers(prev => ({ ...prev, [expandedId]: ledgerRes.data }));
+              setSchedules(prev => ({ ...prev, [expandedId]: scheduleRes.data }));
+            } catch (err) {
+              console.error('Auto-refresh failed', err);
+            }
+          }
+        } else {
+          // No card open – just clear the cache so next expand is fresh
+          setProfiles({});
+          setLedgers({});
+          setSchedules({});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [expandedId, children]);
+
+
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (user.role !== 'parent') {
