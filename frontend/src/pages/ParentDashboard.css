@@ -178,6 +178,38 @@
   color: #c62828;
   margin-bottom: 16px;
 }
+
 .history-section {
   margin-top: 20px;
+}
+
+/* ── Mobile Horizontal Scroll Fix for Tables ────────────────── */
+@media (max-width: 768px) {
+  /* Make sections containing tables scroll horizontally */
+  .ledger-section,
+  .schedule-section,
+  .history-section {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure tables have a minimum width so scrolling is needed */
+  .ledger-section .ledger-table,
+  .schedule-section .ledger-table,
+  .history-section .ledger-table {
+    min-width: 500px;      /* adjust if you have fewer columns */
+    width: auto;
+    white-space: nowrap;   /* prevents cell content from wrapping */
+  }
+
+  /* Optional: reduce card padding to give more space */
+  .card-details {
+    padding: 0 16px 20px;
+  }
+
+  /* Table headers and cells keep consistent padding */
+  .ledger-table th,
+  .ledger-table td {
+    padding: 8px 12px;
+  }
 }
