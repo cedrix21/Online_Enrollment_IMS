@@ -186,7 +186,7 @@
 /* ── Mobile Horizontal Scroll Fix for Tables ────────────────── */
 @media (max-width: 768px) {
   /* Make sections containing tables scroll horizontally */
-  .ledger-section,
+
   .schedule-section,
   .history-section {
     overflow-x: auto;
@@ -194,7 +194,6 @@
   }
 
   /* Ensure tables have a minimum width so scrolling is needed */
-  .ledger-section .ledger-table,
   .schedule-section .ledger-table,
   .history-section .ledger-table {
     min-width: 500px;      /* adjust if you have fewer columns */
