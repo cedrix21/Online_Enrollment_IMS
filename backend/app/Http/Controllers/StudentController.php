@@ -229,6 +229,7 @@ public function findByStudentId($studentId)
         'studentId'         => $student->studentId,
         'firstName'         => $student->firstName,
         'lastName'          => $student->lastName,
+        'lrn'               => $student->lrn,
         'middleName'        => $student->middleName,
         'nickname'          => $student->nickname,
         'gender'            => $student->gender,
