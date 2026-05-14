@@ -202,11 +202,6 @@
     white-space: nowrap;   /* prevents cell content from wrapping */
   }
 
-  /* Optional: reduce card padding to give more space */
-  .card-details {
-    padding: 0 16px 20px;
-  }
-
   /* Table headers and cells keep consistent padding */
   .ledger-table th,
   .ledger-table td {
