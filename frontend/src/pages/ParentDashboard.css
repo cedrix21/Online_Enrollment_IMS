@@ -183,27 +183,62 @@
   margin-top: 20px;
 }
 
-/* ── Mobile Horizontal Scroll Fix for Tables ────────────────── */
-@media (max-width: 768px) {
-  /* Make sections containing tables scroll horizontally */
-
-  .schedule-section,
-  .history-section {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* ── Mobile: Make Payment History & Schedule Tables Stack Vertically ── */
+@media (max-width: 600px) {
+  .history-section .ledger-table,
+  .schedule-section .ledger-table {
+    display: block;
+    width: 100%;
   }
 
-  /* Ensure tables have a minimum width so scrolling is needed */
-  .schedule-section .ledger-table,
-  .history-section .ledger-table {
-    min-width: 500px;      /* adjust if you have fewer columns */
-    width: auto;
-    white-space: nowrap;   /* prevents cell content from wrapping */
+  .history-section .ledger-table thead,
+  .schedule-section .ledger-table thead {
+    display: none;
   }
 
-  /* Table headers and cells keep consistent padding */
-  .ledger-table th,
-  .ledger-table td {
-    padding: 8px 12px;
+  .history-section .ledger-table tbody,
+  .schedule-section .ledger-table tbody {
+    display: block;
+  }
+
+  .history-section .ledger-table tr,
+  .schedule-section .ledger-table tr {
+    display: block;
+    margin-bottom: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafafa;
+  }
+
+  .history-section .ledger-table td,
+  .schedule-section .ledger-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 12px;
+  }
+
+  .history-section .ledger-table td:last-child,
+  .schedule-section .ledger-table td:last-child {
+    border-bottom: none;
+  }
+
+  .history-section .ledger-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #b8860b;
+    width: 40%;
+    flex-shrink: 0;
+  }
+
+  .schedule-section .ledger-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #b8860b;
+    width: 35%;
+    flex-shrink: 0;
   }
 }

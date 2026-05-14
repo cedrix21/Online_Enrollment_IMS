@@ -183,18 +183,18 @@ export default function ParentDashboard() {
                               </thead>
                               <tbody>
                                 {ledger.ledger
-                                  .filter(p => p.payment_status !== 'pending')   // optional: show only completed/paid
-                                  .map(payment => (
-                                    <tr key={payment.id}>
-                                      <td>{payment.payment_date?.split('T')[0] || '—'}</td>
-                                      <td>{payment.paymentMethod || '—'}</td>
-                                      <td>₱{(payment.amount_paid || 0).toLocaleString()}</td>
-                                      <td style={{ color: payment.payment_status === 'paid' ? 'green' : 'orange' }}>
-                                        {payment.payment_status}
-                                      </td>
-                                    </tr>
-                                  ))
-                                }
+                                .filter(p => p.payment_status !== 'pending')
+                                .map(payment => (
+                                  <tr key={payment.id}>
+                                    <td data-label="Date">{payment.payment_date?.split('T')[0] || '—'}</td>
+                                    <td data-label="Method">{payment.paymentMethod || '—'}</td>
+                                    <td data-label="Amount">₱{(payment.amount_paid || 0).toLocaleString()}</td>
+                                    <td data-label="Status" style={{ color: payment.payment_status === 'paid' ? 'green' : 'orange' }}>
+                                      {payment.payment_status}
+                                    </td>
+                                  </tr>
+                                ))
+                              }
                               </tbody>
                             </table>
                           </div>
@@ -212,14 +212,12 @@ export default function ParentDashboard() {
                             <tbody>
                               {schedules[child.id].map((s, idx) => (
                                 <tr key={idx}>
-                                  <td><strong>{s.subject}</strong></td>
-                                  <td>
-                                    {s.days.length <= 2
-                                      ? s.days.join(', ')
-                                      : s.days.map(d => d.substring(0,3)).join(', ')}
+                                  <td data-label="Subject"><strong>{s.subject}</strong></td>
+                                  <td data-label="Days">
+                                    {s.days.length <= 2 ? s.days.join(', ') : s.days.map(d => d.substring(0,3)).join(', ')}
                                   </td>
-                                  <td>{s.time}</td>
-                                  <td>{s.room}</td>
+                                  <td data-label="Time">{s.time}</td>
+                                  <td data-label="Room">{s.room}</td>
                                 </tr>
                               ))}
                             </tbody>
